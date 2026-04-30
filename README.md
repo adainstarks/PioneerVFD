@@ -59,16 +59,6 @@ spicetify apply
 - `Themes/PioneerVFD/user.css` owns the chrome body, LCD styling, typography, and Spotify layout overrides.
 - `Themes/PioneerVFD/color.ini` defines the `Pioneer DEH-P7600MP` color scheme.
 
-## Release
-
-Current release: **v0.3.2**
-
-Recommended initial commit message:
-
-```bash
-git commit -m "Initial release v0.3.2"
-```
-
 ## Copyright
 
 No affiliation with Pioneer. Simply made as a love project. Not for profit.
