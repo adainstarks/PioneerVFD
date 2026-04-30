@@ -10,21 +10,6 @@ A Spicetify theme + extension that turns Spotify into a 2000s Pioneer DEH-P7600M
 - Removes the old ART mode path and uses packed LCD clip data instead of fragile embedded MP4 playback.
 - Keeps the DOLPHIN clip full-panel and renders the RACING clip in a tighter contained viewport so it does not stretch.
 
-## Files
-
-```text
-PioneerVFD/
-├─ Extensions/
-│  └─ pioneerVFD.js
-├─ Themes/
-│  └─ PioneerVFD/
-│     ├─ color.ini
-│     └─ user.css
-├─ install-windows.ps1
-├─ PUSH_TO_GITHUB.md
-└─ README.md
-```
-
 ## Requirements
 
 - Spotify desktop
