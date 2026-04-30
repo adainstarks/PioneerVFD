@@ -58,3 +58,7 @@ Recommended initial commit message:
 ```bash
 git commit -m "Initial release v0.3.2"
 ```
+
+## Copyright
+
+No affiliation with Pioneer. Simply made as a love project.
