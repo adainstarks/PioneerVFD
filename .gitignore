@@ -1,0 +1,31 @@
+# OS junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor folders
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+*.old
+
+# Package/build folders, if added later
+node_modules/
+dist/
+build/
+.cache/
+
+# Local archives
+*.zip
+*.7z
+*.rar
+
+# Local Spicetify output/backups
+*.backup
+Backup/

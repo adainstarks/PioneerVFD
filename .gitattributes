@@ -1,0 +1,6 @@
+* text=auto
+*.js text eol=lf
+*.css text eol=lf
+*.ini text eol=lf
+*.md text eol=lf
+*.ps1 text eol=crlf

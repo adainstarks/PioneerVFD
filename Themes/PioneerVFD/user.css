@@ -1,0 +1,567 @@
+/* ==============================================================
+   Pioneer VFD v0.3.2 — DEH-P7600MP theme for Spotify
+   chrome chassis · charcoal app shell · black LCD insets · phosphor cyan
+   All animations live INSIDE the LCD window, not on the screen.
+   ============================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap");
+@font-face {
+  font-family: "DSEG7Classic";
+  src: url("https://cdn.jsdelivr.net/gh/keshikan/DSEG@v0.46/fonts/DSEG7-Classic/DSEG7Classic-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+
+:root {
+  --pvfd-chrome-hi:   #d8dadc;
+  --pvfd-chrome-1:    #b6b8bb;
+  --pvfd-chrome-2:    #969899;
+  --pvfd-chrome-3:    #7a7c80;
+  --pvfd-chrome-4:    #5e6064;
+  --pvfd-chrome-5:    #3e4044;
+  --pvfd-chrome-edge: #2a2c30;
+
+  --pvfd-player-height: 232px;
+  --pvfd-app-bg:      #0d1117;
+  --pvfd-app-bg-2:    #111721;
+  --pvfd-panel-bg:    #151b24;
+  --pvfd-panel-bg-2:  #1a202a;
+  --pvfd-panel-edge:  #273240;
+
+  --pvfd-lcd-void:    #02060c;
+  --pvfd-lcd-deep:    #06121e;
+  --pvfd-lcd-rim:     #1a2c3c;
+
+  --pvfd-cyan:        #a8e4f4;
+  --pvfd-cyan-mid:    #7ed4f0;
+  --pvfd-cyan-deep:   #4eb4d8;
+  --pvfd-cyan-glow:   #6ed4f8;
+
+  --pvfd-green:       #b8e896;
+  --pvfd-green-deep:  #6aa030;
+  --pvfd-red:         #ff5060;
+
+  --pvfd-glow-cyan:   0 0 3px rgba(168, 228, 244, 0.85), 0 0 7px rgba(126, 212, 240, 0.38);
+  --pvfd-glow-green:  0 0 4px rgba(184, 232, 150, 0.6);
+
+  --pvfd-font-pixel:  "VT323", "Share Tech Mono", "Courier New", monospace;
+  --pvfd-font-vfd:    "DSEG7Classic", "VT323", monospace;
+  --pvfd-font-brand:  Georgia, "Times New Roman", serif;
+}
+
+* { border-radius: 0 !important; }
+body, .Root, [data-encore-id] {
+  font-family: var(--pvfd-font-pixel) !important;
+  letter-spacing: 0.5px;
+}
+body, .Root {
+  background: var(--pvfd-app-bg) !important;
+}
+.Root {
+  /* Reserve real space for the custom head-unit bar instead of letting it hang below Spotify. */
+  grid-template-rows: auto 1fr var(--pvfd-player-height) !important;
+}
+
+.Root__main-view, .main-view-container, .main-view-container__scroll-node {
+  background: var(--pvfd-app-bg) !important;
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,0.018), transparent 120px),
+    radial-gradient(ellipse at 50% 0%, rgba(78, 180, 216, 0.07), transparent 68%),
+    linear-gradient(180deg, var(--pvfd-app-bg-2), var(--pvfd-app-bg)) !important;
+}
+
+.Root__nav-bar, nav[aria-label="Main"], .Root__top-bar, .main-topBar-container {
+  background: linear-gradient(180deg,
+    var(--pvfd-chrome-hi) 0%, var(--pvfd-chrome-1) 8%,
+    var(--pvfd-chrome-2) 35%, var(--pvfd-chrome-3) 70%,
+    var(--pvfd-chrome-4) 100%) !important;
+  border-right: 1px solid var(--pvfd-chrome-edge) !important;
+  border-bottom: 1px solid var(--pvfd-chrome-edge) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55) !important;
+}
+.Root__right-sidebar {
+  background: linear-gradient(180deg, var(--pvfd-chrome-hi), var(--pvfd-chrome-2) 50%, var(--pvfd-chrome-4)) !important;
+  border-left: 1px solid var(--pvfd-chrome-edge) !important;
+}
+
+.Root__nav-bar a, .main-yourLibraryX-listItem a, .main-rootlist-rootlistItemLink,
+.Root__nav-bar [data-encore-id="text"], .main-topBar-container [data-encore-id="text"] {
+  color: #1a2030 !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.45);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+}
+.main-rootlist-rootlistItemLink--isActive, [aria-current="page"] {
+  background: linear-gradient(90deg, rgba(78, 180, 216, 0.35), transparent) !important;
+  border-left: 2px solid var(--pvfd-cyan-deep) !important;
+}
+
+.x-searchInput-searchInputInput, input[type="search"] {
+  background: var(--pvfd-lcd-void) !important;
+  border: 1px solid var(--pvfd-chrome-edge) !important;
+  color: var(--pvfd-cyan) !important;
+  text-shadow: var(--pvfd-glow-cyan);
+  font-family: var(--pvfd-font-pixel) !important;
+  letter-spacing: 1px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+}
+
+h1, h2, h3,
+[data-encore-id="text"][data-encore-text-variant="titleLarge"],
+[data-encore-id="text"][data-encore-text-variant="titleMedium"],
+[data-encore-id="text"][data-encore-text-variant="titleSmall"] {
+  color: var(--pvfd-cyan) !important;
+  text-shadow: var(--pvfd-glow-cyan);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 400 !important;
+}
+.Root__main-view [data-encore-id="text"][data-encore-text-variant="bodyMedium"],
+.Root__main-view [data-encore-id="text"][data-encore-text-variant="bodySmall"] {
+  color: var(--pvfd-cyan-mid) !important;
+}
+
+.main-card-card, .main-entityHeader-container, .main-trackList-trackList {
+  background: linear-gradient(180deg, var(--pvfd-panel-bg-2), var(--pvfd-panel-bg)) !important;
+  border: 1px solid var(--pvfd-panel-edge) !important;
+  box-shadow: inset 0 0 8px rgba(0, 80, 130, 0.14) !important;
+}
+.main-card-card:hover {
+  background: #101721 !important;
+  box-shadow: 0 0 12px rgba(78, 180, 216, 0.32) !important;
+  border-color: var(--pvfd-cyan-deep) !important;
+}
+.main-trackList-trackListRow { border-bottom: 1px solid rgba(26, 44, 60, 0.6); }
+.main-trackList-trackListRow:hover { background: rgba(78, 180, 216, 0.06) !important; }
+.main-trackList-trackListRow .main-trackList-rowTitle {
+  color: var(--pvfd-cyan) !important;
+  text-shadow: var(--pvfd-glow-cyan);
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: linear-gradient(180deg, var(--pvfd-chrome-3), var(--pvfd-chrome-5)); }
+::-webkit-scrollbar-thumb {
+  background: var(--pvfd-cyan-deep);
+  border: 1px solid var(--pvfd-chrome-edge);
+  box-shadow: inset 0 0 4px rgba(168, 228, 244, 0.4);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--pvfd-cyan-glow); }
+
+[data-testid="connect-device-picker-banner"], .connect-device-picker-banner,
+footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
+  background: linear-gradient(90deg,
+    var(--pvfd-chrome-3), var(--pvfd-chrome-4), var(--pvfd-chrome-3)) !important;
+  color: #1a2030 !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+  border-top: 1px solid var(--pvfd-chrome-edge) !important;
+  font-size: 11px !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase;
+  height: 22px !important;
+}
+.encore-bright-accent-set, [class*="bright-accent"] {
+  --background-base: var(--pvfd-chrome-4) !important;
+  --essential-bright-accent: var(--pvfd-cyan-deep) !important;
+}
+
+/* ============== now-playing bar: full replacement Pioneer chassis ============== */
+.Root__now-playing-bar,
+.main-nowPlayingBar-container,
+[data-testid="now-playing-bar"] {
+  height: var(--pvfd-player-height) !important;
+  min-height: var(--pvfd-player-height) !important;
+  max-height: var(--pvfd-player-height) !important;
+}
+
+.Root__now-playing-bar {
+  background: linear-gradient(180deg,
+    var(--pvfd-chrome-hi) 0%, var(--pvfd-chrome-1) 5%,
+    var(--pvfd-chrome-2) 22%, var(--pvfd-chrome-3) 45%,
+    var(--pvfd-chrome-4) 75%, var(--pvfd-chrome-5) 100%) !important;
+  border-top: 2px solid var(--pvfd-chrome-edge) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.65),
+    inset 0 -1px 0 rgba(0,0,0,0.78),
+    0 -3px 8px rgba(0,0,0,0.55) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  padding: 10px 12px 12px !important;
+  box-sizing: border-box !important;
+  display: block !important;
+}
+
+/* Once the extension mounts, the Pioneer unit becomes the player bar.
+   Native Spotify children are hidden instead of stacked above it. */
+.Root__now-playing-bar.pvfd-mounted > *:not(.pvfd-chassis),
+.main-nowPlayingBar-container.pvfd-mounted > *:not(.pvfd-chassis),
+[data-testid="now-playing-bar"].pvfd-mounted > *:not(.pvfd-chassis) {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+.Root__now-playing-bar.pvfd-mounted footer,
+.Root__now-playing-bar.pvfd-mounted [class*="nowPlayingBar"]:not(.pvfd-chassis),
+.Root__now-playing-bar.pvfd-mounted [data-testid="now-playing-widget"],
+.pvfd-native-player-hidden {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* ============== Pioneer chassis components (extension-injected) ============== */
+.pvfd-chassis {
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(0,0,0,0.10));
+}
+
+.pvfd-faceplate {
+  background: linear-gradient(180deg, #060a14 0%, #02060c 50%, #060a14 100%);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.95), inset 0 2px 6px rgba(0,0,0,0.85);
+  padding: 5px 16px;
+  height: 30px;
+  min-height: 30px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+}
+.pvfd-silk-eeq {
+  color: var(--pvfd-green); font-style: italic; font-weight: 700; font-size: 13px;
+  text-shadow: 0 0 3px rgba(184,232,150,0.55);
+}
+.pvfd-silk-label { color: #d8dce0; font-weight: 700; font-size: 11px; letter-spacing: 1.3px; }
+.pvfd-silk-pioneer {
+  font-family: var(--pvfd-font-brand);
+  font-style: italic; font-weight: 700; color: #f8fafc;
+  font-size: 28px; letter-spacing: -0.5px; line-height: 1;
+  text-shadow: 0 0 1px #ffffff, 0 0 8px rgba(220,235,250,0.65),
+               0 1px 2px rgba(0,0,0,0.85), 1px 0 0 rgba(180,200,220,0.4);
+  transform: skewX(-4deg);
+}
+.pvfd-silk-dab { color: #c2d8e8; font-weight: 700; font-size: 11px; letter-spacing: 1.3px; }
+.pvfd-open-led {
+  width: 14px; height: 14px;
+  background: radial-gradient(circle at 35% 30%, #c8f088 0%, #6aa030 55%, #2a4010 100%);
+  box-shadow: 0 0 6px rgba(184,232,150,0.75), inset 0 1px 0 rgba(255,255,255,0.55);
+  border-radius: 50% !important;
+  cursor: pointer;
+}
+.pvfd-open-led:hover { box-shadow: 0 0 12px rgba(184,232,150,1); }
+
+.pvfd-mainrow {
+  display: grid;
+  grid-template-columns: 136px 48px minmax(420px, 1fr) 48px 136px;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 10px;
+  align-items: center;
+}
+
+.pvfd-knob-wrap { display: flex; align-items: center; justify-content: center; }
+.pvfd-knob { position: relative; width: 124px; height: 124px; cursor: ns-resize; }
+.pvfd-knob-glow {
+  position: absolute; inset: -1px; border-radius: 50% !important;
+  background: radial-gradient(circle, rgba(78, 165, 220, 0.9) 0%,
+    rgba(78, 165, 220, 0.45) 38%, rgba(78, 165, 220, 0.1) 65%, transparent 80%);
+  filter: blur(1px); pointer-events: none;
+}
+.pvfd-knob-bezel {
+  position: absolute; inset: 4px; border-radius: 50% !important;
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255,255,255,0.95), rgba(255,255,255,0.16) 18%, transparent 36%),
+    conic-gradient(from 20deg, #4c5258, #d2d7dc, #747b82, #f0f3f5, #5d646b, #b4bac0, #4c5258);
+  box-shadow: 0 3px 5px rgba(0,0,0,0.78), inset 0 1px 1px rgba(255,255,255,0.62), inset 0 -2px 3px rgba(0,0,0,0.52);
+}
+.pvfd-knob-led-arc {
+  position: absolute; inset: 9px; border-radius: 50% !important;
+  background: conic-gradient(from -8deg,
+    var(--pvfd-cyan-glow) 0deg, var(--pvfd-cyan-deep) var(--pvfd-led-deg, 16deg),
+    #1a3a5c var(--pvfd-led-deg, 16deg), #1a3a5c 360deg);
+  box-shadow: 0 0 12px rgba(78, 180, 216, 0.95), inset 0 0 6px rgba(140, 220, 250, 0.7);
+}
+.pvfd-knob-cap {
+  position: absolute; inset: 14px; border-radius: 50% !important;
+  background:
+    repeating-conic-gradient(from 0deg, rgba(255,255,255,0.10) 0deg 2deg, rgba(0,0,0,0.08) 2deg 4deg),
+    radial-gradient(circle at 35% 28%, #f2f4f5 0%, #b8bec4 22%, #81888f 48%, #525960 76%, #34393f 100%);
+  box-shadow: inset 0 2px 2px rgba(255,255,255,0.48), inset 0 -3px 4px rgba(0,0,0,0.78), 0 1px 2px rgba(0,0,0,0.55);
+}
+.pvfd-knob-indicator {
+  position: absolute; top: 18px; left: 50%; transform: translateX(-50%) rotate(var(--pvfd-rot, 0deg));
+  transform-origin: 50% 37px;
+  width: 4px; height: 16px;
+  background: linear-gradient(180deg, #1a2030, #2a3a4e);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.4), inset 0 1px 1px rgba(0,0,0,0.5);
+}
+
+.pvfd-nav { position: relative; width: 124px; height: 124px; }
+.pvfd-nav-glow {
+  position: absolute; inset: -1px; border-radius: 50% !important;
+  background: radial-gradient(circle, rgba(78, 165, 220, 0.85) 0%,
+    rgba(78, 165, 220, 0.4) 40%, rgba(78, 165, 220, 0.1) 70%, transparent 82%);
+  filter: blur(1.2px); pointer-events: none;
+}
+.pvfd-nav-outer {
+  position: absolute; inset: 0; border-radius: 50% !important;
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255,255,255,0.95), rgba(255,255,255,0.16) 18%, transparent 36%),
+    conic-gradient(from 20deg, #4c5258, #d2d7dc, #747b82, #f0f3f5, #5d646b, #b4bac0, #4c5258);
+  box-shadow: 0 3px 5px rgba(0,0,0,0.78), inset 0 1px 1px rgba(255,255,255,0.62), inset 0 -2px 3px rgba(0,0,0,0.52);
+  cursor: ns-resize;
+}
+.pvfd-nav-led-ring {
+  position: absolute; inset: 8px; border-radius: 50% !important;
+  background: radial-gradient(circle, transparent 0%, transparent 62%,
+    var(--pvfd-cyan-glow) 70%, var(--pvfd-cyan-deep) 80%, #1f6090 88%, transparent 95%);
+  box-shadow: 0 0 14px rgba(78, 180, 216, 0.95), inset 0 0 10px rgba(140, 220, 250, 0.6);
+  pointer-events: none;
+}
+.pvfd-nav-inner-ring {
+  position: absolute; inset: 18px; border-radius: 50% !important;
+  background:
+    repeating-conic-gradient(from 0deg, rgba(255,255,255,0.08) 0deg 2deg, rgba(0,0,0,0.08) 2deg 4deg),
+    radial-gradient(circle at 35% 28%, #e4e7ea 0%, #b1b6bc 26%, #7b8289 58%, #4b5259 100%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.48), inset 0 -2px 3px rgba(0,0,0,0.58);
+}
+.pvfd-nav-button {
+  position: absolute; inset: 23px; border-radius: 50% !important;
+  background:
+    repeating-conic-gradient(from 0deg, rgba(255,255,255,0.10) 0deg 2deg, rgba(0,0,0,0.08) 2deg 4deg),
+    radial-gradient(circle at 38% 30%, #e7eaed 0%, #adb3b9 24%, #767d84 54%, #444b52 100%);
+  box-shadow: inset 0 2px 3px rgba(255,255,255,0.52), inset 0 -3px 4px rgba(0,0,0,0.76);
+  cursor: pointer;
+}
+.pvfd-nav-button:hover { filter: brightness(1.1); }
+.pvfd-nav-arrow {
+  position: absolute; color: var(--pvfd-cyan-glow);
+  font-size: 11px; line-height: 1; font-weight: 700;
+  text-shadow: 0 0 5px rgba(110, 212, 248, 0.95), 0 0 10px rgba(78, 180, 216, 0.7);
+  letter-spacing: -2px; cursor: pointer; user-select: none;
+  z-index: 2;
+}
+.pvfd-nav-arrow:hover {
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(255,255,255,1), 0 0 14px rgba(110, 212, 248, 1);
+}
+.pvfd-nav-arrow.up    { top: 28px; left: 50%; transform: translateX(-50%); }
+.pvfd-nav-arrow.down  { bottom: 28px; left: 50%; transform: translateX(-50%); }
+.pvfd-nav-arrow.left  { left: 28px; top: 50%; transform: translateY(-50%); }
+.pvfd-nav-arrow.right { right: 28px; top: 50%; transform: translateY(-50%); }
+
+.pvfd-flank { display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+.pvfd-pill {
+  background: linear-gradient(180deg, #b4c4d0 0%, #5e7a92 100%);
+  border: 1px solid #1f2f3f;
+  color: #1a2030;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+  padding: 4px 0; text-align: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 1px rgba(0,0,0,0.55);
+  cursor: pointer;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+.pvfd-pill:hover {
+  background: linear-gradient(180deg, #c8d8e4 0%, #6e8aa4 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 0 6px rgba(78, 180, 216, 0.4);
+}
+.pvfd-pill.active {
+  background: linear-gradient(180deg, #6ed4f8 0%, #4eb4d8 100%);
+  color: #061018;
+}
+
+.pvfd-lcd {
+  background: var(--pvfd-lcd-void);
+  border: 1px solid var(--pvfd-lcd-rim);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.9), inset 0 0 20px rgba(0, 80, 140, 0.6);
+  position: relative; overflow: hidden; height: 100%;
+}
+.pvfd-lcd-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.pvfd-lcd-pixelgrid {
+  position: absolute; inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0, transparent 2px,
+      rgba(0,0,0,0.7) 2px, rgba(0,0,0,0.7) 3px),
+    repeating-linear-gradient(90deg, transparent 0, transparent 2px,
+      rgba(0,0,0,0.55) 2px, rgba(0,0,0,0.55) 3px);
+  pointer-events: none; mix-blend-mode: multiply;
+}
+.pvfd-lcd-phosphor {
+  position: absolute; inset: 0;
+  box-shadow: inset 0 0 18px rgba(126, 212, 240, 0.45),
+              inset 0 0 6px rgba(168, 228, 244, 0.55);
+  pointer-events: none;
+}
+.pvfd-lcd-track {
+  position: absolute; top: 6px; left: 8px; right: 80px;
+  color: var(--pvfd-cyan); font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: 16px; font-weight: 500; letter-spacing: 0.7px;
+  text-shadow: var(--pvfd-glow-cyan);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-transform: uppercase;
+  z-index: 4;
+}
+.pvfd-lcd-artist {
+  position: absolute; top: 28px; left: 8px; right: 110px;
+  color: var(--pvfd-cyan-mid); font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: 13px; font-weight: 400; letter-spacing: 0.35px; opacity: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-transform: uppercase;
+  z-index: 4;
+}
+.pvfd-lcd-time {
+  position: absolute; top: 7px; right: 8px;
+  color: var(--pvfd-cyan-mid); font-family: var(--pvfd-font-vfd);
+  font-size: 13px; letter-spacing: 1.5px; text-shadow: var(--pvfd-glow-cyan);
+  z-index: 4;
+}
+.pvfd-lcd-info-l { position: absolute; bottom: 4px; left: 8px; display: flex; align-items: center; gap: 8px; z-index: 4; }
+.pvfd-lcd-deh {
+  color: #c2d8e8; font-family: var(--pvfd-font-pixel);
+  font-size: 12px; font-weight: 700; letter-spacing: 1px;
+  text-shadow: 0 0 3px rgba(126,212,240,0.7);
+}
+.pvfd-lcd-daq {
+  background: rgba(184,232,150,0.18);
+  border: 1px solid var(--pvfd-green-deep);
+  color: #c8f088;
+  font-size: 9px; font-weight: 700; padding: 0 4px;
+  letter-spacing: 0.5px; line-height: 12px;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+.pvfd-lcd-info-r { position: absolute; bottom: 4px; right: 8px; display: flex; align-items: center; gap: 8px; z-index: 4; }
+.pvfd-lcd-cdrds { color: #c2d8e8; font-size: 10px; letter-spacing: 1.2px; font-weight: 700; }
+.pvfd-lcd-pioneer-small {
+  font-family: var(--pvfd-font-brand);
+  font-style: italic; font-weight: 700;
+  color: var(--pvfd-red); font-size: 12px;
+  text-shadow: 0 0 3px rgba(255,80,96,0.5);
+}
+.pvfd-lcd-mode {
+  position: absolute; top: 28px; right: 8px;
+  color: var(--pvfd-green); font-size: 9px;
+  letter-spacing: 1px; opacity: 0.7;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  z-index: 4;
+}
+
+.pvfd-transport {
+  display: flex; gap: 6px; height: 26px; min-height: 26px; padding: 7px 4px 0;
+  align-items: stretch;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  box-sizing: border-box;
+}
+.pvfd-tab-side {
+  background: linear-gradient(180deg, #8a8d92 0%, #4a4d52 100%);
+  border: 1px solid #25282c; color: #d8dce0;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  padding: 0 11px; line-height: 18px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
+  position: relative; cursor: pointer;
+}
+.pvfd-tab-side:hover { background: linear-gradient(180deg, #a8acb0 0%, #585c64 100%); }
+.pvfd-led-strip {
+  position: absolute; left: 1px; right: 1px; bottom: -1px; height: 2px;
+  background: var(--pvfd-green);
+  box-shadow: 0 0 5px rgba(184,232,150,0.85);
+}
+.pvfd-preset-row { flex: 1; display: flex; gap: 5px; }
+.pvfd-tab-preset {
+  flex: 1;
+  background: linear-gradient(180deg, #aab8c4 0%, #5a7088 100%);
+  border: 1px solid #232f3f; color: #14181e;
+  font-size: 13px; font-weight: 700;
+  text-align: center; line-height: 18px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+  position: relative; cursor: pointer;
+}
+.pvfd-tab-preset:hover { background: linear-gradient(180deg, #c8d4e0 0%, #6a8098 100%); }
+.pvfd-tab-preset.active {
+  background: linear-gradient(180deg, #6ed4f8 0%, #4eb4d8 100%);
+  color: #061018;
+}
+
+
+@media (max-width: 1200px) {
+  :root { --pvfd-player-height: 216px; }
+  .pvfd-mainrow { grid-template-columns: 118px 42px minmax(300px, 1fr) 42px 118px; gap: 8px; }
+  .pvfd-knob, .pvfd-nav { width: 108px; height: 108px; }
+  .pvfd-silk-pioneer { font-size: 24px; }
+  .pvfd-silk-label, .pvfd-silk-dab { font-size: 10px; }
+}
+
+@media (max-width: 900px) {
+  :root { --pvfd-player-height: 200px; }
+  .pvfd-mainrow { grid-template-columns: 96px 34px minmax(220px, 1fr) 34px 96px; gap: 6px; }
+  .pvfd-knob, .pvfd-nav { width: 88px; height: 88px; }
+  .pvfd-flank { display: none; }
+  .pvfd-mainrow { grid-template-columns: 96px minmax(220px, 1fr) 96px; }
+}
+
+
+/* v0.2.2 readability pass: keep the LCD pixel style, but stop crushing small text. */
+.pvfd-lcd-track {
+  font-family: "Share Tech Mono", "VT323", monospace !important;
+  font-size: clamp(14px, 1.05vw, 17px) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.65px !important;
+  text-shadow: 0 0 3px rgba(168,228,244,0.85), 0 0 7px rgba(126,212,240,0.38) !important;
+}
+.pvfd-lcd-artist {
+  font-family: "Share Tech Mono", "VT323", monospace !important;
+  font-size: clamp(12px, 0.88vw, 14px) !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.3px !important;
+  right: 120px !important;
+  text-shadow: 0 0 2px rgba(126,212,240,0.8), 0 0 5px rgba(78,180,216,0.34) !important;
+}
+
+
+/* v0.2.4 LCD text visibility guard: keep Spotify/native-player hiding rules from
+   accidentally eating the injected track/artist overlays. */
+.pvfd-chassis .pvfd-lcd-track,
+.pvfd-chassis .pvfd-lcd-artist,
+.pvfd-chassis .pvfd-lcd-time,
+.pvfd-chassis .pvfd-lcd-mode,
+.pvfd-chassis .pvfd-lcd-info-l,
+.pvfd-chassis .pvfd-lcd-info-r {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 30 !important;
+  pointer-events: none !important;
+}
+.pvfd-chassis .pvfd-lcd-track {
+  top: 8px !important;
+  left: 10px !important;
+  right: 90px !important;
+}
+.pvfd-chassis .pvfd-lcd-artist {
+  top: 31px !important;
+  left: 10px !important;
+  right: 125px !important;
+}
+
+/* v0.2.9 LCD cleanup: ART is now a thumbnail, so text gets a safe lane. */
+.pvfd-chassis[data-pvfd-mode="art"] .pvfd-lcd-track {
+  left: clamp(88px, 19%, 132px) !important;
+  right: 90px !important;
+}
+.pvfd-chassis[data-pvfd-mode="art"] .pvfd-lcd-artist {
+  left: clamp(88px, 19%, 132px) !important;
+  right: 120px !important;
+}
+.pvfd-chassis .pvfd-lcd-mode {
+  color: var(--pvfd-cyan-mid) !important;
+  opacity: 0.55 !important;
+  text-shadow: 0 0 4px rgba(126,212,240,0.45) !important;
+}
