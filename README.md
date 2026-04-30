@@ -7,8 +7,6 @@ A Spicetify theme + extension that turns Spotify into a 2000s Pioneer DEH-P7600M
 - Replaces Spotify's lower player area with a custom chrome Pioneer-style head-unit panel.
 - Adds a cyan/teal VFD/LCD display with spectrum, demo, galaxy, dolphin, and packed clip modes.
 - Keeps all animations inside the LCD window so the rest of the Spotify layout stays readable.
-- Removes the old ART mode path and uses packed LCD clip data instead of fragile embedded MP4 playback.
-- Keeps the DOLPHIN clip full-panel and renders the RACING clip in a tighter contained viewport so it does not stretch.
 
 ## Requirements
 
