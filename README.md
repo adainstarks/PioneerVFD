@@ -2,6 +2,8 @@
 
 A Spicetify theme + extension that turns Spotify into a 2000s Pioneer DEH-P7600MP-style VFD/LCD stereo interface.
 
+Soon to come: Real Pioneer stereo animations from data dumps (carrozzeria, dragonrider, dolphins)
+
 Image:
 
 <img width="800" height="800" alt="Screenshot 2026-04-29 220120" src="https://github.com/user-attachments/assets/1b9ddf50-f128-45fa-af90-1f777a43479f" /> 
