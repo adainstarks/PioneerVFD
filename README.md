@@ -54,7 +54,7 @@ spicetify apply
 
 ## Development notes
 
-- `Extensions/pioneerVFD.js` contains the packed LCD clip data inline, including the personal-only converted OEL/LKD test clips, so there are no video assets to host or load separately.
+- `Extensions/pioneerVFD.js` contains the packed LCD clip data inline, including the converted OEL/LKD test clips, so there are no video assets to host or load separately.
 - `Themes/PioneerVFD/user.css` owns the chrome body, LCD styling, typography, and Spotify layout overrides.
 - `Themes/PioneerVFD/color.ini` defines the color scheme.
 
