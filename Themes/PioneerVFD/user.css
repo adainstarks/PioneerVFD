@@ -1,7 +1,7 @@
 /* ==============================================================
-   Pioneer VFD v0.3.2 — DEH-P7600MP theme for Spotify
+   Pioneer VFD testbuild v2.0-r1-oel-pixelgrid-sidebox-clearance-personal — DEH-P7600MP theme for Spotify
    chrome chassis · charcoal app shell · black LCD insets · phosphor cyan
-   All animations live INSIDE the LCD window, not on the screen.
+   Skinny metadata LCD with scrub tracker above compact LCD with live hardware readouts.
    ============================================================== */
 
 @import url("https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap");
@@ -564,4 +564,2039 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   color: var(--pvfd-cyan-mid) !important;
   opacity: 0.55 !important;
   text-shadow: 0 0 4px rgba(126,212,240,0.45) !important;
+}
+
+/* ==============================================================
+   testbuild v0.1: compact animation LCD prototype
+   - Skinny upper LCD owns artist/title/time.
+   - Large lower LCD owns animation only.
+   ============================================================== */
+:root {
+  --pvfd-player-height: 246px;
+}
+
+.pvfd-mainrow {
+  align-items: stretch !important;
+}
+
+.pvfd-display-stack {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 28px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.pvfd-meta-lcd {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  background:
+    linear-gradient(180deg, rgba(9, 25, 38, 0.95), rgba(1, 6, 12, 0.98)),
+    var(--pvfd-lcd-void);
+  border: 1px solid var(--pvfd-lcd-rim);
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,0.9),
+    inset 0 0 12px rgba(0, 80, 140, 0.48),
+    0 1px 1px rgba(255,255,255,0.08);
+  padding: 0 118px 0 10px;
+  box-sizing: border-box;
+}
+
+.pvfd-meta-lcd::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0, transparent 2px,
+      rgba(0,0,0,0.62) 2px, rgba(0,0,0,0.62) 3px),
+    repeating-linear-gradient(90deg, transparent 0, transparent 2px,
+      rgba(0,0,0,0.42) 2px, rgba(0,0,0,0.42) 3px);
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  z-index: 2;
+}
+
+.pvfd-meta-lcd::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 96px;
+  bottom: 0;
+  width: 36px;
+  background: linear-gradient(90deg, rgba(2,6,12,0), rgba(2,6,12,0.96));
+  pointer-events: none;
+  z-index: 4;
+}
+
+.pvfd-meta-track {
+  position: relative;
+  z-index: 3;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  color: var(--pvfd-cyan);
+  font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: clamp(13px, 0.98vw, 16px);
+  font-weight: 500;
+  letter-spacing: 0.72px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  text-shadow: var(--pvfd-glow-cyan);
+}
+
+.pvfd-meta-time {
+  position: absolute;
+  z-index: 5;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--pvfd-cyan-mid);
+  font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: var(--pvfd-glow-cyan);
+}
+
+.pvfd-display-stack .pvfd-lcd {
+  height: auto !important;
+  min-height: 0;
+}
+
+/* Hard guard: the big animation LCD should not get metadata overlays in this prototype. */
+.pvfd-display-stack .pvfd-lcd-track,
+.pvfd-display-stack .pvfd-lcd-artist,
+.pvfd-display-stack .pvfd-lcd-time,
+.pvfd-display-stack .pvfd-lcd-mode,
+.pvfd-display-stack .pvfd-lcd-info-l,
+.pvfd-display-stack .pvfd-lcd-info-r {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+@media (max-width: 1200px) {
+  :root { --pvfd-player-height: 232px; }
+  .pvfd-display-stack { grid-template-rows: 26px minmax(0, 1fr); gap: 5px; }
+  .pvfd-meta-lcd { padding-right: 104px; }
+  .pvfd-meta-time { font-size: 10px; }
+}
+
+@media (max-width: 900px) {
+  :root { --pvfd-player-height: 214px; }
+  .pvfd-display-stack { grid-template-rows: 24px minmax(0, 1fr); gap: 5px; }
+  .pvfd-meta-lcd { padding-right: 82px; }
+  .pvfd-meta-lcd::after { right: 72px; width: 28px; }
+  .pvfd-meta-track { font-size: 12px; letter-spacing: 0.45px; }
+  .pvfd-meta-time { font-size: 9px; letter-spacing: 0.65px; }
+}
+
+
+/* ==============================================================
+   testbuild v0.1: compact main LCD experiment
+   - Raise the Pioneer logo a hair so it sits inside the top band.
+   - Compress the animation screen to reference-unit proportions.
+   - Use the freed side space for fake glass/details, not dead gray soup.
+   ============================================================== */
+.pvfd-silk-pioneer {
+  transform: translateY(-2px) skewX(-4deg) !important;
+}
+
+.pvfd-compact-stage {
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) minmax(520px, 64%) minmax(90px, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.pvfd-compact-stage .pvfd-lcd {
+  width: 100%;
+  height: 100% !important;
+  min-height: 0;
+  justify-self: center;
+}
+
+.pvfd-lcd-side {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(126, 212, 240, 0.10), transparent 58%),
+    linear-gradient(180deg, rgba(5, 15, 26, 0.96), rgba(1, 6, 12, 0.98));
+  border: 1px solid rgba(26, 44, 60, 0.95);
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,0.82),
+    inset 0 0 14px rgba(0, 80, 140, 0.38),
+    0 1px 1px rgba(255,255,255,0.06);
+}
+
+.pvfd-lcd-side::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0, transparent 2px,
+      rgba(0,0,0,0.54) 2px, rgba(0,0,0,0.54) 3px),
+    repeating-linear-gradient(90deg, transparent 0, transparent 2px,
+      rgba(0,0,0,0.36) 2px, rgba(0,0,0,0.36) 3px);
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  z-index: 5;
+}
+
+.pvfd-lcd-side::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.06), transparent 18%, transparent 78%, rgba(255,255,255,0.035));
+  pointer-events: none;
+  z-index: 6;
+}
+
+.pvfd-side-label,
+.pvfd-side-softkey,
+.pvfd-side-model,
+.pvfd-side-badges,
+.pvfd-side-vu {
+  position: relative;
+  z-index: 8;
+}
+
+.pvfd-lcd-side-left {
+  padding: 12px 10px 10px;
+  box-sizing: border-box;
+}
+
+.pvfd-side-label {
+  color: var(--pvfd-cyan);
+  font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-shadow: var(--pvfd-glow-cyan);
+  margin-bottom: 8px;
+}
+
+.pvfd-side-softkey {
+  width: 58px;
+  margin: 0 0 7px;
+  padding: 3px 0;
+  color: #15202b;
+  background: linear-gradient(180deg, #b4c4d0, #5e7a92);
+  border: 1px solid #1f2f3f;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 1px rgba(0,0,0,0.5);
+  text-align: center;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.45px;
+}
+
+.pvfd-side-model {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  color: #c2d8e8;
+  font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-shadow: 0 0 3px rgba(126,212,240,0.55);
+}
+
+.pvfd-side-badges {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 5px;
+}
+
+.pvfd-side-badges span {
+  color: var(--pvfd-green);
+  border: 1px solid rgba(106, 160, 48, 0.82);
+  background: rgba(184,232,150,0.11);
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 8px;
+  line-height: 11px;
+  padding: 0 4px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 4px rgba(184,232,150,0.45);
+}
+
+.pvfd-lcd-side-right {
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.pvfd-side-vu {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 32px;
+  width: 34px;
+  display: grid;
+  grid-template-rows: repeat(12, 1fr);
+  gap: 3px;
+  align-items: stretch;
+}
+
+.pvfd-side-vu span {
+  display: block;
+  background: linear-gradient(90deg, rgba(126,212,240,0.12), rgba(168,228,244,0.82));
+  box-shadow: 0 0 5px rgba(126,212,240,0.42);
+  opacity: 0.28;
+}
+
+.pvfd-side-vu span:nth-child(n+8) { opacity: 0.72; }
+.pvfd-side-vu span:nth-child(n+11) {
+  background: linear-gradient(90deg, rgba(184,232,150,0.18), rgba(184,232,150,0.9));
+  box-shadow: 0 0 5px rgba(184,232,150,0.5);
+  opacity: 0.92;
+}
+
+@media (max-width: 1200px) {
+  .pvfd-compact-stage {
+    grid-template-columns: minmax(64px, 0.8fr) minmax(400px, 70%) minmax(64px, 0.8fr);
+    gap: 6px;
+  }
+  .pvfd-side-softkey { width: 50px; font-size: 7px; }
+  .pvfd-side-model { font-size: 9px; }
+  .pvfd-side-badges span { font-size: 7px; padding: 0 3px; }
+}
+
+@media (max-width: 900px) {
+  .pvfd-compact-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pvfd-lcd-side {
+    display: none !important;
+  }
+}
+
+/* ==============================================================
+   testbuild v0.2: useful side readouts + top LCD scrub tracker
+   ============================================================== */
+.pvfd-meta-lcd {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) clamp(128px, 16vw, 230px) 104px !important;
+  align-items: center !important;
+  gap: 9px !important;
+  padding: 0 8px 0 10px !important;
+  cursor: default;
+}
+.pvfd-meta-lcd::after { right: 340px !important; width: 34px !important; }
+.pvfd-meta-track { height: auto !important; min-width: 0 !important; }
+.pvfd-meta-progress {
+  --pvfd-progress: 0%;
+  position: relative;
+  z-index: 5;
+  height: 18px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: ew-resize;
+  color: var(--pvfd-green);
+  font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  line-height: 1;
+  text-shadow: var(--pvfd-glow-green);
+  border-left: 1px solid rgba(126, 212, 240, 0.20);
+  border-right: 1px solid rgba(126, 212, 240, 0.20);
+  background: rgba(2, 8, 14, 0.48);
+  user-select: none;
+}
+.pvfd-meta-progress::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: var(--pvfd-progress);
+  background: linear-gradient(90deg, rgba(78, 180, 216, 0.18), rgba(184, 232, 150, 0.38));
+  box-shadow: 0 0 8px rgba(184, 232, 150, 0.28);
+  pointer-events: none;
+}
+.pvfd-meta-progress.scrubbing {
+  color: #ffffff;
+  text-shadow: 0 0 5px rgba(255,255,255,0.95), 0 0 10px rgba(184,232,150,0.8);
+}
+.pvfd-progress-text { position: relative; z-index: 2; white-space: nowrap; }
+.pvfd-meta-time {
+  position: relative !important;
+  right: auto !important;
+  top: auto !important;
+  transform: none !important;
+  justify-self: end !important;
+}
+.pvfd-lcd-side-left, .pvfd-lcd-side-right { padding: 10px !important; }
+.pvfd-side-readout, .pvfd-side-readouts-right .pvfd-side-readout {
+  position: relative;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 5px;
+  align-items: center;
+  min-width: 0;
+  margin: 0 0 5px;
+  color: var(--pvfd-cyan);
+  font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: 10px;
+  letter-spacing: 0.65px;
+  text-shadow: var(--pvfd-glow-cyan);
+}
+.pvfd-side-readout b {
+  color: var(--pvfd-green);
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-shadow: var(--pvfd-glow-green);
+  font-weight: 700;
+}
+.pvfd-side-readout span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pvfd-side-readouts-right { position: relative; z-index: 8; padding-right: 48px; }
+.pvfd-lcd-side-right .pvfd-side-model { color: var(--pvfd-green); }
+.pvfd-side-vu span { opacity: 0.22; transition: opacity 90ms linear, filter 90ms linear; }
+.pvfd-side-vu span.on { filter: brightness(1.25); }
+.pvfd-tab-preset[data-pvfd='shuffle']::after,
+.pvfd-tab-preset[data-pvfd='repeat']::after {
+  content: attr(data-label);
+  position: absolute;
+  right: 6px;
+  bottom: 1px;
+  font-size: 7px;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  color: rgba(6, 16, 24, 0.78);
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+.pvfd-tab-preset[data-pvfd='repeat'].repeat-context {
+  background: linear-gradient(180deg, #91e4ff 0%, #3fa9d8 100%) !important;
+  color: #061018 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.56), 0 0 8px rgba(78,180,216,0.55) !important;
+}
+.pvfd-tab-preset[data-pvfd='repeat'].repeat-one {
+  background: linear-gradient(180deg, #c8f088 0%, #80b840 100%) !important;
+  color: #061018 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.56), 0 0 8px rgba(184,232,150,0.58) !important;
+}
+.pvfd-tab-preset[data-pvfd='shuffle'].active {
+  background: linear-gradient(180deg, #6ed4f8 0%, #4eb4d8 100%) !important;
+  color: #061018 !important;
+}
+@media (max-width: 1200px) {
+  .pvfd-meta-lcd { grid-template-columns: minmax(0, 1fr) clamp(92px, 14vw, 170px) 88px !important; gap: 7px !important; }
+  .pvfd-meta-progress { font-size: 10px; letter-spacing: 0.45px; }
+  .pvfd-side-readout { grid-template-columns: 30px minmax(0, 1fr); font-size: 9px; }
+  .pvfd-side-readout b { font-size: 8px; }
+  .pvfd-side-readouts-right { padding-right: 40px; }
+}
+@media (max-width: 900px) {
+  .pvfd-meta-lcd { grid-template-columns: minmax(0, 1fr) 76px !important; }
+  .pvfd-meta-progress { display: none !important; }
+}
+
+
+/* ==============================================================
+   testbuild v0.3: cleaned scrub meter + tint-aware lighting sweep
+   ============================================================== */
+.pvfd-chassis {
+  --pvfd-light-rgb: 168, 228, 244;
+  --pvfd-light-mid-rgb: 126, 212, 240;
+  --pvfd-light-deep-rgb: 78, 180, 216;
+  --pvfd-accent-dim-rgb: 26, 58, 92;
+}
+.pvfd-chassis[data-pvfd-tint="cyan"] {
+  --pvfd-cyan: #a8e4f4;
+  --pvfd-cyan-mid: #7ed4f0;
+  --pvfd-cyan-deep: #4eb4d8;
+  --pvfd-cyan-glow: #6ed4f8;
+  --pvfd-glow-cyan: 0 0 3px rgba(168, 228, 244, 0.85), 0 0 7px rgba(126, 212, 240, 0.38);
+  --pvfd-light-rgb: 168, 228, 244;
+  --pvfd-light-mid-rgb: 126, 212, 240;
+  --pvfd-light-deep-rgb: 78, 180, 216;
+  --pvfd-accent-dim-rgb: 26, 58, 92;
+}
+.pvfd-chassis[data-pvfd-tint="amber"] {
+  --pvfd-cyan: #ffdf9a;
+  --pvfd-cyan-mid: #ffc861;
+  --pvfd-cyan-deep: #d8962a;
+  --pvfd-cyan-glow: #ffe8b8;
+  --pvfd-glow-cyan: 0 0 3px rgba(255, 223, 154, 0.88), 0 0 8px rgba(255, 190, 86, 0.42);
+  --pvfd-light-rgb: 255, 223, 154;
+  --pvfd-light-mid-rgb: 255, 200, 97;
+  --pvfd-light-deep-rgb: 216, 150, 42;
+  --pvfd-accent-dim-rgb: 92, 58, 20;
+}
+.pvfd-chassis[data-pvfd-tint="violet"] {
+  --pvfd-cyan: #d7b7ff;
+  --pvfd-cyan-mid: #b98cff;
+  --pvfd-cyan-deep: #805be0;
+  --pvfd-cyan-glow: #e2ccff;
+  --pvfd-glow-cyan: 0 0 3px rgba(215, 183, 255, 0.88), 0 0 8px rgba(185, 140, 255, 0.42);
+  --pvfd-light-rgb: 215, 183, 255;
+  --pvfd-light-mid-rgb: 185, 140, 255;
+  --pvfd-light-deep-rgb: 128, 91, 224;
+  --pvfd-accent-dim-rgb: 54, 38, 96;
+}
+
+/* Make the top scrubber a real VFD meter, not keyboard art pretending to be a UI. */
+.pvfd-meta-lcd {
+  grid-template-columns: minmax(0, 1fr) clamp(168px, 19vw, 292px) 104px !important;
+}
+.pvfd-meta-progress {
+  height: 20px !important;
+  border-left: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.24) !important;
+  border-right: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.24) !important;
+  background:
+    linear-gradient(180deg, rgba(var(--pvfd-light-deep-rgb), 0.12), rgba(2, 8, 14, 0.54)),
+    rgba(2, 8, 14, 0.62) !important;
+  box-shadow:
+    inset 0 0 8px rgba(var(--pvfd-light-deep-rgb), 0.15),
+    inset 0 1px 0 rgba(255,255,255,0.045) !important;
+  color: var(--pvfd-cyan) !important;
+  text-shadow: var(--pvfd-glow-cyan) !important;
+}
+.pvfd-meta-progress::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 8px !important;
+  right: 8px !important;
+  top: 50% !important;
+  bottom: auto !important;
+  width: auto !important;
+  height: 3px !important;
+  transform: translateY(-50%) !important;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(var(--pvfd-light-rgb), 0.58) 0 2px,
+      rgba(var(--pvfd-light-rgb), 0.10) 2px 4px,
+      transparent 4px 9px) !important;
+  box-shadow: 0 0 5px rgba(var(--pvfd-light-rgb), 0.30) !important;
+  pointer-events: none !important;
+}
+.pvfd-meta-progress::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  left: clamp(8px, var(--pvfd-progress), calc(100% - 8px));
+  top: 50%;
+  width: 8px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  border-radius: 1px !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.88), rgba(var(--pvfd-light-rgb),0.95) 34%, rgba(var(--pvfd-light-deep-rgb),0.88));
+  box-shadow:
+    0 0 4px rgba(var(--pvfd-light-rgb), 0.95),
+    0 0 10px rgba(var(--pvfd-light-deep-rgb), 0.72);
+  pointer-events: none;
+}
+.pvfd-progress-text {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  font-size: 0 !important;
+  color: transparent !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+}
+.pvfd-progress-text::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  width: max(0px, calc(var(--pvfd-progress) - 8px));
+  height: 3px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg,
+    rgba(var(--pvfd-light-rgb), 0.25),
+    rgba(var(--pvfd-light-rgb), 0.82));
+  box-shadow: 0 0 7px rgba(var(--pvfd-light-rgb), 0.50);
+}
+.pvfd-meta-progress.scrubbing::after {
+  background: #ffffff !important;
+  box-shadow: 0 0 7px rgba(255,255,255,0.95), 0 0 14px rgba(var(--pvfd-light-rgb), 0.90) !important;
+}
+
+/* Side blocks: more legible and less placeholder-looking. */
+.pvfd-side-label {
+  font-size: 12px !important;
+  color: var(--pvfd-cyan) !important;
+  text-shadow: var(--pvfd-glow-cyan) !important;
+}
+.pvfd-side-readout, .pvfd-side-readouts-right .pvfd-side-readout {
+  grid-template-columns: 42px minmax(0, 1fr) !important;
+  gap: 7px !important;
+  margin-bottom: 6px !important;
+  color: var(--pvfd-cyan) !important;
+  font-size: 11.5px !important;
+  letter-spacing: 0.75px !important;
+  text-shadow: var(--pvfd-glow-cyan) !important;
+}
+.pvfd-side-readout b {
+  color: var(--pvfd-cyan-mid) !important;
+  font-size: 10px !important;
+  letter-spacing: 1.05px !important;
+  text-shadow: var(--pvfd-glow-cyan) !important;
+}
+.pvfd-side-model {
+  color: var(--pvfd-cyan-mid) !important;
+  font-size: 11px !important;
+  text-shadow: var(--pvfd-glow-cyan) !important;
+}
+.pvfd-side-badges span {
+  color: var(--pvfd-cyan) !important;
+  border-color: rgba(var(--pvfd-light-mid-rgb), 0.82) !important;
+  background: rgba(var(--pvfd-light-rgb), 0.11) !important;
+  text-shadow: var(--pvfd-glow-cyan) !important;
+}
+.pvfd-side-vu span {
+  background: linear-gradient(90deg, rgba(var(--pvfd-light-mid-rgb),0.10), rgba(var(--pvfd-light-rgb),0.82)) !important;
+  box-shadow: 0 0 5px rgba(var(--pvfd-light-rgb),0.42) !important;
+}
+.pvfd-side-vu span:nth-child(n+11) {
+  background: linear-gradient(90deg, rgba(var(--pvfd-light-rgb),0.16), rgba(var(--pvfd-light-rgb),0.96)) !important;
+  box-shadow: 0 0 6px rgba(var(--pvfd-light-rgb),0.55) !important;
+}
+
+/* Tint reaches the obvious lighting hardware now: knob rings, nav arrows, LEDs. */
+.pvfd-knob-glow,
+.pvfd-nav-glow {
+  background: radial-gradient(circle,
+    rgba(var(--pvfd-light-deep-rgb), 0.88) 0%,
+    rgba(var(--pvfd-light-deep-rgb), 0.42) 39%,
+    rgba(var(--pvfd-light-deep-rgb), 0.12) 68%,
+    transparent 82%) !important;
+}
+.pvfd-knob-led-arc {
+  background: conic-gradient(from -8deg,
+    var(--pvfd-cyan-glow) 0deg,
+    var(--pvfd-cyan-deep) var(--pvfd-led-deg, 16deg),
+    rgba(var(--pvfd-accent-dim-rgb), 0.92) var(--pvfd-led-deg, 16deg),
+    rgba(var(--pvfd-accent-dim-rgb), 0.92) 360deg) !important;
+  box-shadow: 0 0 12px rgba(var(--pvfd-light-deep-rgb), 0.95), inset 0 0 6px rgba(var(--pvfd-light-rgb), 0.68) !important;
+}
+.pvfd-nav-led-ring {
+  background: radial-gradient(circle, transparent 0%, transparent 62%,
+    var(--pvfd-cyan-glow) 70%, var(--pvfd-cyan-deep) 80%, rgba(var(--pvfd-light-deep-rgb),0.72) 88%, transparent 95%) !important;
+  box-shadow: 0 0 14px rgba(var(--pvfd-light-deep-rgb), 0.95), inset 0 0 10px rgba(var(--pvfd-light-rgb), 0.60) !important;
+}
+.pvfd-nav-arrow {
+  color: var(--pvfd-cyan-glow) !important;
+  text-shadow: var(--pvfd-glow-cyan) !important;
+}
+.pvfd-open-led {
+  background: radial-gradient(circle at 35% 30%,
+    #ffffff 0%, var(--pvfd-cyan-glow) 22%, var(--pvfd-cyan-deep) 62%, rgba(var(--pvfd-accent-dim-rgb),1) 100%) !important;
+  box-shadow: 0 0 7px rgba(var(--pvfd-light-rgb),0.80), inset 0 1px 0 rgba(255,255,255,0.55) !important;
+}
+
+@media (max-width: 1200px) {
+  .pvfd-meta-lcd { grid-template-columns: minmax(0, 1fr) clamp(124px, 16vw, 210px) 88px !important; }
+  .pvfd-side-readout, .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    font-size: 10px !important;
+    gap: 5px !important;
+  }
+  .pvfd-side-readout b { font-size: 8.5px !important; }
+}
+
+/* ==============================================================
+   testbuild v0.4: responsive side LCD cleanup + wider top scrubber
+   - Prevent side-panel readouts from crushing into unreadable soup.
+   - Keep the top meter useful instead of hiding in a tiny rectangle.
+   - Make the volume pointer behave like a clock dial: 0=9, 50=12, 100=3.
+   ============================================================== */
+.pvfd-compact-stage {
+  grid-template-columns: minmax(138px, 18%) minmax(360px, 1fr) minmax(138px, 18%) !important;
+  gap: 8px !important;
+}
+
+.pvfd-lcd-side-left,
+.pvfd-lcd-side-right {
+  padding: 9px 10px 8px !important;
+  contain: layout paint;
+}
+
+.pvfd-side-label {
+  margin-bottom: 6px !important;
+  line-height: 1.05 !important;
+}
+
+.pvfd-side-readout,
+.pvfd-side-readouts-right .pvfd-side-readout {
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+  gap: 6px !important;
+  margin-bottom: 4px !important;
+  line-height: 1.05 !important;
+  min-width: 0 !important;
+}
+
+.pvfd-side-readout span,
+.pvfd-side-readout b {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+.pvfd-side-model {
+  max-width: calc(100% - 76px) !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  left: 10px !important;
+  bottom: 8px !important;
+}
+
+.pvfd-side-badges {
+  right: 8px !important;
+  bottom: 7px !important;
+}
+
+.pvfd-side-readouts-right {
+  padding-right: 43px !important;
+}
+
+.pvfd-side-vu {
+  right: 10px !important;
+  top: 11px !important;
+  bottom: 31px !important;
+  width: 26px !important;
+  gap: 2px !important;
+}
+
+.pvfd-meta-lcd {
+  grid-template-columns: minmax(160px, 1fr) minmax(300px, 36vw, 560px) 98px !important;
+  gap: 8px !important;
+}
+
+.pvfd-meta-lcd::after {
+  display: none !important;
+}
+
+.pvfd-meta-progress {
+  height: 20px !important;
+  min-width: 180px !important;
+}
+
+.pvfd-meta-time {
+  min-width: 86px !important;
+  text-align: right !important;
+}
+
+.pvfd-knob {
+  cursor: pointer !important;
+}
+
+@media (max-width: 1320px) {
+  .pvfd-compact-stage {
+    grid-template-columns: minmax(124px, 19%) minmax(330px, 1fr) minmax(124px, 19%) !important;
+    gap: 7px !important;
+  }
+  .pvfd-side-readout,
+  .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    font-size: 10.25px !important;
+    letter-spacing: 0.45px !important;
+    gap: 5px !important;
+  }
+  .pvfd-side-readout b {
+    font-size: 8.75px !important;
+    letter-spacing: 0.75px !important;
+  }
+  .pvfd-side-label,
+  .pvfd-side-model {
+    font-size: 10px !important;
+  }
+  .pvfd-side-vu {
+    width: 21px !important;
+    right: 8px !important;
+  }
+  .pvfd-side-readouts-right {
+    padding-right: 34px !important;
+  }
+  .pvfd-meta-lcd {
+    grid-template-columns: minmax(140px, 1fr) minmax(230px, 34vw, 420px) 88px !important;
+    gap: 7px !important;
+  }
+}
+
+@media (max-width: 1050px) {
+  .pvfd-compact-stage {
+    grid-template-columns: minmax(104px, 18%) minmax(300px, 1fr) minmax(104px, 18%) !important;
+    gap: 6px !important;
+  }
+  .pvfd-lcd-side-left,
+  .pvfd-lcd-side-right {
+    padding: 8px 7px 7px !important;
+  }
+  .pvfd-side-label {
+    font-size: 9px !important;
+    margin-bottom: 5px !important;
+  }
+  .pvfd-side-readout,
+  .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 28px minmax(0, 1fr) !important;
+    font-size: 8.75px !important;
+    letter-spacing: 0.25px !important;
+    margin-bottom: 3px !important;
+    gap: 4px !important;
+  }
+  .pvfd-side-readout b {
+    font-size: 7.5px !important;
+    letter-spacing: 0.45px !important;
+  }
+  .pvfd-side-model {
+    display: none !important;
+  }
+  .pvfd-side-badges {
+    right: 6px !important;
+    bottom: 6px !important;
+  }
+  .pvfd-side-badges span {
+    font-size: 6px !important;
+    line-height: 9px !important;
+    padding: 0 2px !important;
+  }
+  .pvfd-side-vu {
+    display: none !important;
+  }
+  .pvfd-side-readouts-right {
+    padding-right: 0 !important;
+  }
+  .pvfd-meta-lcd {
+    grid-template-columns: minmax(120px, 1fr) minmax(180px, 32vw, 300px) 78px !important;
+    gap: 6px !important;
+  }
+  .pvfd-meta-progress {
+    min-width: 150px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .pvfd-compact-stage {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .pvfd-lcd-side {
+    display: none !important;
+  }
+  .pvfd-meta-lcd {
+    grid-template-columns: minmax(0, 1fr) 74px !important;
+  }
+  .pvfd-meta-progress {
+    display: none !important;
+  }
+}
+
+
+/* ==============================================================
+   testbuild v0.5-r2: actual package-fix pass
+   - organic top scrub rail
+   - restored right-knob directional hover shading
+   - 12 o'clock = 0%, full clockwise sweep = 100% volume model
+   ============================================================== */
+.pvfd-meta-lcd {
+  grid-template-columns: minmax(0, 1fr) clamp(250px, 34vw, 640px) 98px !important;
+  align-items: center !important;
+}
+.pvfd-meta-progress {
+  height: 18px !important;
+  min-width: 220px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+.pvfd-meta-progress::before {
+  left: 6px !important;
+  right: 6px !important;
+  top: 50% !important;
+  height: 4px !important;
+  transform: translateY(-50%) !important;
+  border-radius: 999px !important;
+  background:
+    linear-gradient(90deg, rgba(var(--pvfd-light-rgb),0.10), rgba(var(--pvfd-light-rgb),0.38), rgba(var(--pvfd-light-rgb),0.10)),
+    repeating-linear-gradient(90deg,
+      rgba(var(--pvfd-light-rgb),0.70) 0 3px,
+      rgba(var(--pvfd-light-rgb),0.16) 3px 5px,
+      transparent 5px 12px) !important;
+  box-shadow:
+    0 0 6px rgba(var(--pvfd-light-rgb),0.38),
+    inset 0 0 4px rgba(var(--pvfd-light-rgb),0.30) !important;
+}
+.pvfd-progress-text::before {
+  left: 6px !important;
+  top: 50% !important;
+  height: 4px !important;
+  width: max(0px, calc(var(--pvfd-progress) - 6px)) !important;
+  transform: translateY(-50%) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg,
+    rgba(var(--pvfd-light-rgb),0.25),
+    rgba(var(--pvfd-light-rgb),0.95)) !important;
+  box-shadow: 0 0 8px rgba(var(--pvfd-light-rgb),0.62) !important;
+}
+.pvfd-meta-progress::after {
+  left: clamp(7px, var(--pvfd-progress), calc(100% - 7px)) !important;
+  top: 50% !important;
+  width: 9px !important;
+  height: 17px !important;
+  border-radius: 2px !important;
+  transform: translate(-50%, -50%) !important;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.95),
+    rgba(var(--pvfd-light-rgb),0.98) 40%,
+    rgba(var(--pvfd-light-deep-rgb),0.92)) !important;
+  box-shadow:
+    0 0 5px rgba(var(--pvfd-light-rgb),0.98),
+    0 0 13px rgba(var(--pvfd-light-deep-rgb),0.75) !important;
+}
+.pvfd-knob { cursor: grab !important; }
+.pvfd-knob.dragging { cursor: grabbing !important; }
+.pvfd-knob-led-arc {
+  background: conic-gradient(from 0deg,
+    var(--pvfd-cyan-glow) 0deg,
+    var(--pvfd-cyan-deep) var(--pvfd-led-deg, 0deg),
+    rgba(var(--pvfd-accent-dim-rgb),0.92) var(--pvfd-led-deg, 0deg),
+    rgba(var(--pvfd-accent-dim-rgb),0.92) 360deg) !important;
+}
+.pvfd-nav:has(.pvfd-nav-arrow.up:hover) .pvfd-nav-button {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(var(--pvfd-light-rgb),0.62), transparent 32%),
+    repeating-conic-gradient(from 0deg, rgba(255,255,255,0.10) 0deg 2deg, rgba(0,0,0,0.08) 2deg 4deg),
+    radial-gradient(circle at 38% 30%, #e7eaed 0%, #adb3b9 24%, #767d84 54%, #444b52 100%) !important;
+}
+.pvfd-nav:has(.pvfd-nav-arrow.down:hover) .pvfd-nav-button {
+  background:
+    radial-gradient(circle at 50% 82%, rgba(var(--pvfd-light-rgb),0.62), transparent 32%),
+    repeating-conic-gradient(from 0deg, rgba(255,255,255,0.10) 0deg 2deg, rgba(0,0,0,0.08) 2deg 4deg),
+    radial-gradient(circle at 38% 30%, #e7eaed 0%, #adb3b9 24%, #767d84 54%, #444b52 100%) !important;
+}
+.pvfd-nav:has(.pvfd-nav-arrow.left:hover) .pvfd-nav-button {
+  background:
+    radial-gradient(circle at 18% 50%, rgba(var(--pvfd-light-rgb),0.62), transparent 32%),
+    repeating-conic-gradient(from 0deg, rgba(255,255,255,0.10) 0deg 2deg, rgba(0,0,0,0.08) 2deg 4deg),
+    radial-gradient(circle at 38% 30%, #e7eaed 0%, #adb3b9 24%, #767d84 54%, #444b52 100%) !important;
+}
+.pvfd-nav:has(.pvfd-nav-arrow.right:hover) .pvfd-nav-button {
+  background:
+    radial-gradient(circle at 82% 50%, rgba(var(--pvfd-light-rgb),0.62), transparent 32%),
+    repeating-conic-gradient(from 0deg, rgba(255,255,255,0.10) 0deg 2deg, rgba(0,0,0,0.08) 2deg 4deg),
+    radial-gradient(circle at 38% 30%, #e7eaed 0%, #adb3b9 24%, #767d84 54%, #444b52 100%) !important;
+}
+.pvfd-nav:has(.pvfd-nav-arrow:hover) .pvfd-nav-inner-ring {
+  filter: brightness(1.08) saturate(1.08) !important;
+}
+@media (max-width: 1280px) {
+  .pvfd-meta-lcd {
+    grid-template-columns: minmax(0, 1fr) clamp(180px, 29vw, 390px) 92px !important;
+  }
+  .pvfd-meta-progress { min-width: 160px !important; }
+}
+@media (max-width: 960px) {
+  .pvfd-meta-lcd { grid-template-columns: minmax(0, 1fr) 78px !important; }
+  .pvfd-meta-progress { display: none !important; }
+}
+
+
+
+/* ==============================================================
+   testbuild v1.9-r1-oel-glass-sidebox-hardfix-personal
+   - The v1.4 canvas used width:auto/height:auto inside an inset frame. For a
+     replaced element like <canvas>, that can feed the intrinsic canvas bitmap
+     size back into layout and make the OEL clip draw only across part of the
+     visible bay. Pin the canvas to explicit calc() dimensions so the renderer
+     and the glass window agree.
+   - Keep only the personal OEL/LKD clips in the cycle.
+   ============================================================== */
+@media (min-width: 1161px) {
+  .pvfd-compact-stage .pvfd-lcd-canvas {
+    top: 6px !important;
+    right: 9px !important;
+    bottom: 6px !important;
+    left: 9px !important;
+    inset: auto !important;
+    width: calc(100% - 18px) !important;
+    height: calc(100% - 12px) !important;
+    max-width: none !important;
+    max-height: none !important;
+    display: block !important;
+  }
+
+  .pvfd-compact-stage .pvfd-lcd {
+    overflow: hidden !important;
+  }
+}
+
+@media (max-width: 1320px) and (min-width: 1161px) {
+  .pvfd-compact-stage .pvfd-lcd-canvas {
+    top: 5px !important;
+    right: 8px !important;
+    bottom: 5px !important;
+    left: 8px !important;
+    inset: auto !important;
+    width: calc(100% - 16px) !important;
+    height: calc(100% - 10px) !important;
+  }
+}
+
+/* ==============================================================
+   testbuild v1.9-r1-oel-glass-sidebox-hardfix-personal
+   - The last build let the OEL canvas fill whatever rectangle the CSS gave it.
+     That made some clips feel slightly zoomed/cropped/off. Lock the centerpiece
+     back to the native Pioneer OEL 256x64 language: true 4:1 glass, centered,
+     dark surround intact, detached side boxes kept clear of the transport row.
+   ============================================================== */
+.pvfd-display-stack {
+  grid-template-rows: 28px minmax(0, 1fr) !important;
+  gap: 10px !important;
+}
+
+.pvfd-compact-stage {
+  width: min(100%, 1120px) !important;
+  margin: 0 auto !important;
+  height: 128px !important;
+  min-height: 118px !important;
+  display: grid !important;
+  grid-template-columns: clamp(230px, 17vw, 285px) auto clamp(230px, 17vw, 285px) !important;
+  column-gap: clamp(30px, 3.1vw, 56px) !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd {
+  width: clamp(500px, 31.5vw, 590px) !important;
+  aspect-ratio: 4 / 1 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 148px !important;
+  align-self: center !important;
+  justify-self: center !important;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(var(--pvfd-light-rgb),0.08), transparent 62%),
+    linear-gradient(180deg, rgba(8,22,34,0.88), rgba(1,5,10,0.98)) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb),0.38) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,0.95),
+    inset 0 0 24px rgba(0, 54, 86, 0.82),
+    inset 0 0 48px rgba(0, 0, 0, 0.86),
+    0 0 0 1px rgba(255,255,255,0.055),
+    0 0 14px rgba(var(--pvfd-light-deep-rgb),0.20) !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd-canvas {
+  top: 7px !important;
+  right: 10px !important;
+  bottom: 7px !important;
+  left: 10px !important;
+  inset: auto !important;
+  width: calc(100% - 20px) !important;
+  height: calc(100% - 14px) !important;
+  display: block !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd-pixelgrid,
+.pvfd-compact-stage .pvfd-lcd-phosphor {
+  inset: 7px 10px !important;
+}
+
+.pvfd-lcd-side-left,
+.pvfd-lcd-side-right {
+  height: 98px !important;
+  min-height: 98px !important;
+  align-self: center !important;
+  padding: 9px 12px 8px !important;
+  border-color: rgba(var(--pvfd-light-mid-rgb),0.26) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,0.90),
+    inset 0 0 15px rgba(0,80,140,0.40),
+    0 0 0 1px rgba(255,255,255,0.035) !important;
+}
+
+.pvfd-side-label {
+  font-size: 12px !important;
+  margin-bottom: 7px !important;
+}
+
+.pvfd-side-readout,
+.pvfd-side-readouts-right .pvfd-side-readout {
+  grid-template-columns: 42px minmax(0, 1fr) !important;
+  font-size: 11.5px !important;
+  line-height: 1.08 !important;
+  margin-bottom: 4px !important;
+  gap: 7px !important;
+}
+
+.pvfd-side-readout b {
+  font-size: 9.5px !important;
+}
+
+.pvfd-side-model {
+  font-size: 10.5px !important;
+  bottom: 7px !important;
+}
+
+.pvfd-side-badges {
+  bottom: 6px !important;
+}
+
+.pvfd-side-vu {
+  top: 10px !important;
+  bottom: 28px !important;
+  right: 11px !important;
+  width: 26px !important;
+}
+
+@media (max-width: 1420px) {
+  .pvfd-compact-stage {
+    width: min(100%, 1000px) !important;
+    height: 120px !important;
+    grid-template-columns: clamp(200px, 18vw, 245px) auto clamp(200px, 18vw, 245px) !important;
+    column-gap: clamp(18px, 2vw, 34px) !important;
+  }
+  .pvfd-compact-stage .pvfd-lcd {
+    width: clamp(440px, 35vw, 530px) !important;
+  }
+  .pvfd-lcd-side-left,
+  .pvfd-lcd-side-right {
+    height: 92px !important;
+    min-height: 92px !important;
+  }
+  .pvfd-side-readout,
+  .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+    font-size: 10.4px !important;
+    gap: 5px !important;
+  }
+}
+
+@media (max-width: 1160px) {
+  .pvfd-compact-stage {
+    width: min(100%, 680px) !important;
+    grid-template-columns: minmax(0, auto) !important;
+    height: 118px !important;
+    min-height: 108px !important;
+    overflow: hidden !important;
+  }
+  .pvfd-lcd-side {
+    display: none !important;
+  }
+  .pvfd-compact-stage .pvfd-lcd {
+    width: min(92vw, 560px) !important;
+    aspect-ratio: 4 / 1 !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .pvfd-display-stack {
+    gap: 7px !important;
+  }
+  .pvfd-compact-stage {
+    height: 92px !important;
+    min-height: 86px !important;
+  }
+  .pvfd-compact-stage .pvfd-lcd {
+    width: min(88vw, 420px) !important;
+  }
+  .pvfd-compact-stage .pvfd-lcd-canvas,
+  .pvfd-compact-stage .pvfd-lcd-pixelgrid,
+  .pvfd-compact-stage .pvfd-lcd-phosphor {
+    inset: 5px 7px !important;
+    width: calc(100% - 14px) !important;
+    height: calc(100% - 10px) !important;
+  }
+}
+
+/* ==============================================================
+   testbuild v1.9-r1-oel-glass-sidebox-hardfix-personal
+   - Give the song title first claim on the skinny LCD.
+   - Shrink the scrub rail aggressively before the title gets chopped.
+   - Rebuild the OEL glass as one even pane instead of a bright clip pasted
+     onto a dark box.
+   ============================================================== */
+.pvfd-meta-lcd {
+  grid-template-columns: minmax(280px, 1fr) clamp(132px, 18vw, 320px) minmax(82px, 94px) !important;
+  gap: 7px !important;
+}
+
+.pvfd-meta-track {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  padding-right: 4px !important;
+}
+
+.pvfd-meta-progress {
+  min-width: 112px !important;
+  height: 16px !important;
+  opacity: 0.92 !important;
+}
+
+.pvfd-meta-progress::before,
+.pvfd-progress-text::before {
+  height: 3px !important;
+}
+
+.pvfd-meta-progress::after {
+  width: 7px !important;
+  height: 14px !important;
+  opacity: 0.92 !important;
+}
+
+.pvfd-meta-time {
+  min-width: 82px !important;
+}
+
+@media (max-width: 1360px) {
+  .pvfd-meta-lcd {
+    grid-template-columns: minmax(250px, 1fr) clamp(104px, 14vw, 220px) minmax(76px, 88px) !important;
+    gap: 6px !important;
+  }
+  .pvfd-meta-progress { min-width: 92px !important; }
+  .pvfd-meta-time { min-width: 76px !important; font-size: 10px !important; }
+}
+
+@media (max-width: 1160px) {
+  .pvfd-meta-lcd {
+    grid-template-columns: minmax(0, 1fr) clamp(72px, 10vw, 110px) 72px !important;
+    gap: 5px !important;
+  }
+  .pvfd-meta-progress { min-width: 64px !important; transform: scaleX(0.92); transform-origin: center; }
+  .pvfd-meta-progress::before,
+  .pvfd-progress-text::before { height: 2px !important; }
+  .pvfd-meta-progress::after { width: 5px !important; height: 11px !important; }
+  .pvfd-meta-time { min-width: 70px !important; font-size: 9px !important; letter-spacing: 0.45px !important; }
+}
+
+@media (max-width: 1020px) {
+  .pvfd-meta-lcd {
+    grid-template-columns: minmax(0, 1fr) 70px !important;
+  }
+  .pvfd-meta-progress {
+    display: none !important;
+  }
+}
+
+.pvfd-compact-stage .pvfd-lcd {
+  isolation: isolate !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(var(--pvfd-light-rgb),0.060), transparent 58%),
+    linear-gradient(180deg, rgba(7,18,29,0.94), rgba(1,5,10,0.99)) !important;
+  border-color: rgba(var(--pvfd-light-mid-rgb),0.30) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,0.96),
+    inset 0 0 18px rgba(0, 58, 92, 0.56),
+    inset 0 0 42px rgba(0, 0, 0, 0.84),
+    0 0 0 1px rgba(255,255,255,0.045),
+    0 0 10px rgba(var(--pvfd-light-deep-rgb),0.14) !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,0.34), transparent 15%, transparent 85%, rgba(0,0,0,0.34)),
+    linear-gradient(180deg, rgba(255,255,255,0.035), transparent 20%, transparent 80%, rgba(0,0,0,0.24));
+}
+
+.pvfd-compact-stage .pvfd-lcd::after {
+  content: "";
+  position: absolute;
+  inset: 7px 10px;
+  z-index: 5;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(var(--pvfd-light-rgb),0.055), transparent 56%),
+    linear-gradient(90deg, rgba(0,0,0,0.18), transparent 18%, transparent 82%, rgba(0,0,0,0.18));
+  box-shadow:
+    inset 0 0 16px rgba(var(--pvfd-light-deep-rgb),0.18),
+    inset 0 0 34px rgba(0,0,0,0.42);
+}
+
+.pvfd-compact-stage .pvfd-lcd-canvas {
+  z-index: 2 !important;
+  background: #01050a !important;
+  filter: saturate(1.18) brightness(0.92) contrast(0.96) !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd-pixelgrid {
+  z-index: 3 !important;
+  opacity: 0.72 !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd-phosphor {
+  z-index: 4 !important;
+  box-shadow:
+    inset 0 0 14px rgba(var(--pvfd-light-rgb),0.28),
+    inset 0 0 5px rgba(var(--pvfd-light-rgb),0.34) !important;
+}
+
+@media (max-width: 720px) {
+  .pvfd-compact-stage .pvfd-lcd::after {
+    inset: 5px 7px !important;
+  }
+}
+
+
+/* ==============================================================
+   testbuild v1.9-r1-oel-glass-sidebox-hardfix-personal
+   - Kill the stray gray glass patch on the main OEL bay.
+   - Nudge both side LCD boxes up ~3px, stretch them 3px taller downward,
+     and scale their internal type up slightly.
+   ============================================================== */
+.pvfd-compact-stage .pvfd-lcd::after {
+  content: none !important;
+  display: none !important;
+}
+
+.pvfd-lcd-side-left,
+.pvfd-lcd-side-right {
+  height: 101px !important;
+  min-height: 101px !important;
+  transform: translateY(-3px) !important;
+}
+
+.pvfd-side-label {
+  font-size: 12.6px !important;
+  margin-bottom: 8px !important;
+}
+
+.pvfd-side-readout,
+.pvfd-side-readouts-right .pvfd-side-readout {
+  font-size: 12.1px !important;
+  line-height: 1.10 !important;
+}
+
+.pvfd-side-readout b {
+  font-size: 10.1px !important;
+}
+
+.pvfd-side-model {
+  font-size: 11px !important;
+}
+
+.pvfd-side-badges span {
+  font-size: 8.5px !important;
+}
+
+.pvfd-side-vu {
+  top: 9px !important;
+  bottom: 25px !important;
+}
+
+@media (max-width: 1420px) {
+  .pvfd-lcd-side-left,
+  .pvfd-lcd-side-right {
+    height: 95px !important;
+    min-height: 95px !important;
+    transform: translateY(-3px) !important;
+  }
+  .pvfd-side-label {
+    font-size: 11.8px !important;
+  }
+  .pvfd-side-readout,
+  .pvfd-side-readouts-right .pvfd-side-readout {
+    font-size: 10.9px !important;
+  }
+  .pvfd-side-readout b {
+    font-size: 9.7px !important;
+  }
+}
+
+/* ==============================================================
+   testbuild v1.9-r1-oel-glass-sidebox-hardfix-personal
+   - Hard-remove the gray translucent glass patch on the center OEL bay.
+   - Side LCD boxes now occupy the same vertical language as the nearby side
+     controls: lifted higher, extended downward, and larger internal text.
+   - Left side LCD no longer shows the Pioneer model-name line.
+   ============================================================== */
+.pvfd-compact-stage .pvfd-lcd::before,
+.pvfd-compact-stage .pvfd-lcd::after {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd-phosphor {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  box-shadow: none !important;
+  background: none !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd {
+  background: #01050a !important;
+  border-color: rgba(var(--pvfd-light-mid-rgb),0.34) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,0.98),
+    inset 0 0 14px rgba(0, 45, 70, 0.54),
+    0 0 0 1px rgba(255,255,255,0.035),
+    0 0 10px rgba(var(--pvfd-light-deep-rgb),0.15) !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd-canvas {
+  background: transparent !important;
+  filter: saturate(1.22) brightness(0.94) contrast(0.97) !important;
+}
+
+.pvfd-lcd-side-left,
+.pvfd-lcd-side-right {
+  height: 112px !important;
+  min-height: 112px !important;
+  transform: translateY(-8px) !important;
+  padding: 10px 13px 10px !important;
+}
+
+.pvfd-lcd-side-left .pvfd-side-model {
+  display: none !important;
+}
+
+.pvfd-side-label {
+  font-size: 13.2px !important;
+  line-height: 1.05 !important;
+  margin-bottom: 8px !important;
+}
+
+.pvfd-side-readout,
+.pvfd-side-readouts-right .pvfd-side-readout {
+  grid-template-columns: 44px minmax(0, 1fr) !important;
+  gap: 7px !important;
+  font-size: 12.6px !important;
+  line-height: 1.12 !important;
+  margin-bottom: 5px !important;
+  letter-spacing: 0.72px !important;
+}
+
+.pvfd-side-readout b {
+  font-size: 10.7px !important;
+  letter-spacing: 0.95px !important;
+}
+
+.pvfd-lcd-side-left .pvfd-side-badges {
+  left: 13px !important;
+  right: auto !important;
+  bottom: 9px !important;
+}
+
+.pvfd-lcd-side-right .pvfd-side-badges {
+  bottom: 9px !important;
+}
+
+.pvfd-side-badges span {
+  font-size: 9px !important;
+  line-height: 12px !important;
+  padding: 0 4px !important;
+}
+
+.pvfd-side-readouts-right {
+  padding-right: 45px !important;
+}
+
+.pvfd-side-vu {
+  top: 9px !important;
+  bottom: 26px !important;
+  right: 12px !important;
+  width: 27px !important;
+}
+
+@media (max-width: 1420px) {
+  .pvfd-lcd-side-left,
+  .pvfd-lcd-side-right {
+    height: 106px !important;
+    min-height: 106px !important;
+    transform: translateY(-7px) !important;
+    padding: 9px 11px 9px !important;
+  }
+  .pvfd-side-label {
+    font-size: 12.2px !important;
+    margin-bottom: 7px !important;
+  }
+  .pvfd-side-readout,
+  .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 38px minmax(0, 1fr) !important;
+    font-size: 11.2px !important;
+    gap: 5px !important;
+    margin-bottom: 4px !important;
+  }
+  .pvfd-side-readout b {
+    font-size: 9.6px !important;
+  }
+  .pvfd-side-badges span {
+    font-size: 8px !important;
+    line-height: 11px !important;
+  }
+  .pvfd-side-readouts-right {
+    padding-right: 38px !important;
+  }
+  .pvfd-side-vu {
+    right: 9px !important;
+    width: 23px !important;
+  }
+}
+
+/* ==============================================================
+   testbuild v2.0-r1-oel-pixelgrid-sidebox-clearance-personal
+   - Restore a uniform cyan pixel-mask over the full center OEL window so the
+     right side does not wash out into a flat bright slab.
+   - Give both side LCDs a matching blue dot-matrix glass texture.
+   - Reflow the left LIVE/VFD badges so they stop covering the bottom readout.
+   ============================================================== */
+.pvfd-compact-stage .pvfd-lcd-canvas {
+  image-rendering: pixelated !important;
+  image-rendering: crisp-edges !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd-pixelgrid {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 0.92 !important;
+  z-index: 6 !important;
+  pointer-events: none !important;
+  mix-blend-mode: multiply !important;
+  background-image:
+    repeating-linear-gradient(0deg,
+      rgba(0, 0, 0, 0.00) 0px,
+      rgba(0, 0, 0, 0.00) 2px,
+      rgba(0, 0, 0, 0.76) 2px,
+      rgba(0, 0, 0, 0.76) 3px),
+    repeating-linear-gradient(90deg,
+      rgba(0, 0, 0, 0.00) 0px,
+      rgba(0, 0, 0, 0.00) 2px,
+      rgba(0, 0, 0, 0.62) 2px,
+      rgba(0, 0, 0, 0.62) 3px),
+    radial-gradient(circle at 50% 50%, rgba(var(--pvfd-light-rgb), 0.10) 0 0.65px, transparent 0.75px) !important;
+  background-size: 3px 3px, 3px 3px, 3px 3px !important;
+}
+
+.pvfd-lcd-side {
+  background:
+    radial-gradient(ellipse at 50% 36%, rgba(var(--pvfd-light-rgb), 0.085), transparent 62%),
+    linear-gradient(180deg, rgba(4, 15, 25, 0.98), rgba(1, 6, 12, 0.99)) !important;
+}
+
+.pvfd-lcd-side::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 5 !important;
+  pointer-events: none !important;
+  opacity: 0.78 !important;
+  mix-blend-mode: normal !important;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-light-rgb), 0.13) 0 0.7px, transparent 0.85px),
+    repeating-linear-gradient(0deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.52) 2px,
+      rgba(0, 0, 0, 0.52) 3px),
+    repeating-linear-gradient(90deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(0, 0, 0, 0.42) 2px,
+      rgba(0, 0, 0, 0.42) 3px) !important;
+  background-size: 3px 3px, 3px 3px, 3px 3px !important;
+}
+
+.pvfd-lcd-side::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 6 !important;
+  pointer-events: none !important;
+  opacity: 0.34 !important;
+  background:
+    linear-gradient(90deg, rgba(var(--pvfd-light-rgb), 0.045), transparent 20%, transparent 80%, rgba(var(--pvfd-light-rgb), 0.030)),
+    linear-gradient(180deg, rgba(255,255,255,0.025), transparent 28%, transparent 78%, rgba(0,0,0,0.30)) !important;
+}
+
+.pvfd-lcd-side-left,
+.pvfd-lcd-side-right {
+  height: 116px !important;
+  min-height: 116px !important;
+  transform: translateY(-8px) !important;
+  padding: 10px 13px 8px !important;
+}
+
+.pvfd-lcd-side-left {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+}
+
+.pvfd-lcd-side-left .pvfd-side-badges {
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin-top: auto !important;
+  align-self: flex-start !important;
+  display: flex !important;
+  gap: 5px !important;
+  transform: translateY(0) !important;
+}
+
+.pvfd-lcd-side-left .pvfd-side-readout:last-of-type {
+  margin-bottom: 4px !important;
+}
+
+.pvfd-side-label {
+  font-size: 13px !important;
+  margin-bottom: 7px !important;
+}
+
+.pvfd-side-readout,
+.pvfd-side-readouts-right .pvfd-side-readout {
+  font-size: 12.2px !important;
+  line-height: 1.08 !important;
+  margin-bottom: 4px !important;
+}
+
+.pvfd-side-readout b {
+  font-size: 10.5px !important;
+}
+
+@media (max-width: 1420px) {
+  .pvfd-lcd-side-left,
+  .pvfd-lcd-side-right {
+    height: 110px !important;
+    min-height: 110px !important;
+    transform: translateY(-7px) !important;
+    padding: 9px 11px 8px !important;
+  }
+  .pvfd-side-label {
+    font-size: 12px !important;
+    margin-bottom: 6px !important;
+  }
+  .pvfd-side-readout,
+  .pvfd-side-readouts-right .pvfd-side-readout {
+    font-size: 10.8px !important;
+    line-height: 1.06 !important;
+    margin-bottom: 3px !important;
+  }
+  .pvfd-side-readout b {
+    font-size: 9.4px !important;
+  }
+  .pvfd-lcd-side-left .pvfd-side-badges {
+    margin-top: auto !important;
+  }
+}
+
+/* ==============================================================
+   testbuild v2.1-r1-oel-clean-lcd-personal
+   - Remove the black line grid overlay from the center OEL window.
+   - Keep side/meta glass dotted and cyan-biased without drawing dark lattice
+     lines over the LCD artwork.
+   ============================================================== */
+.pvfd-compact-stage .pvfd-lcd-pixelgrid {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  background: none !important;
+}
+
+.pvfd-meta-lcd::before,
+.pvfd-lcd-side::before {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-light-rgb), 0.11) 0 0.62px, transparent 0.78px) !important;
+  background-size: 3px 3px !important;
+  mix-blend-mode: screen !important;
+  opacity: 0.36 !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd {
+  background: #01050a !important;
+}
+
+/* v2.2: no black inset around the OEL canvas. The animation owns the full pane. */
+.pvfd-compact-stage .pvfd-lcd-canvas {
+  inset: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: #02101c !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd-phosphor {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* ==============================================================
+   testbuild v2.3-r1-lcd-presence-balance-personal
+   - Align the skinny metadata LCD to the full lower LCD group.
+   - Lift it only a couple pixels for breathing room above the OEL pane.
+   - Add a delicate inset shadow and faint cyan inner rectangle so the LCDs
+     feel seated in the chrome instead of pasted on top.
+   - Nudge the side button stacks inward to balance the narrower top display.
+   ============================================================== */
+.pvfd-display-stack {
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.pvfd-meta-lcd {
+  width: min(100%, 1120px) !important;
+  max-width: 1120px !important;
+  justify-self: center !important;
+  transform: translateY(-2px) !important;
+  border-color: rgba(var(--pvfd-light-mid-rgb), 0.28) !important;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.80),
+    0 2px 5px rgba(0,0,0,0.34),
+    inset 0 0 0 1px rgba(255,255,255,0.025),
+    inset 0 0 10px rgba(var(--pvfd-light-deep-rgb),0.12) !important;
+}
+
+.pvfd-meta-lcd::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 3px 4px !important;
+  width: auto !important;
+  height: auto !important;
+  right: auto !important;
+  top: 3px !important;
+  bottom: 3px !important;
+  left: 4px !important;
+  z-index: 2 !important;
+  pointer-events: none !important;
+  opacity: 0.55 !important;
+  background: transparent !important;
+  border: 1px solid rgba(var(--pvfd-light-rgb),0.12) !important;
+  box-shadow:
+    inset 0 0 8px rgba(var(--pvfd-light-rgb),0.070),
+    0 0 4px rgba(var(--pvfd-light-rgb),0.045) !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd,
+.pvfd-lcd-side {
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.82),
+    0 2px 5px rgba(0,0,0,0.30),
+    inset 0 0 0 1px rgba(var(--pvfd-light-rgb),0.055),
+    inset 0 0 12px rgba(var(--pvfd-light-deep-rgb),0.105) !important;
+}
+
+.pvfd-mainrow > .pvfd-flank:nth-child(2) {
+  transform: translateX(8px) !important;
+}
+
+.pvfd-mainrow > .pvfd-flank:nth-child(4) {
+  transform: translateX(-8px) !important;
+}
+
+@media (max-width: 1420px) {
+  .pvfd-meta-lcd {
+    width: min(100%, 1000px) !important;
+    max-width: 1000px !important;
+  }
+  .pvfd-mainrow > .pvfd-flank:nth-child(2) {
+    transform: translateX(6px) !important;
+  }
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: translateX(-6px) !important;
+  }
+}
+
+@media (max-width: 1160px) {
+  .pvfd-meta-lcd {
+    width: min(100%, 680px) !important;
+    max-width: 680px !important;
+  }
+  .pvfd-mainrow > .pvfd-flank:nth-child(2),
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .pvfd-meta-lcd {
+    width: min(88vw, 420px) !important;
+    max-width: 420px !important;
+    transform: translateY(-1px) !important;
+  }
+}
+
+/* ==============================================================
+   testbuild v2.4-r1-corrected-lcd-span-personal
+   - v2.3 matched the hidden lower container, not the visible side-box span.
+     Use the same visual lower-stage dimensions so the top LCD ends at the
+     far outside edges of both side LCDs.
+   - Remove the drawn inner rectangle; keep the physical presence in the LCD
+     border/shadow itself so the glow stays delicate.
+   ============================================================== */
+.pvfd-display-stack {
+  --pvfd-stage-side-w: clamp(230px, 17vw, 285px);
+  --pvfd-stage-oel-w: clamp(500px, 31.5vw, 590px);
+  --pvfd-stage-gap-w: clamp(30px, 3.1vw, 56px);
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.pvfd-meta-lcd {
+  width: min(100%, calc(
+    var(--pvfd-stage-side-w) + var(--pvfd-stage-side-w) +
+    var(--pvfd-stage-oel-w) +
+    var(--pvfd-stage-gap-w) + var(--pvfd-stage-gap-w)
+  )) !important;
+  max-width: none !important;
+  justify-self: center !important;
+  transform: translateY(-3px) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.24) !important;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.78),
+    0 2px 4px rgba(0,0,0,0.32),
+    inset 0 0 0 1px rgba(var(--pvfd-light-rgb),0.060),
+    inset 0 0 9px rgba(var(--pvfd-light-deep-rgb),0.090) !important;
+}
+
+.pvfd-meta-lcd::after {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: none !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd,
+.pvfd-lcd-side {
+  border-color: rgba(var(--pvfd-light-mid-rgb), 0.24) !important;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.76),
+    0 2px 4px rgba(0,0,0,0.30),
+    inset 0 0 0 1px rgba(var(--pvfd-light-rgb),0.052),
+    inset 0 0 10px rgba(var(--pvfd-light-deep-rgb),0.085) !important;
+}
+
+.pvfd-mainrow > .pvfd-flank:nth-child(2) {
+  transform: translateX(12px) !important;
+}
+
+.pvfd-mainrow > .pvfd-flank:nth-child(4) {
+  transform: translateX(-12px) !important;
+}
+
+@media (max-width: 1420px) {
+  .pvfd-display-stack {
+    --pvfd-stage-side-w: clamp(200px, 18vw, 245px);
+    --pvfd-stage-oel-w: clamp(440px, 35vw, 530px);
+    --pvfd-stage-gap-w: clamp(18px, 2vw, 34px);
+  }
+  .pvfd-meta-lcd {
+    transform: translateY(-3px) !important;
+  }
+  .pvfd-mainrow > .pvfd-flank:nth-child(2) {
+    transform: translateX(8px) !important;
+  }
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: translateX(-8px) !important;
+  }
+}
+
+@media (max-width: 1160px) {
+  .pvfd-meta-lcd {
+    width: min(92vw, 560px) !important;
+    transform: translateY(-2px) !important;
+  }
+  .pvfd-mainrow > .pvfd-flank:nth-child(2),
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .pvfd-meta-lcd {
+    width: min(88vw, 420px) !important;
+    transform: translateY(-1px) !important;
+  }
+}
+
+/* ==============================================================
+   testbuild v2.5-r1-lcd-height-presence-fix-personal
+   - Restore the skinny LCD's full vertical size after v2.4 width matching.
+   - Keep the 2-3px lift for chrome clearance above the big LCD.
+   - Add the requested delicate inner cyan glow line without filling the LCD.
+   - Move side button stacks inward enough to read visually.
+   ============================================================== */
+.pvfd-display-stack {
+  align-items: stretch !important;
+  justify-items: center !important;
+  gap: 10px !important;
+}
+
+.pvfd-meta-lcd {
+  align-self: stretch !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  box-sizing: border-box !important;
+  transform: translateY(-3px) !important;
+  background:
+    linear-gradient(180deg, rgba(9, 25, 38, 0.96), rgba(1, 6, 12, 0.985)),
+    var(--pvfd-lcd-void) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.30) !important;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.86),
+    0 2px 4px rgba(0,0,0,0.38),
+    inset 0 0 0 1px rgba(0,0,0,0.74),
+    inset 0 0 10px rgba(var(--pvfd-light-deep-rgb),0.13) !important;
+}
+
+.pvfd-meta-lcd::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 3px 4px !important;
+  z-index: 4 !important;
+  pointer-events: none !important;
+  opacity: 1 !important;
+  background: transparent !important;
+  border: 1px solid rgba(var(--pvfd-light-rgb),0.115) !important;
+  box-shadow:
+    inset 0 0 5px rgba(var(--pvfd-light-rgb),0.075),
+    0 0 3px rgba(var(--pvfd-light-rgb),0.050) !important;
+}
+
+.pvfd-compact-stage .pvfd-lcd,
+.pvfd-lcd-side {
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.28) !important;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.84),
+    0 2px 4px rgba(0,0,0,0.34),
+    inset 0 0 0 1px rgba(0,0,0,0.70),
+    inset 0 0 11px rgba(var(--pvfd-light-deep-rgb),0.105) !important;
+}
+
+.pvfd-mainrow > .pvfd-flank:nth-child(2) {
+  transform: translateX(20px) !important;
+}
+
+.pvfd-mainrow > .pvfd-flank:nth-child(4) {
+  transform: translateX(-20px) !important;
+}
+
+@media (max-width: 1420px) {
+  .pvfd-meta-lcd {
+    height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+    transform: translateY(-3px) !important;
+  }
+  .pvfd-mainrow > .pvfd-flank:nth-child(2) {
+    transform: translateX(14px) !important;
+  }
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: translateX(-14px) !important;
+  }
+}
+
+@media (max-width: 1160px) {
+  .pvfd-meta-lcd {
+    height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    transform: translateY(-2px) !important;
+  }
+  .pvfd-mainrow > .pvfd-flank:nth-child(2),
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .pvfd-meta-lcd {
+    height: 24px !important;
+    min-height: 24px !important;
+    max-height: 24px !important;
+    transform: translateY(-1px) !important;
+  }
+}
+
+/* ==============================================================
+   testbuild v2.6-r1-collapsed-oel-only-personal
+   - In the collapsed layout, the lower display square is OEL-only.
+   - Later side-LCD display rules must not resurrect PLAYBACK/STATUS boxes
+     above or inside the large LCD.
+   ============================================================== */
+@media (max-width: 1160px) {
+  .pvfd-compact-stage {
+    width: min(100%, 680px) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    justify-items: center !important;
+    align-items: center !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-compact-stage > .pvfd-lcd {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: min(92vw, 560px) !important;
+    aspect-ratio: 4 / 1 !important;
+    align-self: center !important;
+    justify-self: center !important;
+  }
+
+  .pvfd-compact-stage > .pvfd-lcd-side,
+  .pvfd-compact-stage > .pvfd-lcd-side-left,
+  .pvfd-compact-stage > .pvfd-lcd-side-right {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    transform: none !important;
+    overflow: hidden !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .pvfd-compact-stage {
+    width: min(100%, 520px) !important;
+  }
+
+  .pvfd-compact-stage > .pvfd-lcd {
+    width: min(88vw, 420px) !important;
+  }
 }
