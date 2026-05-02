@@ -5924,6 +5924,95 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
   stroke: none !important;
 }
 
+/* v2.37-temp: LCD test skin for the left library and right now-playing side panels. */
+:is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar) {
+  --pvfd-light-rgb: 168, 228, 244;
+  --pvfd-light-mid-rgb: 126, 212, 240;
+  --pvfd-light-deep-rgb: 78, 180, 216;
+  background:
+    linear-gradient(90deg, rgba(var(--pvfd-light-rgb), 0.040), transparent 16%, transparent 84%, rgba(var(--pvfd-light-rgb), 0.035)),
+    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-light-rgb), 0.11) 0 0.62px, transparent 0.78px),
+    linear-gradient(180deg, rgba(5, 16, 25, 0.99), rgba(1, 6, 12, 0.99)) !important;
+  background-size:
+    100% 100%,
+    3px 3px,
+    100% 100% !important;
+  border-color: rgba(var(--pvfd-light-mid-rgb), 0.28) !important;
+  color: var(--pvfd-cyan) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.82),
+    inset 0 0 22px rgba(var(--pvfd-light-deep-rgb), 0.13),
+    inset 0 0 46px rgba(0, 0, 0, 0.45) !important;
+}
+
+.Root__nav-bar {
+  border-right: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.28) !important;
+}
+
+.Root__right-sidebar {
+  border-left: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.28) !important;
+}
+
+:is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar)
+  :is([data-encore-id="text"], h1, h2, h3, h4, p, span, a, button) {
+  color: var(--pvfd-cyan) !important;
+  text-shadow:
+    0 0 2px rgba(var(--pvfd-light-rgb), 0.62),
+    0 0 6px rgba(var(--pvfd-light-deep-rgb), 0.30) !important;
+}
+
+:is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar)
+  :is(svg, path, circle, rect, line, polyline, polygon) {
+  color: var(--pvfd-cyan-glow) !important;
+  stroke: currentColor !important;
+  filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-rgb), 0.44)) !important;
+}
+
+:is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar)
+  :is(button, [role="button"], a):is(:hover, :focus-visible) {
+  background:
+    linear-gradient(180deg, rgba(var(--pvfd-light-rgb), 0.13), rgba(var(--pvfd-light-deep-rgb), 0.07)) !important;
+  outline: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.32) !important;
+  outline-offset: -1px !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.42),
+    0 0 8px rgba(var(--pvfd-light-rgb), 0.14) !important;
+}
+
+.Root__nav-bar :is(.main-yourLibraryX-library, [class*="yourLibrary" i], [class*="YourLibrary" i], [data-testid*="library" i]),
+.Root__right-sidebar :is(section, aside, [class*="nowPlaying" i], [class*="NowPlaying" i], [data-testid*="now-playing" i]) {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+.Root__right-sidebar :is(.main-card-card, [data-encore-id="card"]) {
+  background:
+    linear-gradient(180deg, rgba(7, 18, 28, 0.84), rgba(1, 7, 13, 0.88)) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.20) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.56),
+    inset 0 0 12px rgba(var(--pvfd-light-deep-rgb), 0.08) !important;
+}
+
+/* v2.46-temp: keep now-playing video/reel tiles from inheriting nested LCD card frames. */
+.Root__right-sidebar :is([class*="video" i], [class*="Video" i], [class*="reel" i], [class*="Reel" i], [data-testid*="video" i])
+  :is([class*="card" i], [class*="Card" i], button, [role="button"], a, figure, div):not(.main-card-card):not([data-encore-id="card"]) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+.Root__right-sidebar :is([class*="video" i], [class*="Video" i], [class*="reel" i], [class*="Reel" i], [data-testid*="video" i])
+  :is(button, [role="button"], a):is(:hover, :focus-visible) {
+  background: rgba(var(--pvfd-light-rgb), 0.06) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.22) !important;
+  outline-offset: -1px !important;
+}
+
 /* v2.36: make the Marketplace filter/search strip look intentional and scoped. */
 .Root__main-view .marketplace-header {
   --pvfd-light-rgb: 168, 228, 244;
@@ -6191,4 +6280,47 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
 .main-topBar-container button[aria-label*="Pause" i] :is(svg, path, polygon) {
   fill: currentColor !important;
   stroke: none !important;
+}
+
+/* v2.45-temp: keep the restored search popover surface only. */
+:is(.main-globalNav-searchDropdown, .main-globalNav-searchSuggestions, .main-globalNav-searchPopover,
+    [class*="searchDropdown" i], [class*="searchSuggestions" i], [class*="searchPopover" i],
+    [class*="globalNav"][class*="search"][class*="drop" i],
+    [class*="globalNav"][class*="search"][class*="suggest" i]) {
+  --pvfd-light-rgb: 168, 228, 244;
+  --pvfd-light-mid-rgb: 126, 212, 240;
+  --pvfd-light-deep-rgb: 78, 180, 216;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-light-rgb), 0.10) 0 0.62px, transparent 0.78px),
+    linear-gradient(180deg, rgba(5, 16, 25, 0.99), rgba(1, 6, 12, 0.985)) !important;
+  background-color: var(--pvfd-lcd-void) !important;
+  background-size:
+    3px 3px,
+    100% 100% !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.32) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.76),
+    inset 0 0 20px rgba(var(--pvfd-light-deep-rgb), 0.12),
+    0 16px 34px rgba(0, 0, 0, 0.62) !important;
+  color: var(--pvfd-cyan) !important;
+  overflow: visible !important;
+  z-index: 60 !important;
+}
+
+/* v2.47-temp: cheaper Home/card hover paint so fast cursor sweeps do not stall the LCD. */
+.Root__main-view :is(.main-card-card, [data-encore-id="card"]) {
+  contain: paint !important;
+}
+
+.Root__main-view :is(.main-card-card, [data-encore-id="card"]):is(:hover, :focus-within) {
+  background: #101721 !important;
+  border-color: rgba(var(--pvfd-light-deep-rgb), 0.68) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--pvfd-light-mid-rgb), 0.26),
+    inset 0 0 10px rgba(var(--pvfd-light-deep-rgb), 0.10) !important;
+}
+
+.Root__main-view :is(.main-card-card, [data-encore-id="card"]):is(:hover, :focus-within)
+  :is(svg, path, circle, rect, line, polyline, polygon) {
+  filter: none !important;
 }
