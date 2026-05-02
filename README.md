@@ -6,11 +6,11 @@ A Spicetify theme and extension that turns Spotify desktop into a 2000s Pioneer 
 
 Fullscreen:
 
-<img width="1919" height="237" alt="PioneerVFD fullscreen preview" src="https://github.com/user-attachments/assets/0e5f627e-85b9-4acf-80eb-4a386c23908d" />
+<img width="1800" height="900" alt="PioneerVFD fullscreen preview" src="https://github.com/user-attachments/assets/0e5f627e-85b9-4acf-80eb-4a386c23908d" />
 
 Shrunken window:
 
-<img width="951" height="227" alt="PioneerVFD shrunken window preview" src="https://github.com/user-attachments/assets/387de59b-2759-4f7b-bb47-61c08dc9d259" />
+<img width="900" height="900" alt="PioneerVFD shrunken window preview" src="https://github.com/user-attachments/assets/387de59b-2759-4f7b-bb47-61c08dc9d259" />
 
 ## What It Does
 
