@@ -4436,3 +4436,349 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
     right: 27px !important;
   }
 }
+
+/* v2.18: keep flank buttons visible while there is still a clean chrome lane. */
+@media (max-width: 1620px) and (min-width: 1321px) {
+  .pvfd-mainrow {
+    grid-template-columns: 132px 42px minmax(0, 1fr) 42px 132px !important;
+    gap: 8px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank {
+    display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    width: auto !important;
+    min-width: 40px !important;
+    max-width: 42px !important;
+    align-self: center !important;
+    justify-self: stretch !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank:nth-child(2) {
+    transform: translateX(-4px) !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: translateX(4px) !important;
+  }
+}
+
+@container (max-width: 1620px) and (min-width: 1321px) {
+  .pvfd-chassis .pvfd-mainrow {
+    grid-template-columns: 132px 42px minmax(0, 1fr) 42px 132px !important;
+    gap: 8px !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank {
+    display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    width: auto !important;
+    min-width: 40px !important;
+    max-width: 42px !important;
+    align-self: center !important;
+    justify-self: stretch !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank:nth-child(2) {
+    transform: translateX(-4px) !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: translateX(4px) !important;
+  }
+}
+
+/* v2.19: lower LCD stage uses the same horizontal span as the skinny LCD. */
+@media (min-width: 1161px) {
+  .pvfd-display-stack {
+    --pvfd-stage-span: calc(
+      var(--pvfd-stage-side-w) + var(--pvfd-stage-side-w) +
+      var(--pvfd-stage-oel-w) +
+      var(--pvfd-stage-gap-w) + var(--pvfd-stage-gap-w)
+    );
+  }
+
+  .pvfd-meta-lcd,
+  .pvfd-compact-stage {
+    width: min(100%, var(--pvfd-stage-span)) !important;
+    max-width: var(--pvfd-stage-span) !important;
+    justify-self: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .pvfd-compact-stage {
+    grid-template-columns: var(--pvfd-stage-side-w) var(--pvfd-stage-oel-w) var(--pvfd-stage-side-w) !important;
+    column-gap: var(--pvfd-stage-gap-w) !important;
+    justify-content: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .pvfd-compact-stage .pvfd-lcd {
+    width: var(--pvfd-stage-oel-w) !important;
+    max-width: 100% !important;
+  }
+
+  .pvfd-lcd-side {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+@container (min-width: 1161px) {
+  .pvfd-chassis .pvfd-display-stack {
+    --pvfd-stage-span: calc(
+      var(--pvfd-stage-side-w) + var(--pvfd-stage-side-w) +
+      var(--pvfd-stage-oel-w) +
+      var(--pvfd-stage-gap-w) + var(--pvfd-stage-gap-w)
+    );
+  }
+
+  .pvfd-chassis .pvfd-meta-lcd,
+  .pvfd-chassis .pvfd-compact-stage {
+    width: min(100%, var(--pvfd-stage-span)) !important;
+    max-width: var(--pvfd-stage-span) !important;
+    justify-self: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage {
+    grid-template-columns: var(--pvfd-stage-side-w) var(--pvfd-stage-oel-w) var(--pvfd-stage-side-w) !important;
+    column-gap: var(--pvfd-stage-gap-w) !important;
+    justify-content: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage .pvfd-lcd {
+    width: var(--pvfd-stage-oel-w) !important;
+    max-width: 100% !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* v2.20: the side LCDs compress inside the skinny LCD span instead of overflowing it. */
+@media (min-width: 1161px) {
+  .pvfd-compact-stage {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, var(--pvfd-stage-oel-w)) minmax(0, 1fr) !important;
+    width: min(100%, var(--pvfd-stage-span)) !important;
+    max-width: var(--pvfd-stage-span) !important;
+    min-width: 0 !important;
+  }
+
+  .pvfd-compact-stage .pvfd-lcd {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .pvfd-compact-stage > .pvfd-lcd-side {
+    box-sizing: border-box !important;
+    justify-self: stretch !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: 100% !important;
+  }
+}
+
+@container (min-width: 1161px) {
+  .pvfd-chassis .pvfd-compact-stage {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, var(--pvfd-stage-oel-w)) minmax(0, 1fr) !important;
+    width: min(100%, var(--pvfd-stage-span)) !important;
+    max-width: var(--pvfd-stage-span) !important;
+    min-width: 0 !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage .pvfd-lcd {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side {
+    box-sizing: border-box !important;
+    justify-self: stretch !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: 100% !important;
+  }
+}
+
+/* v2.21: remove the side-box-only dead zone; buttons stay present from here down. */
+@media (max-width: 1320px) and (min-width: 1161px) {
+  .pvfd-mainrow {
+    grid-template-columns: 164px 42px minmax(0, 1fr) 42px 164px !important;
+    gap: 5px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank {
+    display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    width: auto !important;
+    min-width: 40px !important;
+    max-width: 42px !important;
+    align-self: center !important;
+    justify-self: stretch !important;
+    transform: none !important;
+  }
+
+  .pvfd-meta-lcd,
+  .pvfd-compact-stage {
+    width: min(100%, 680px) !important;
+    max-width: 680px !important;
+    min-width: 0 !important;
+    justify-self: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .pvfd-compact-stage {
+    grid-template-columns: minmax(0, 1fr) !important;
+    justify-items: stretch !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-compact-stage > .pvfd-lcd {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    justify-self: stretch !important;
+    box-sizing: border-box !important;
+    aspect-ratio: 4 / 1 !important;
+  }
+
+  .pvfd-compact-stage > .pvfd-lcd-side,
+  .pvfd-compact-stage > .pvfd-lcd-side-left,
+  .pvfd-compact-stage > .pvfd-lcd-side-right {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    transform: none !important;
+    overflow: hidden !important;
+  }
+}
+
+@container (max-width: 1320px) and (min-width: 1161px) {
+  .pvfd-chassis .pvfd-mainrow {
+    grid-template-columns: 164px 42px minmax(0, 1fr) 42px 164px !important;
+    gap: 5px !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank {
+    display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    width: auto !important;
+    min-width: 40px !important;
+    max-width: 42px !important;
+    align-self: center !important;
+    justify-self: stretch !important;
+    transform: none !important;
+  }
+
+  .pvfd-chassis .pvfd-meta-lcd,
+  .pvfd-chassis .pvfd-compact-stage {
+    width: min(100%, 680px) !important;
+    max-width: 680px !important;
+    min-width: 0 !important;
+    justify-self: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage {
+    grid-template-columns: minmax(0, 1fr) !important;
+    justify-items: stretch !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    justify-self: stretch !important;
+    box-sizing: border-box !important;
+    aspect-ratio: 4 / 1 !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side,
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side-left,
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side-right {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    transform: none !important;
+    overflow: hidden !important;
+  }
+}
+
+/* v2.22: just above collapse, keep flank buttons off the outer knob rings. */
+@media (max-width: 1420px) and (min-width: 1321px) {
+  .pvfd-mainrow > .pvfd-flank:nth-child(2) {
+    transform: translateX(4px) !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: translateX(-4px) !important;
+  }
+}
+
+@container (max-width: 1420px) and (min-width: 1321px) {
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank:nth-child(2) {
+    transform: translateX(4px) !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: translateX(-4px) !important;
+  }
+}
+
+/* v2.23: at the pre-collapse width, move the whole flank lanes inward. */
+@media (max-width: 1420px) and (min-width: 1321px) {
+  .pvfd-mainrow {
+    grid-template-columns: 164px 42px minmax(0, 1fr) 42px 164px !important;
+    gap: 6px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank:nth-child(2),
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: none !important;
+  }
+}
+
+@container (max-width: 1420px) and (min-width: 1321px) {
+  .pvfd-chassis .pvfd-mainrow {
+    grid-template-columns: 164px 42px minmax(0, 1fr) 42px 164px !important;
+    gap: 6px !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank:nth-child(2),
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: none !important;
+  }
+}
