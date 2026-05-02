@@ -3911,3 +3911,122 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
 .x-filterBox-expandedOrHasFilter:has(.x-filterBox-filterInput:not(:placeholder-shown)) .x-filterBox-overlay {
   pointer-events: none !important;
 }
+
+/* v2.13: Pioneer hardware-role buttons and compact LCD menu overlay. */
+.pvfd-display-stack {
+  position: relative;
+}
+
+.pvfd-menu-panel {
+  position: absolute;
+  left: 50%;
+  top: 35px;
+  width: min(330px, calc(100% - 28px));
+  transform: translate(-50%, -4px);
+  z-index: 30;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3px;
+  padding: 8px 10px 9px;
+  box-sizing: border-box;
+  background:
+    linear-gradient(180deg, rgba(5, 19, 31, 0.96), rgba(1, 6, 12, 0.985)),
+    var(--pvfd-lcd-void);
+  border: 1px solid rgba(72, 168, 214, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.88),
+    inset 0 0 16px rgba(78, 180, 216, 0.22),
+    0 2px 8px rgba(0, 0, 0, 0.70),
+    0 0 10px rgba(78, 180, 216, 0.14);
+  color: var(--pvfd-cyan);
+  font-family: "Share Tech Mono", "VT323", monospace;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms linear, transform 120ms linear;
+}
+
+.pvfd-menu-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(0, 0, 0, 0.46) 2px, rgba(0, 0, 0, 0.46) 3px),
+    repeating-linear-gradient(90deg, transparent 0, transparent 2px, rgba(0, 0, 0, 0.30) 2px, rgba(0, 0, 0, 0.30) 3px);
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+.pvfd-menu-panel[aria-hidden="false"] {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+.pvfd-menu-title,
+.pvfd-menu-row {
+  position: relative;
+  z-index: 1;
+}
+
+.pvfd-menu-title {
+  color: #d8f8ff;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 1.2px;
+  text-shadow: 0 0 6px rgba(126, 212, 240, 0.84);
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(78, 180, 216, 0.22);
+}
+
+.pvfd-menu-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  min-height: 15px;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.7px;
+  color: rgba(168, 228, 244, 0.92);
+}
+
+.pvfd-menu-row b {
+  color: #b8e896;
+  font-weight: 700;
+  text-shadow: 0 0 5px rgba(184, 232, 150, 0.56);
+}
+
+.pvfd-menu-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: var(--pvfd-glow-cyan);
+}
+
+.pvfd-chassis[data-pvfd-demo="on"] .pvfd-compact-stage .pvfd-lcd {
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.92),
+    inset 0 0 20px rgba(78, 180, 216, 0.30),
+    0 0 10px rgba(78, 180, 216, 0.16) !important;
+}
+
+/* v2.14: skinny LCD artist/title opens Now Playing without touching the scrubber. */
+.pvfd-meta-track[role="button"] {
+  cursor: pointer;
+  outline: none;
+  border-radius: 1px;
+  transition:
+    color 120ms ease,
+    text-shadow 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.pvfd-meta-track[role="button"]:hover,
+.pvfd-meta-track[role="button"]:focus-visible {
+  color: #d8f6ff;
+  text-shadow:
+    0 0 4px rgba(216, 246, 255, 0.92),
+    0 0 10px rgba(78, 180, 216, 0.46);
+  box-shadow: inset 0 -1px 0 rgba(126, 212, 240, 0.45);
+}
