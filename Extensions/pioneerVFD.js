@@ -82,7 +82,8 @@
   let scrubPreviewUntil = 0;
   let navDrag = null;
   let lastClipCacheKey = "";
-  const CLIP_CACHE_BATCH_MS = 7;
+  let lastCanvasFrameKey = "";
+  const CLIP_CACHE_BATCH_MS = 4;
   const CLIP_RENDER_CACHE_ENABLED = true; // cached OEL frame path
   const CONTROL_READOUT_INTERVAL_MS = 220;
   const NAV_LED_INTERVAL_MS = 180;
@@ -1033,6 +1034,7 @@
     if (!CLIPS.length) return;
     clipIdx = ((idx % CLIPS.length) + CLIPS.length) % CLIPS.length;
     clipStartMs = performance.now();
+    lastCanvasFrameKey = "";
     decodePackedClip(CLIPS[clipIdx]);
     console.log(`[PVFD] OEL animation: ${CLIPS[clipIdx].name}`);
     updateMenuPanel();
@@ -1252,9 +1254,10 @@
     ctx.restore();
   }
 
-  function drawClip(w, h, t, pulse) {
+  function drawClip(w, h, t, pulse, tsMs = t * 1000) {
     const clip = ensureClipRunning();
     if (!clip || !clip.bytes || !clip.bytes.length) {
+      lastCanvasFrameKey = "";
       lcdBackground(w, h);
       drawLCDStatus("OEL DATA", w, h);
       return;
@@ -1262,7 +1265,7 @@
 
     const frameCount = clip.frames || 1;
     const fps = clip.fps || 12;
-    const elapsed = Math.max(0, (performance.now() - clipStartMs) / 1000);
+    const elapsed = Math.max(0, (tsMs - clipStartMs) / 1000);
     const frame = Math.floor(elapsed * fps) % frameCount;
     if (!CLIP_RENDER_CACHE_ENABLED) {
       renderPackedClipFrame(ctx, clip, frame, w, h);
@@ -1271,11 +1274,16 @@
     }
     const cachedFrame = getCachedClipFrame(clip, frame, w, h);
     if (!cachedFrame) {
+      lastCanvasFrameKey = "";
       drawClipLoadingStatus(clip, w, h, t, pulse);
       return;
     }
+    const cacheKey = clip.renderCache && clip.renderCache.key ? clip.renderCache.key : `${w}x${h}`;
+    const frameKey = `${clipIdx}:${cacheKey}:${frame}`;
+    if (!OEL_GLASS_OVERLAY_ENABLED && frameKey === lastCanvasFrameKey) return;
     ctx.drawImage(cachedFrame, 0, 0, w, h);
     drawOelGlassGlow(w, h, t, pulse);
+    lastCanvasFrameKey = frameKey;
   }
 
   function drawDot(x, y, size, color, alpha = 1) {
@@ -1730,9 +1738,17 @@
   let lastKnobLedAt = -Infinity;
   let lastNavLedAt = -Infinity;
   let lastModeName = "";
+  function activeFrameIntervalMs() {
+    const modeName = MODES[modeIdx];
+    if (modeName !== "CLIP" || OEL_GLASS_OVERLAY_ENABLED) return FRAME_INTERVAL_MS;
+    const clip = CLIPS[clipIdx] || CLIPS[0];
+    const fps = clip && clip.fps ? clip.fps : 12;
+    return Math.max(FRAME_INTERVAL_MS, 1000 / Math.max(1, fps));
+  }
+
   function loop(ts) {
     requestAnimationFrame(loop);
-    if (ts - lastFrame < FRAME_INTERVAL_MS) return;
+    if (ts - lastFrame < activeFrameIntervalMs()) return;
     lastFrame = ts;
     if (!ctx || !chassis) return;
 
@@ -1768,11 +1784,11 @@
     const tWall = ts / 1000;
     const pulse = beatPulse(tSec) + SINE_BASE * Math.sin(tWall * 2);
 
-    if (modeName === "GALAXY")        drawGalaxyScene(w, h, tWall, pulse);
-    else if (modeName === "SPECTRUM") drawSpectrum(w, h, tWall);
-    else if (modeName === "DOLPHIN")  drawDolphinScene(w, h, tWall, pulse);
-    else if (modeName === "DEMO")     drawDemo(w, h, tWall, pulse);
-    else if (modeName === "CLIP")     drawClip(w, h, tWall, pulse + (demoAutoMode ? 0.28 : 0));
+    if (modeName === "GALAXY")        { lastCanvasFrameKey = ""; drawGalaxyScene(w, h, tWall, pulse); }
+    else if (modeName === "SPECTRUM") { lastCanvasFrameKey = ""; drawSpectrum(w, h, tWall); }
+    else if (modeName === "DOLPHIN")  { lastCanvasFrameKey = ""; drawDolphinScene(w, h, tWall, pulse); }
+    else if (modeName === "DEMO")     { lastCanvasFrameKey = ""; drawDemo(w, h, tWall, pulse); }
+    else if (modeName === "CLIP")     drawClip(w, h, tWall, pulse + (demoAutoMode ? 0.28 : 0), ts);
 
     updateOverlays(progressMs, modeName, timing, ts);
     if (pendingVolume !== null || ts - lastKnobLedAt >= CONTROL_READOUT_INTERVAL_MS) {
