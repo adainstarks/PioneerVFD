@@ -28,4 +28,4 @@ spicetify config current_theme PioneerVFD color_scheme "Pioneer DEH-P7600MP"
 spicetify config extensions pioneerVFD.js
 spicetify apply
 
-Write-Host "PioneerVFD testbuild v2.0-r1-oel-pixelgrid-sidebox-clearance-personal installed and applied."
+Write-Host "PioneerVFD installed and applied."

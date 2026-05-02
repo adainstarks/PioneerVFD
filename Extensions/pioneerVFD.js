@@ -1,7 +1,7 @@
 // =====================================================================
-// Pioneer VFD testbuild v2.0-r1-oel-pixelgrid-sidebox-clearance-personal — DEH-P7600MP Spicetify extension
+// Pioneer VFD - DEH-P7600MP Spicetify extension
 //   All animations strictly INSIDE the LCD window.
-//   testbuild v1.9-r1-oel-glass-sidebox-hardfix-personal: OEL/LKD clips are now the main display system for local testing.
+//   OEL/LKD clips are the main center display system.
 // =====================================================================
 
 (function PioneerVFD() {
@@ -67,6 +67,7 @@
   let scrubPreviewMs = null;
   let scrubPreviewUntil = 0;
   let navDrag = null;
+  let lastClipCacheKey = "";
 
   let dolphinX = -50;
   const dolphinBubbles = [];
@@ -569,13 +570,13 @@
     }
   }
 
-  function lcdBackground(w, h) {
-    ctx.fillStyle = "#02101c";
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "rgba(126, 212, 240, 0.045)";
-    for (let y = 0; y < h; y += 6) ctx.fillRect(0, y, w, 1);
-    ctx.fillStyle = "rgba(126, 212, 240, 0.025)";
-    for (let x = 0; x < w; x += 8) ctx.fillRect(x, 0, 1, h);
+  function lcdBackground(w, h, targetCtx = ctx) {
+    targetCtx.fillStyle = "#02101c";
+    targetCtx.fillRect(0, 0, w, h);
+    targetCtx.fillStyle = "rgba(126, 212, 240, 0.045)";
+    for (let y = 0; y < h; y += 6) targetCtx.fillRect(0, y, w, 1);
+    targetCtx.fillStyle = "rgba(126, 212, 240, 0.025)";
+    for (let x = 0; x < w; x += 8) targetCtx.fillRect(x, 0, 1, h);
   }
 
   // Compose display filters. The animation canvas is still drawn cyan, so it
@@ -658,11 +659,111 @@
     ctx.textAlign = "left";
   }
 
-  function drawClip(w, h, t, pulse) {
-    lcdBackground(w, h);
+  function renderPackedClipFrame(targetCtx, clip, frame, w, h) {
+    lcdBackground(w, h, targetCtx);
 
+    const frameOffset = frame * ((clip.w * clip.h) >> 1);
+    const cellW = w / clip.w;
+    const cellH = h / clip.h;
+
+    for (let py = 0; py < clip.h; py++) {
+      for (let px = 0; px < clip.w; px++) {
+        const packed = clip.bytes[frameOffset + ((py * clip.w + px) >> 1)] || 0;
+        const q = (px & 1) ? (packed & 15) : (packed >> 4);
+        const dx = Math.floor(px * cellW);
+        const dy = Math.floor(py * cellH);
+        const nextX = Math.ceil((px + 1) * cellW);
+        const nextY = Math.ceil((py + 1) * cellH);
+        const drawW = Math.max(1, nextX - dx);
+        const drawH = Math.max(1, nextY - dy);
+
+        if (q <= 0) {
+          targetCtx.fillStyle = "rgb(2,18,29)";
+          targetCtx.fillRect(dx, dy, drawW, drawH);
+          continue;
+        }
+
+        const y = Math.min(1, (q / 15) * 0.98);
+        const ramp = cyanRamp(y);
+        const sparkle = ((px * 13 + py * 7 + frame) % 37 === 0) ? 0.035 : 0;
+        const r = Math.min(255, Math.round((ramp[0] + sparkle) * 255));
+        const g = Math.min(255, Math.round((ramp[1] + sparkle) * 255));
+        const b = Math.min(255, Math.round((ramp[2] + sparkle) * 255));
+
+        targetCtx.fillStyle = `rgb(${r},${g},${b})`;
+        targetCtx.fillRect(dx, dy, drawW, drawH);
+        if (q >= 13 && drawW > 1 && drawH > 1) {
+          targetCtx.fillStyle = "rgba(168,228,244,0.075)";
+          targetCtx.fillRect(dx, dy, Math.max(1, drawW - 1), Math.max(1, drawH - 1));
+        }
+      }
+    }
+  }
+
+  function getCachedClipFrame(clip, frame, w, h) {
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const pixelW = Math.max(1, Math.floor(w * dpr));
+    const pixelH = Math.max(1, Math.floor(h * dpr));
+    const frameCount = clip.frames || 1;
+    const cacheKey = `${clip.source || clip.name}:${w.toFixed(2)}x${h.toFixed(2)}:${pixelW}x${pixelH}:${dpr}`;
+
+    if (!clip.renderCache || clip.renderCache.key !== cacheKey) {
+      clip.renderCache = {
+        key: cacheKey,
+        frames: new Array(frameCount),
+      };
+      lastClipCacheKey = cacheKey;
+    }
+
+    if (!clip.renderCache.frames[frame]) {
+      const frameCanvas = document.createElement("canvas");
+      frameCanvas.width = pixelW;
+      frameCanvas.height = pixelH;
+      const frameCtx = frameCanvas.getContext("2d");
+      frameCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      frameCtx.imageSmoothingEnabled = false;
+      renderPackedClipFrame(frameCtx, clip, frame, w, h);
+      clip.renderCache.frames[frame] = frameCanvas;
+    }
+
+    return clip.renderCache.frames[frame];
+  }
+
+  function drawOelGlassGlow(w, h, t, pulse) {
+    const p = clamp(Math.max(0, pulse), 0, 1.35);
+    const edgeAlpha = 0.18 + p * 0.08;
+    const innerAlpha = 0.09 + p * 0.04;
+    const sweepAlpha = 0.075 + p * 0.04;
+    const scanY = Math.round((t * 28) % Math.max(1, h));
+
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.fillStyle = `rgba(126,232,255,${edgeAlpha})`;
+    ctx.fillRect(0, 0, w, 2);
+    ctx.fillRect(0, h - 2, w, 2);
+    ctx.fillRect(0, 0, 2, h);
+    ctx.fillRect(w - 2, 0, 2, h);
+
+    ctx.strokeStyle = `rgba(168,236,255,${innerAlpha})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(1.5, 1.5, Math.max(0, w - 3), Math.max(0, h - 3));
+    ctx.strokeStyle = `rgba(80,196,232,${innerAlpha * 0.55})`;
+    ctx.strokeRect(5.5, 4.5, Math.max(0, w - 11), Math.max(0, h - 9));
+
+    const sweep = ctx.createLinearGradient(0, 0, w, 0);
+    sweep.addColorStop(0, "rgba(126,212,240,0)");
+    sweep.addColorStop(0.45, `rgba(168,236,255,${sweepAlpha})`);
+    sweep.addColorStop(0.55, `rgba(168,236,255,${sweepAlpha})`);
+    sweep.addColorStop(1, "rgba(126,212,240,0)");
+    ctx.fillStyle = sweep;
+    ctx.fillRect(0, Math.max(0, scanY - 1), w, 3);
+    ctx.restore();
+  }
+
+  function drawClip(w, h, t, pulse) {
     const clip = ensureClipRunning();
     if (!clip || !clip.bytes || !clip.bytes.length) {
+      lcdBackground(w, h);
       drawLCDStatus("OEL DATA", w, h);
       return;
     }
@@ -671,67 +772,9 @@
     const fps = clip.fps || 12;
     const elapsed = Math.max(0, (performance.now() - clipStartMs) / 1000);
     const frame = Math.floor(elapsed * fps) % frameCount;
-    const frameOffset = frame * ((clip.w * clip.h) >> 1);
-
-    const isRacingClip = false;
-    const isOelClip = true;
-    // v2.2: map the native OEL frame edge-to-edge into the actual glass area
-    // with no forced black gutters between cells.
-    const cellW = w / clip.w;
-    const cellH = h / clip.h;
-    const offsetX = 0;
-    const offsetY = 0;
-
-    // OEL glass mask: no decorative side blocks. Just a clean perimeter glow
-    // and a subtle sweep so it looks like a native display, not a video frame.
-    const edgeGlow = 0.095 + Math.max(0, pulse) * 0.024;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, w, h);
-    ctx.clip();
-    ctx.fillStyle = `rgba(120,232,255,${edgeGlow})`;
-    ctx.fillRect(0, 0, w, 1);
-    ctx.fillRect(0, h - 1, w, 1);
-    ctx.fillRect(0, 0, 1, h);
-    ctx.fillRect(w - 1, 0, 1, h);
-    ctx.fillStyle = `rgba(126,212,240,${0.020 + Math.max(0, pulse) * 0.010})`;
-    ctx.fillRect(0, Math.round((t * 28) % Math.max(1, h)), w, 1);
-    ctx.restore();
-
-    for (let py = 0; py < clip.h; py++) {
-      for (let px = 0; px < clip.w; px++) {
-        const packed = clip.bytes[frameOffset + ((py * clip.w + px) >> 1)] || 0;
-        const q = (px & 1) ? (packed & 15) : (packed >> 4);
-        const dx = Math.floor(offsetX + px * cellW);
-        const dy = Math.floor(offsetY + py * cellH);
-        const nextX = Math.ceil(offsetX + (px + 1) * cellW);
-        const nextY = Math.ceil(offsetY + (py + 1) * cellH);
-        const drawW = Math.max(1, nextX - dx);
-        const drawH = Math.max(1, nextY - dy);
-        if (q <= 0) {
-          ctx.fillStyle = "rgb(2,18,29)";
-          ctx.fillRect(dx, dy, drawW, drawH);
-          continue;
-        }
-        const y = Math.min(1, (q / 15) * (isOelClip ? 0.98 : 1));
-        const ramp = cyanRamp(y);
-        const sparkle = ((px * 13 + py * 7 + frame) % 37 === 0) ? (isOelClip ? 0.035 : 0.08) : 0;
-        const r = Math.min(255, Math.round((ramp[0] + sparkle) * 255));
-        const g = Math.min(255, Math.round((ramp[1] + sparkle) * 255));
-        const b = Math.min(255, Math.round((ramp[2] + sparkle) * 255));
-        ctx.fillStyle = `rgb(${r},${g},${b})`;
-        ctx.fillRect(dx, dy, drawW, drawH);
-        if (isOelClip && q >= 13 && drawW > 1 && drawH > 1) {
-          ctx.fillStyle = "rgba(168,228,244,0.075)";
-          ctx.fillRect(dx, dy, Math.max(1, drawW - 1), Math.max(1, drawH - 1));
-        }
-      }
-    }
-
-    // Very subtle scanline shimmer so the frame clips still feel like a VFD, not a GIF slapped on glass.
-    ctx.fillStyle = `rgba(126,212,240,${0.020 + Math.max(0, pulse) * 0.010})`;
-    const scanY = Math.round((t * 28) % Math.max(1, h));
-    ctx.fillRect(0, scanY, w, 1);
+    const cachedFrame = getCachedClipFrame(clip, frame, w, h);
+    ctx.drawImage(cachedFrame, 0, 0, w, h);
+    drawOelGlassGlow(w, h, t, pulse);
   }
 
   function drawDot(x, y, size, color, alpha = 1) {
@@ -1000,7 +1043,7 @@
       }
     }
 
-    // testbuild v0.0: the main LCD is animation-only, so no drawn text labels here.
+    // The main LCD is animation-only, so no drawn text labels here.
   }
 
   function syncCurrentTrackFromPlayer() {
@@ -1143,7 +1186,7 @@
     const v = getPlayerVolume();
     const sweepDeg = 360 * v;
     arc.style.setProperty("--pvfd-led-deg", sweepDeg + "deg");
-    // testbuild v0.6-oel-personal: 12 o'clock is 0%, one full clockwise sweep is 100%.
+    // 12 o'clock is 0%, one full clockwise sweep is 100%.
     if (ind) ind.style.setProperty("--pvfd-rot", (360 * v) + "deg");
   }
 
@@ -1202,10 +1245,98 @@
     if (playBtn) playBtn.textContent = Spicetify.Player.isPlaying() ? "⏸" : "▶";
   }
 
+  const LIBRARY_SEARCH_FIX_STYLE_ID = "pvfd-library-search-fix";
+  let librarySearchFixTimer = 0;
+
+  function ensureLibrarySearchFixStyle() {
+    if (document.getElementById(LIBRARY_SEARCH_FIX_STYLE_ID)) return;
+    const style = document.createElement("style");
+    style.id = LIBRARY_SEARCH_FIX_STYLE_ID;
+    style.textContent = `
+.x-filterBox-filterInputContainer {
+  width: 240px !important;
+  min-width: 0 !important;
+  max-width: calc(100% - 12px) !important;
+  flex: 0 1 240px !important;
+}
+.x-filterBox-filterInputContainer .x-filterBox-filterInput {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  padding-left: 40px !important;
+  padding-inline-start: 40px !important;
+  -webkit-padding-start: 40px !important;
+  padding-right: 8px !important;
+  padding-inline-end: 8px !important;
+  -webkit-padding-end: 8px !important;
+  text-indent: 0 !important;
+  box-sizing: border-box !important;
+}
+.x-filterBox-filterInputContainer.pvfd-filter-has-text .x-filterBox-searchIconContainer {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+`;
+    document.head.appendChild(style);
+  }
+
+  function reconcileLibrarySearchBoxes() {
+    ensureLibrarySearchFixStyle();
+    document.querySelectorAll(".x-filterBox-filterInputContainer").forEach(container => {
+      const input = container.querySelector(".x-filterBox-filterInput");
+      if (!input) return;
+
+      container.style.setProperty("width", "240px", "important");
+      container.style.setProperty("min-width", "0", "important");
+      container.style.setProperty("max-width", "calc(100% - 12px)", "important");
+      container.style.setProperty("flex", "0 1 240px", "important");
+
+      input.style.setProperty("width", "100%", "important");
+      input.style.setProperty("min-width", "100%", "important");
+      input.style.setProperty("max-width", "100%", "important");
+      input.style.setProperty("padding-left", "40px", "important");
+      input.style.setProperty("padding-inline-start", "40px", "important");
+      input.style.setProperty("-webkit-padding-start", "40px", "important");
+      input.style.setProperty("padding-right", "8px", "important");
+      input.style.setProperty("padding-inline-end", "8px", "important");
+      input.style.setProperty("-webkit-padding-end", "8px", "important");
+      input.style.setProperty("text-indent", "0", "important");
+      input.style.setProperty("box-sizing", "border-box", "important");
+
+      const sync = () => {
+        const hasText = !!input.value;
+        container.classList.toggle("pvfd-filter-has-text", hasText);
+        const icon = container.querySelector(".x-filterBox-searchIconContainer");
+        if (!icon) return;
+        if (hasText) {
+          icon.style.setProperty("opacity", "0", "important");
+          icon.style.setProperty("visibility", "hidden", "important");
+        } else {
+          icon.style.removeProperty("opacity");
+          icon.style.removeProperty("visibility");
+        }
+      };
+
+      if (!input.dataset.pvfdSearchFixed) {
+        input.dataset.pvfdSearchFixed = "1";
+        input.addEventListener("input", sync);
+        input.addEventListener("change", sync);
+        input.addEventListener("focus", sync);
+        input.addEventListener("blur", sync);
+      }
+      sync();
+    });
+  }
+
   function attach() {
     if (!injectChassis()) {
       setTimeout(attach, 500);
       return;
+    }
+    ensureLibrarySearchFixStyle();
+    reconcileLibrarySearchBoxes();
+    if (!librarySearchFixTimer) {
+      librarySearchFixTimer = window.setInterval(reconcileLibrarySearchBoxes, 500);
     }
     onTrackChange();
     Spicetify.Player.addEventListener("songchange", onTrackChange);
@@ -1218,10 +1349,11 @@
     const obs = new MutationObserver(() => {
       const bar = findPlayerBar();
       if (bar && !bar.querySelector(".pvfd-chassis")) injectChassis();
+      reconcileLibrarySearchBoxes();
     });
     obs.observe(document.body, { childList: true, subtree: true });
 
-    console.log("[PVFD] testbuild v2.0-r1-oel-pixelgrid-sidebox-clearance-personal online — glass overlay removal + side box hardfix loaded.");
+    console.log("[PVFD] PioneerVFD online - LCD glow and responsive layout fixes loaded.");
   }
 
   attach();
