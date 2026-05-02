@@ -62,11 +62,22 @@ body, .Root {
 }
 
 .Root__main-view, .main-view-container, .main-view-container__scroll-node {
+  --pvfd-font-pixel: "Share Tech Mono", monospace;
+  --pvfd-font-vfd: var(--pvfd-font-pixel);
   background: var(--pvfd-app-bg) !important;
   background-image:
     linear-gradient(180deg, rgba(255,255,255,0.018), transparent 120px),
     radial-gradient(ellipse at 50% 0%, rgba(78, 180, 216, 0.07), transparent 68%),
     linear-gradient(180deg, var(--pvfd-app-bg-2), var(--pvfd-app-bg)) !important;
+}
+
+.Root__main-view [data-encore-id="text"],
+.main-view-container [data-encore-id="text"],
+.main-view-container__scroll-node [data-encore-id="text"],
+.Root__main-view a,
+.Root__main-view span,
+.Root__main-view p {
+  font-family: var(--pvfd-font-vfd) !important;
 }
 
 .Root__nav-bar, nav[aria-label="Main"], .Root__top-bar, .main-topBar-container {

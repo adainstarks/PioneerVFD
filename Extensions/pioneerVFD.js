@@ -40,7 +40,16 @@
   // and violet (~280°): rotation = (target - 180) mod 360.
   const TINT_LABELS = ["CYAN", "AMBER", "VIOLET"];
   const TINT_HUE_DEG = [0, 225, 100];
+  const FONT_STORAGE_KEY = "pvfd-font-preset";
+  const FONT_PRESETS = [
+    { label: "DOT",  stack: "\"VT323\", \"Share Tech Mono\", monospace" },
+    { label: "LCD",  stack: "\"Iceland\", \"Share Tech Mono\", monospace" },
+    { label: "TECH", stack: "\"Share Tech Mono\", monospace" },
+    { label: "CRT",  stack: "\"VCR OSD Mono\", \"Silkscreen\", \"VT323\", monospace" },
+  ];
+  const DEFAULT_FONT_PRESET = "TECH";
   let tintIdx = 0;
+  let fontPresetIdx = FONT_PRESETS.findIndex(p => p.label === DEFAULT_FONT_PRESET);
 
   const DEMO_CLIP_CYCLE_MS = 8000;
   const SOURCE_TARGETS = [
@@ -223,7 +232,7 @@
             <div class="pvfd-menu-row" data-pvfd-menu-action="clip"><b>OEL</b><span data-pvfd="menu-oel">----</span></div>
             <div class="pvfd-menu-row" data-pvfd-menu-action="demo"><b>DEMO</b><span data-pvfd="menu-demo">OFF</span></div>
             <div class="pvfd-menu-row" data-pvfd-menu-action="tint"><b>TINT</b><span data-pvfd="menu-tint">CYAN</span></div>
-            <div class="pvfd-menu-row" data-pvfd-menu-action="dim"><b>LCD</b><span data-pvfd="menu-lcd">FULL</span></div>
+            <div class="pvfd-menu-row" data-pvfd-menu-action="type"><b>TYPE</b><span data-pvfd="menu-type">DOT</span></div>
           </div>
         </div>
 
@@ -324,6 +333,12 @@
   function bind(el, fn) { if (el) el.addEventListener("click", fn); }
   function safe(fn) { try { fn(); } catch (e) { console.warn("[PVFD]", e); } }
   function safeReturn(fn, fallback) { try { return fn(); } catch (e) { return fallback; } }
+
+  function readFontPresetIdx() {
+    const saved = safeReturn(() => window.localStorage.getItem(FONT_STORAGE_KEY), "");
+    const idx = FONT_PRESETS.findIndex(p => p.label === saved);
+    return idx >= 0 ? idx : Math.max(0, FONT_PRESETS.findIndex(p => p.label === DEFAULT_FONT_PRESET));
+  }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
   function bindNowPlayingShortcut(el) {
@@ -514,7 +529,7 @@
         oel: chassis.querySelector("[data-pvfd='menu-oel']"),
         demo: chassis.querySelector("[data-pvfd='menu-demo']"),
         tint: chassis.querySelector("[data-pvfd='menu-tint']"),
-        lcd: chassis.querySelector("[data-pvfd='menu-lcd']"),
+        type: chassis.querySelector("[data-pvfd='menu-type']"),
       },
       buttons: {
         play: chassis.querySelector("[data-pvfd='play']"),
@@ -582,7 +597,7 @@
     setTextIfChanged(dom.menu && dom.menu.oel, activeClipName(12));
     setTextIfChanged(dom.menu && dom.menu.demo, demoAutoMode ? "AUTO" : "OFF");
     setTextIfChanged(dom.menu && dom.menu.tint, TINT_LABELS[tintIdx]);
-    setTextIfChanged(dom.menu && dom.menu.lcd, lcdDimmed ? "DIM" : "FULL");
+    setTextIfChanged(dom.menu && dom.menu.type, FONT_PRESETS[fontPresetIdx].label);
   }
 
   function updateRoleButtonStates() {
@@ -603,6 +618,22 @@
     const dimBtn = chassis && chassis.querySelector("[data-pvfd='dim']");
     if (dimBtn) dimBtn.classList.toggle("active", lcdDimmed);
     updateMenuPanel();
+  }
+
+  function applyBrowseFontPreset(persist = false) {
+    fontPresetIdx = ((fontPresetIdx % FONT_PRESETS.length) + FONT_PRESETS.length) % FONT_PRESETS.length;
+    const preset = FONT_PRESETS[fontPresetIdx];
+    document.querySelectorAll(".Root__main-view, .main-view-container, .main-view-container__scroll-node").forEach((el) => {
+      el.style.setProperty("--pvfd-font-pixel", preset.stack);
+      el.style.setProperty("--pvfd-font-vfd", preset.stack);
+    });
+    if (persist) safe(() => window.localStorage.setItem(FONT_STORAGE_KEY, preset.label));
+    updateMenuPanel();
+  }
+
+  function cycleFontPreset() {
+    fontPresetIdx = (fontPresetIdx + 1) % FONT_PRESETS.length;
+    applyBrowseFontPreset(true);
   }
 
   function cycleClipMode() {
@@ -645,7 +676,7 @@
     else if (action === "clip") cycleClipMode();
     else if (action === "demo") toggleDemoMode();
     else if (action === "tint") cycleTintMode();
-    else if (action === "dim") toggleDimMode();
+    else if (action === "type") cycleFontPreset();
   }
 
   function getPlayerVolume(now = performance.now(), force = false) {
@@ -2011,6 +2042,7 @@
     if (!records.length) return;
 
     scheduleChassisRecheck();
+    applyBrowseFontPreset(false);
     const searchRoot = getLibrarySearchRootFromMutations(records);
     if (searchRoot) scheduleLibrarySearchReconcile(searchRoot, 80);
     if (hasLyricsView()) {
@@ -2037,6 +2069,8 @@
       return;
     }
     ensureLibrarySearchFixStyle();
+    fontPresetIdx = readFontPresetIdx();
+    applyBrowseFontPreset(false);
     reconcileLibrarySearchBoxes();
     reconcileLyricsSyncButtons();
     onTrackChange();
