@@ -6307,6 +6307,12 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
   z-index: 60 !important;
 }
 
+/* v2.48-r2: let active global search suggestions clear the sticky album chrome. */
+.Root:has(:is(.Root__top-bar, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i]) input:focus)
+  .main-topBar-container {
+  z-index: 6 !important;
+}
+
 /* v2.47-temp: cheaper Home/card hover paint so fast cursor sweeps do not stall the LCD. */
 .Root__main-view :is(.main-card-card, [data-encore-id="card"]) {
   contain: paint !important;
