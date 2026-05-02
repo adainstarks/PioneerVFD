@@ -81,6 +81,7 @@
   let scrubPreviewUntil = 0;
   let navDrag = null;
   let lastClipCacheKey = "";
+  const CLIP_CACHE_BATCH_MS = 7;
 
   let dolphinX = -50;
   const dolphinBubbles = [];
@@ -438,28 +439,96 @@
     updateMenuPanel();
   }
 
+  let pvfdDom = null;
+  const playerStateCache = { at: -Infinity, playing: false, shuffle: false, repeat: "OFF" };
+
+  function getPvfdDom() {
+    if (!chassis) return {};
+    if (pvfdDom && pvfdDom.chassis === chassis) return pvfdDom;
+    pvfdDom = {
+      chassis,
+      menuPanel: chassis.querySelector("[data-pvfd='menu-panel']"),
+      menu: {
+        src: chassis.querySelector("[data-pvfd='menu-src']"),
+        oel: chassis.querySelector("[data-pvfd='menu-oel']"),
+        demo: chassis.querySelector("[data-pvfd='menu-demo']"),
+        tint: chassis.querySelector("[data-pvfd='menu-tint']"),
+        lcd: chassis.querySelector("[data-pvfd='menu-lcd']"),
+      },
+      buttons: {
+        play: chassis.querySelector("[data-pvfd='play']"),
+        shuffle: chassis.querySelector("[data-pvfd='shuffle']"),
+        repeat: chassis.querySelector("[data-pvfd='repeat']"),
+        demo: chassis.querySelector("[data-pvfd='demo']"),
+        menu: chassis.querySelector("[data-pvfd='menu']"),
+      },
+      side: {
+        vol: chassis.querySelector("[data-pvfd='side-vol']"),
+        mode: chassis.querySelector("[data-pvfd='side-mode']"),
+        tint: chassis.querySelector("[data-pvfd='side-tint']"),
+        dim: chassis.querySelector("[data-pvfd='side-dim']"),
+        prog: chassis.querySelector("[data-pvfd='side-prog']"),
+        left: chassis.querySelector("[data-pvfd='side-left']"),
+        repeat: chassis.querySelector("[data-pvfd='side-repeat']"),
+        shuffle: chassis.querySelector("[data-pvfd='side-shuffle']"),
+        status: chassis.querySelector("[data-pvfd='side-status']"),
+        playbadge: chassis.querySelector("[data-pvfd='side-playbadge']"),
+      },
+      sideVu: Array.from(chassis.querySelectorAll("[data-pvfd='side-vu'] span")),
+      meta: chassis.querySelector(".pvfd-meta-track"),
+      time: chassis.querySelector(".pvfd-meta-time"),
+      progress: chassis.querySelector(".pvfd-meta-progress"),
+      progressText: chassis.querySelector(".pvfd-progress-text"),
+      knobArc: chassis.querySelector(".pvfd-knob-led-arc"),
+      knobIndicator: chassis.querySelector(".pvfd-knob-indicator"),
+      navRing: chassis.querySelector(".pvfd-nav-led-ring"),
+    };
+    return pvfdDom;
+  }
+
+  function setTextIfChanged(el, txt) {
+    if (el && el.textContent !== txt) el.textContent = txt;
+  }
+
+  function setAttrIfChanged(el, name, value) {
+    if (el && el.getAttribute(name) !== value) el.setAttribute(name, value);
+  }
+
+  function setStyleIfChanged(el, name, value, priority) {
+    if (!el || el.style.getPropertyValue(name) === value) return;
+    el.style.setProperty(name, value, priority || "");
+  }
+
+  function getSampledPlayerState(now = performance.now()) {
+    if (now - playerStateCache.at > 250) {
+      playerStateCache.at = now;
+      playerStateCache.playing = Spicetify.Player.isPlaying();
+      playerStateCache.shuffle = getShuffleState();
+      playerStateCache.repeat = getRepeatState();
+    }
+    return playerStateCache;
+  }
+
   function updateMenuPanel() {
     if (!chassis) return;
-    const set = (sel, txt) => {
-      const el = chassis.querySelector(sel);
-      if (el) el.textContent = txt;
-    };
+    const dom = getPvfdDom();
     const source = SOURCE_TARGETS[sourceIdx] || SOURCE_TARGETS[0];
-    set("[data-pvfd='menu-src']", source.label);
-    set("[data-pvfd='menu-oel']", activeClipName(12));
-    set("[data-pvfd='menu-demo']", demoAutoMode ? "AUTO" : "OFF");
-    set("[data-pvfd='menu-tint']", TINT_LABELS[tintIdx]);
-    set("[data-pvfd='menu-lcd']", lcdDimmed ? "DIM" : "FULL");
+    setTextIfChanged(dom.menu && dom.menu.src, source.label);
+    setTextIfChanged(dom.menu && dom.menu.oel, activeClipName(12));
+    setTextIfChanged(dom.menu && dom.menu.demo, demoAutoMode ? "AUTO" : "OFF");
+    setTextIfChanged(dom.menu && dom.menu.tint, TINT_LABELS[tintIdx]);
+    setTextIfChanged(dom.menu && dom.menu.lcd, lcdDimmed ? "DIM" : "FULL");
   }
 
   function updateRoleButtonStates() {
     if (!chassis) return;
-    const demoBtn = chassis.querySelector("[data-pvfd='demo']");
+    const dom = getPvfdDom();
+    const demoBtn = dom.buttons && dom.buttons.demo;
     if (demoBtn) {
       demoBtn.classList.toggle("active", demoAutoMode);
       demoBtn.title = demoAutoMode ? "Showroom auto-cycle: on" : "Toggle showroom auto-cycle";
     }
-    const menuBtn = chassis.querySelector("[data-pvfd='menu']");
+    const menuBtn = dom.buttons && dom.buttons.menu;
     if (menuBtn) menuBtn.classList.toggle("active", menuOpen);
   }
 
@@ -906,33 +975,124 @@
     }
   }
 
-  function getCachedClipFrame(clip, frame, w, h) {
+  function getClipCacheMeta(clip, w, h) {
     const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     const pixelW = Math.max(1, Math.floor(w * dpr));
     const pixelH = Math.max(1, Math.floor(h * dpr));
     const frameCount = clip.frames || 1;
     const cacheKey = `${clip.source || clip.name}:${w.toFixed(2)}x${h.toFixed(2)}:${pixelW}x${pixelH}:${dpr}`;
+    return { cacheKey, dpr, pixelW, pixelH, frameCount, w, h };
+  }
 
-    if (!clip.renderCache || clip.renderCache.key !== cacheKey) {
+  function ensureClipRenderCache(clip, meta) {
+    if (!clip.renderCache || clip.renderCache.key !== meta.cacheKey) {
       clip.renderCache = {
-        key: cacheKey,
-        frames: new Array(frameCount),
+        key: meta.cacheKey,
+        dpr: meta.dpr,
+        pixelW: meta.pixelW,
+        pixelH: meta.pixelH,
+        w: meta.w,
+        h: meta.h,
+        frameCount: meta.frameCount,
+        frames: new Array(meta.frameCount),
+        warmed: 0,
+        nextWarmFrame: 0,
+        ready: false,
+        warming: false,
+        warmStartedAt: performance.now(),
       };
-      lastClipCacheKey = cacheKey;
+      lastClipCacheKey = meta.cacheKey;
     }
+    return clip.renderCache;
+  }
 
-    if (!clip.renderCache.frames[frame]) {
-      const frameCanvas = document.createElement("canvas");
-      frameCanvas.width = pixelW;
-      frameCanvas.height = pixelH;
-      const frameCtx = frameCanvas.getContext("2d");
-      frameCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      frameCtx.imageSmoothingEnabled = false;
-      renderPackedClipFrame(frameCtx, clip, frame, w, h);
-      clip.renderCache.frames[frame] = frameCanvas;
+  function renderClipFrameCanvas(clip, frame, meta) {
+    const frameCanvas = document.createElement("canvas");
+    frameCanvas.width = meta.pixelW;
+    frameCanvas.height = meta.pixelH;
+    const frameCtx = frameCanvas.getContext("2d");
+    frameCtx.setTransform(meta.dpr, 0, 0, meta.dpr, 0, 0);
+    frameCtx.imageSmoothingEnabled = false;
+    renderPackedClipFrame(frameCtx, clip, frame, meta.w, meta.h);
+    return frameCanvas;
+  }
+
+  function nextMissingClipFrame(cache) {
+    for (let i = 0; i < cache.frameCount; i++) {
+      const frame = (cache.nextWarmFrame + i) % cache.frameCount;
+      if (!cache.frames[frame]) return frame;
     }
+    return -1;
+  }
 
-    return clip.renderCache.frames[frame];
+  function finishClipCacheIfReady(clip, cache) {
+    if (cache.ready || cache.warmed < cache.frameCount) return;
+    cache.ready = true;
+    if (clip === (CLIPS[clipIdx] || CLIPS[0])) clipStartMs = performance.now();
+  }
+
+  function warmClipCacheSlice(clip, meta) {
+    const cache = ensureClipRenderCache(clip, meta);
+    const startedAt = performance.now();
+    let rendered = 0;
+    while (rendered < 1 || (performance.now() - startedAt < CLIP_CACHE_BATCH_MS && rendered < 3)) {
+      const frame = nextMissingClipFrame(cache);
+      if (frame < 0) break;
+      cache.frames[frame] = renderClipFrameCanvas(clip, frame, meta);
+      cache.warmed++;
+      cache.nextWarmFrame = (frame + 1) % cache.frameCount;
+      rendered++;
+    }
+    finishClipCacheIfReady(clip, cache);
+  }
+
+  function scheduleClipCacheWarmup(clip, meta) {
+    const cache = ensureClipRenderCache(clip, meta);
+    if (cache.ready || cache.warming) return;
+    cache.warming = true;
+    const run = () => {
+      cache.warming = false;
+      if (clip.renderCache !== cache || cache.ready) return;
+      warmClipCacheSlice(clip, meta);
+      if (!cache.ready) scheduleClipCacheWarmup(clip, meta);
+    };
+    if (window.requestIdleCallback) window.requestIdleCallback(run, { timeout: 80 });
+    else window.setTimeout(run, 16);
+  }
+
+  function getCachedClipFrame(clip, frame, w, h) {
+    const meta = getClipCacheMeta(clip, w, h);
+    const cache = ensureClipRenderCache(clip, meta);
+    scheduleClipCacheWarmup(clip, meta);
+    return cache.ready ? cache.frames[frame] : null;
+  }
+
+  function drawClipLoadingStatus(clip, w, h, t, pulse) {
+    const cache = clip && clip.renderCache;
+    const total = Math.max(1, cache ? cache.frameCount : (clip && clip.frames) || 1);
+    const ready = Math.max(0, cache ? cache.warmed : 0);
+    const pct = Math.min(99, Math.floor((ready / total) * 100));
+    lcdBackground(w, h);
+
+    ctx.save();
+    const scanX = Math.round((t * 36) % Math.max(1, w + 60)) - 60;
+    const sweep = ctx.createLinearGradient(scanX, 0, scanX + 60, 0);
+    sweep.addColorStop(0, "rgba(126,212,240,0)");
+    sweep.addColorStop(0.5, "rgba(126,212,240,0.11)");
+    sweep.addColorStop(1, "rgba(126,212,240,0)");
+    ctx.fillStyle = sweep;
+    ctx.fillRect(Math.max(0, scanX), 0, 60, h);
+
+    drawLCDStatus(ready ? `LOADING ${pct}%` : "LOADING...", w, h);
+    const barW = Math.max(48, Math.round(w * 0.36));
+    const barX = Math.round((w - barW) / 2);
+    const barY = Math.min(h - 8, Math.round(h * 0.62));
+    ctx.fillStyle = "rgba(2,18,29,0.92)";
+    ctx.fillRect(barX, barY, barW, 3);
+    ctx.fillStyle = "rgba(126,212,240,0.74)";
+    ctx.fillRect(barX, barY, Math.max(2, Math.round(barW * ready / total)), 3);
+    ctx.restore();
+    drawOelGlassGlow(w, h, t, pulse);
   }
 
   function drawOelGlassGlow(w, h, t, pulse) {
@@ -979,6 +1139,10 @@
     const elapsed = Math.max(0, (performance.now() - clipStartMs) / 1000);
     const frame = Math.floor(elapsed * fps) % frameCount;
     const cachedFrame = getCachedClipFrame(clip, frame, w, h);
+    if (!cachedFrame) {
+      drawClipLoadingStatus(clip, w, h, t, pulse);
+      return;
+    }
     ctx.drawImage(cachedFrame, 0, 0, w, h);
     drawOelGlassGlow(w, h, t, pulse);
   }
@@ -1314,18 +1478,19 @@
     return durationMs > 0 ? `${elapsed} / ${fmtTime(durationMs)}` : elapsed;
   }
 
-  function updateButtonStates() {
-    const playBtn = chassis.querySelector("[data-pvfd='play']");
-    if (playBtn) playBtn.textContent = Spicetify.Player.isPlaying() ? "⏸" : "▶";
-    const shuffleBtn = chassis.querySelector("[data-pvfd='shuffle']");
-    const shuffleOn = getShuffleState();
+  function updateButtonStates(playerState = getSampledPlayerState()) {
+    const dom = getPvfdDom();
+    const playBtn = dom.buttons && dom.buttons.play;
+    setTextIfChanged(playBtn, playerState.playing ? "⏸" : "▶");
+    const shuffleBtn = dom.buttons && dom.buttons.shuffle;
+    const shuffleOn = playerState.shuffle;
     if (shuffleBtn) {
       shuffleBtn.classList.toggle("active", shuffleOn);
       shuffleBtn.dataset.label = shuffleOn ? "ON" : "OFF";
       shuffleBtn.title = shuffleOn ? "Shuffle: on" : "Shuffle: off";
     }
-    const repeatBtn = chassis.querySelector("[data-pvfd='repeat']");
-    const rpt = getRepeatState();
+    const repeatBtn = dom.buttons && dom.buttons.repeat;
+    const rpt = playerState.repeat;
     if (repeatBtn) {
       repeatBtn.classList.toggle("active", rpt !== "OFF");
       repeatBtn.classList.toggle("repeat-context", rpt === "ALL");
@@ -1336,39 +1501,42 @@
     updateRoleButtonStates();
   }
 
-  function updateSideReadouts(modeName, progressMs, durationMs) {
-    const set = (sel, txt) => { const el = chassis.querySelector(sel); if (el) el.textContent = txt; };
+  function updateSideReadouts(modeName, progressMs, durationMs, playerState = getSampledPlayerState()) {
+    const dom = getPvfdDom();
+    const side = dom.side || {};
     const pct = durationMs ? clamp(progressMs / durationMs, 0, 1) : 0;
     const activeClip = modeName === "CLIP" ? ensureClipRunning() : null;
     const activeClipName = activeClip ? String(activeClip.name || "OEL").replace(/^OEL\s*/i, "").slice(0, 8).toUpperCase() : "";
     const source = SOURCE_TARGETS[sourceIdx] || SOURCE_TARGETS[0];
     const sourceFlash = performance.now() < sourceFlashUntil;
-    set("[data-pvfd='side-vol']", Math.round(getPlayerVolume() * 100) + "%");
-    set("[data-pvfd='side-mode']", demoAutoMode ? "DEMO" : (activeClip ? "OEL" : (modeName || "----")));
-    set("[data-pvfd='side-tint']", TINT_LABELS[tintIdx]);
-    set("[data-pvfd='side-dim']", lcdDimmed ? "DIM" : "FULL");
-    set("[data-pvfd='side-prog']", durationMs ? Math.round(pct * 100) + "%" : "--%");
-    set("[data-pvfd='side-left']", durationMs ? "-" + fmtTime(durationMs - progressMs) : "--:--");
-    set("[data-pvfd='side-repeat']", getRepeatState());
-    set("[data-pvfd='side-shuffle']", getShuffleState() ? "ON" : "OFF");
-    set("[data-pvfd='side-status']", sourceFlash ? ("SRC " + source.label) : (demoAutoMode ? "DEMO" : (activeClip ? activeClipName : (Spicetify.Player.isPlaying() ? "PLAY" : "PAUSE"))));
-    set("[data-pvfd='side-playbadge']", demoAutoMode ? "AUTO" : (activeClip ? "LKD" : (Spicetify.Player.isPlaying() ? "RUN" : "IDLE")));
-    const vu = chassis.querySelectorAll("[data-pvfd='side-vu'] span");
+    setTextIfChanged(side.vol, Math.round(getPlayerVolume() * 100) + "%");
+    setTextIfChanged(side.mode, demoAutoMode ? "DEMO" : (activeClip ? "OEL" : (modeName || "----")));
+    setTextIfChanged(side.tint, TINT_LABELS[tintIdx]);
+    setTextIfChanged(side.dim, lcdDimmed ? "DIM" : "FULL");
+    setTextIfChanged(side.prog, durationMs ? Math.round(pct * 100) + "%" : "--%");
+    setTextIfChanged(side.left, durationMs ? "-" + fmtTime(durationMs - progressMs) : "--:--");
+    setTextIfChanged(side.repeat, playerState.repeat);
+    setTextIfChanged(side.shuffle, playerState.shuffle ? "ON" : "OFF");
+    setTextIfChanged(side.status, sourceFlash ? ("SRC " + source.label) : (demoAutoMode ? "DEMO" : (activeClip ? activeClipName : (playerState.playing ? "PLAY" : "PAUSE"))));
+    setTextIfChanged(side.playbadge, demoAutoMode ? "AUTO" : (activeClip ? "LKD" : (playerState.playing ? "RUN" : "IDLE")));
+    const vu = dom.sideVu || [];
     if (vu.length) {
       const energy = clamp(barHeights.reduce((a, b) => a + b, 0) / Math.max(1, barHeights.length), 0, 1);
       vu.forEach((seg, idx) => {
         const threshold = 1 - (idx + 1) / vu.length;
         seg.classList.toggle("on", energy > threshold * 0.92);
-        seg.style.opacity = energy > threshold * 0.92 ? String(0.35 + energy * 0.65) : "0.22";
+        setStyleIfChanged(seg, "opacity", energy > threshold * 0.92 ? (0.35 + energy * 0.65).toFixed(2) : "0.22");
       });
     }
   }
 
   function updateOverlays(progressMs, modeName) {
-    const metaEl = chassis.querySelector(".pvfd-meta-track");
-    const timeEl = chassis.querySelector(".pvfd-meta-time");
-    const progressEl = chassis.querySelector(".pvfd-meta-progress");
-    const progressText = chassis.querySelector(".pvfd-progress-text");
+    const dom = getPvfdDom();
+    const playerState = getSampledPlayerState();
+    const metaEl = dom.meta;
+    const timeEl = dom.time;
+    const progressEl = dom.progress;
+    const progressText = dom.progressText;
     const title = trackTitle || "—";
     const artist = trackArtist || "";
     const label = artist ? `${artist} - ${title}` : title;
@@ -1377,37 +1545,45 @@
     const pct = durationMs > 0 ? clamp(progressMs / durationMs, 0, 1) : 0;
     const timeText = durationMs > 0 ? `${elapsed} / ${fmtTime(durationMs)}` : elapsed;
     if (metaEl) {
-      metaEl.textContent = (Spicetify.Player.isPlaying() ? "▶ " : "Ⅱ ") + label;
-      metaEl.title = "Open Now Playing: " + label;
-      metaEl.setAttribute("aria-label", "Open Now Playing: " + label);
+      const metaText = (playerState.playing ? "▶ " : "Ⅱ ") + label;
+      const metaLabel = "Open Now Playing: " + label;
+      setTextIfChanged(metaEl, metaText);
+      if (metaEl.title !== metaLabel) metaEl.title = metaLabel;
+      setAttrIfChanged(metaEl, "aria-label", metaLabel);
     }
-    if (timeEl) timeEl.textContent = timeText;
+    setTextIfChanged(timeEl, timeText);
     if (progressEl) {
-      progressEl.style.setProperty("--pvfd-progress", (pct * 100).toFixed(2) + "%");
-      progressEl.title = "Scrub: " + makeProgressLabel(progressMs, durationMs);
-      progressEl.setAttribute("aria-label", "Scrub progress " + makeProgressLabel(progressMs, durationMs));
+      setStyleIfChanged(progressEl, "--pvfd-progress", (pct * 100).toFixed(2) + "%");
+      const progressLabel = makeProgressLabel(progressMs, durationMs);
+      const titleText = "Scrub: " + progressLabel;
+      if (progressEl.title !== titleText) progressEl.title = titleText;
+      setAttrIfChanged(progressEl, "aria-label", "Scrub progress " + progressLabel);
     }
-    if (progressText) progressText.textContent = "";
-    updateButtonStates();
-    updateSideReadouts(modeName, progressMs, durationMs);
-    updateMenuPanel();
+    setTextIfChanged(progressText, "");
+    updateButtonStates(playerState);
+    updateSideReadouts(modeName, progressMs, durationMs, playerState);
   }
 
   function updateLknobLED() {
-    const arc = chassis.querySelector(".pvfd-knob-led-arc");
-    const ind = chassis.querySelector(".pvfd-knob-indicator");
+    const dom = getPvfdDom();
+    const arc = dom.knobArc;
+    const ind = dom.knobIndicator;
     if (!arc) return;
     const v = getPlayerVolume();
-    const sweepDeg = 360 * v;
-    arc.style.setProperty("--pvfd-led-deg", sweepDeg + "deg");
+    const sweepDeg = (360 * v).toFixed(1) + "deg";
+    setStyleIfChanged(arc, "--pvfd-led-deg", sweepDeg);
     // 12 o'clock is 0%, one full clockwise sweep is 100%.
-    if (ind) ind.style.setProperty("--pvfd-rot", (360 * v) + "deg");
+    setStyleIfChanged(ind, "--pvfd-rot", sweepDeg);
   }
 
   function updateNavLED(tSec) {
-    const ring = chassis.querySelector(".pvfd-nav-led-ring");
+    const dom = getPvfdDom();
+    const ring = dom.navRing;
     if (!ring) return;
-    const p = beatPulse(tSec);
+    const bucket = Math.round(beatPulse(tSec) * 32);
+    if (ring.dataset.pvfdLedBucket === String(bucket)) return;
+    ring.dataset.pvfdLedBucket = String(bucket);
+    const p = bucket / 32;
     ring.style.boxShadow = `0 0 ${14 + p * 18}px rgba(78, 180, 216, ${0.95 - p * 0.1}),
       inset 0 0 ${10 + p * 10}px rgba(140, 220, 250, ${0.6 + p * 0.3})`;
   }
@@ -1431,8 +1607,8 @@
       if (modeName === "CLIP") setActiveClip(clipIdx);
       lastModeName = modeName;
     }
-    if (chassis) chassis.setAttribute("data-pvfd-mode", modeName.toLowerCase());
-    if (chassis) chassis.setAttribute("data-pvfd-demo", demoAutoMode ? "on" : "off");
+    setAttrIfChanged(chassis, "data-pvfd-mode", modeName.toLowerCase());
+    setAttrIfChanged(chassis, "data-pvfd-demo", demoAutoMode ? "on" : "off");
 
     if (demoAutoMode && ts - demoLastClipSwitchMs > DEMO_CLIP_CYCLE_MS) {
       setActiveClip(clipIdx + 1);
@@ -1460,6 +1636,7 @@
   }
 
   function onTrackChange() {
+    playerStateCache.at = -Infinity;
     syncCurrentTrackFromPlayer();
     const playBtn = chassis && chassis.querySelector("[data-pvfd='play']");
     if (playBtn) playBtn.textContent = Spicetify.Player.isPlaying() ? "⏸" : "▶";
@@ -1467,6 +1644,8 @@
 
   const LIBRARY_SEARCH_FIX_STYLE_ID = "pvfd-library-search-fix";
   let librarySearchFixTimer = 0;
+  let pvfdMutationTimer = 0;
+  let librarySearchLastRoot = null;
 
   function ensureLibrarySearchFixStyle() {
     if (document.getElementById(LIBRARY_SEARCH_FIX_STYLE_ID)) return;
@@ -1500,17 +1679,22 @@
     document.head.appendChild(style);
   }
 
-  function reconcileLibrarySearchBoxes() {
-    ensureLibrarySearchFixStyle();
-    document.querySelectorAll(".x-filterBox-filterInputContainer").forEach(container => {
-      const input = container.querySelector(".x-filterBox-filterInput");
-      if (!input) return;
+  function syncLibrarySearchState(container, input) {
+    const hasText = !!input.value;
+    container.classList.toggle("pvfd-filter-has-text", hasText);
+  }
 
+  function applySearchBoxGeometry(container, input) {
+    if (!container.dataset.pvfdSearchLayoutFixed) {
+      container.dataset.pvfdSearchLayoutFixed = "1";
       container.style.setProperty("width", "240px", "important");
       container.style.setProperty("min-width", "0", "important");
       container.style.setProperty("max-width", "calc(100% - 12px)", "important");
       container.style.setProperty("flex", "0 1 240px", "important");
+    }
 
+    if (!input.dataset.pvfdSearchLayoutFixed) {
+      input.dataset.pvfdSearchLayoutFixed = "1";
       input.style.setProperty("width", "100%", "important");
       input.style.setProperty("min-width", "100%", "important");
       input.style.setProperty("max-width", "100%", "important");
@@ -1522,30 +1706,73 @@
       input.style.setProperty("-webkit-padding-end", "8px", "important");
       input.style.setProperty("text-indent", "0", "important");
       input.style.setProperty("box-sizing", "border-box", "important");
+    }
+  }
 
-      const sync = () => {
-        const hasText = !!input.value;
-        container.classList.toggle("pvfd-filter-has-text", hasText);
-        const icon = container.querySelector(".x-filterBox-searchIconContainer");
-        if (!icon) return;
-        if (hasText) {
-          icon.style.setProperty("opacity", "0", "important");
-          icon.style.setProperty("visibility", "hidden", "important");
-        } else {
-          icon.style.removeProperty("opacity");
-          icon.style.removeProperty("visibility");
-        }
-      };
+  function reconcileLibrarySearchBoxes(root = document) {
+    ensureLibrarySearchFixStyle();
+    const scope = root && root.querySelectorAll ? root : document;
+    const boxes = [];
+    if (scope.matches && scope.matches(".x-filterBox-filterInputContainer")) boxes.push(scope);
+    scope.querySelectorAll(".x-filterBox-filterInputContainer").forEach(container => boxes.push(container));
+    boxes.forEach(container => {
+      const input = container.querySelector(".x-filterBox-filterInput");
+      if (!input) return;
+
+      applySearchBoxGeometry(container, input);
 
       if (!input.dataset.pvfdSearchFixed) {
         input.dataset.pvfdSearchFixed = "1";
+        const sync = () => syncLibrarySearchState(container, input);
         input.addEventListener("input", sync);
         input.addEventListener("change", sync);
         input.addEventListener("focus", sync);
         input.addEventListener("blur", sync);
       }
-      sync();
+      syncLibrarySearchState(container, input);
     });
+  }
+
+  function scheduleLibrarySearchReconcile(root, delay = 120) {
+    librarySearchLastRoot = root && root.querySelectorAll ? root : document;
+    if (librarySearchFixTimer) return;
+    librarySearchFixTimer = window.setTimeout(() => {
+      const nextRoot = librarySearchLastRoot || document;
+      librarySearchFixTimer = 0;
+      librarySearchLastRoot = null;
+      reconcileLibrarySearchBoxes(nextRoot);
+    }, delay);
+  }
+
+  function elementFromMutationNode(node) {
+    return node && node.nodeType === 1 ? node : null;
+  }
+
+  function containsLibrarySearchBox(el) {
+    if (!el || !el.matches) return false;
+    return el.matches(".x-filterBox-filterInputContainer, .x-filterBox-filterInput")
+      || !!(el.querySelector && el.querySelector(".x-filterBox-filterInputContainer, .x-filterBox-filterInput"));
+  }
+
+  function getLibrarySearchRootFromMutations(records) {
+    for (const record of records) {
+      const target = elementFromMutationNode(record.target);
+      if (containsLibrarySearchBox(target)) return target;
+      for (const node of record.addedNodes || []) {
+        const el = elementFromMutationNode(node);
+        if (containsLibrarySearchBox(el)) return el;
+      }
+    }
+    return null;
+  }
+
+  function scheduleChassisRecheck() {
+    if (chassis && chassis.isConnected) return;
+    if (pvfdMutationTimer) return;
+    pvfdMutationTimer = window.setTimeout(() => {
+      pvfdMutationTimer = 0;
+      if (!chassis || !chassis.isConnected) injectChassis();
+    }, 250);
   }
 
   function attach() {
@@ -1555,23 +1782,26 @@
     }
     ensureLibrarySearchFixStyle();
     reconcileLibrarySearchBoxes();
-    if (!librarySearchFixTimer) {
-      librarySearchFixTimer = window.setInterval(reconcileLibrarySearchBoxes, 500);
-    }
     onTrackChange();
     Spicetify.Player.addEventListener("songchange", onTrackChange);
     Spicetify.Player.addEventListener("onplaypause", () => {
+      playerStateCache.at = -Infinity;
       const playBtn = chassis && chassis.querySelector("[data-pvfd='play']");
       if (playBtn) playBtn.textContent = Spicetify.Player.isPlaying() ? "⏸" : "▶";
     });
     requestAnimationFrame(loop);
 
-    const obs = new MutationObserver(() => {
-      const bar = findPlayerBar();
-      if (bar && !bar.querySelector(".pvfd-chassis")) injectChassis();
-      reconcileLibrarySearchBoxes();
+    const obs = new MutationObserver((records) => {
+      scheduleChassisRecheck();
+      const searchRoot = getLibrarySearchRootFromMutations(records);
+      if (searchRoot) scheduleLibrarySearchReconcile(searchRoot, 80);
     });
     obs.observe(document.body, { childList: true, subtree: true });
+
+    document.addEventListener("focusin", (e) => {
+      const box = e.target && e.target.closest && e.target.closest(".x-filterBox-filterInputContainer");
+      if (box) scheduleLibrarySearchReconcile(box, 0);
+    }, true);
 
     console.log("[PVFD] PioneerVFD online - LCD glow and responsive layout fixes loaded.");
   }
