@@ -93,7 +93,7 @@ PioneerVFD/
 - `Themes/PioneerVFD/user.css` owns the chrome body, LCD styling, typography, and Spotify layout overrides.
 - `Themes/PioneerVFD/color.ini` defines the `Pioneer DEH-P7600MP` color scheme.
 - The center OEL animation path caches rendered frames for smoother playback.
-- The Linux and macOS installers resolve the Spicetify config directory with `spicetify -c`, then copy the same theme and extension files used on Windows.
+- The Linux and macOS installers resolve the Spicetify config directory with `spicetify -c`, then copy the same theme and extension files used on Windows. Also, it is not completely necessary to `chmod +x` but may help if you experience file permission issues.
 
 ## Disclaimer
 
