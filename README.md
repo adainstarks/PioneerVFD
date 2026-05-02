@@ -92,7 +92,7 @@ PioneerVFD/
 - `Extensions/pioneerVFD.js` contains the packed LCD clip data inline, so there are no video assets to host.
 - `Themes/PioneerVFD/user.css` owns the chrome body, LCD styling, typography, and Spotify layout overrides.
 - `Themes/PioneerVFD/color.ini` defines the `Pioneer DEH-P7600MP` color scheme.
-- The center OEL animation path caches rendered frames and draws a lightweight glass glow overlay for smoother playback.
+- The center OEL animation path caches rendered frames for smoother playback.
 - The Linux and macOS installers resolve the Spicetify config directory with `spicetify -c`, then copy the same theme and extension files used on Windows.
 
 ## Disclaimer
