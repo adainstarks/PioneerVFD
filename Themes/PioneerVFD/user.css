@@ -345,7 +345,7 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
 .pvfd-nav-button:hover { filter: brightness(1.1); }
 .pvfd-nav-arrow {
   position: absolute; color: var(--pvfd-cyan-glow);
-  font-size: 11px; line-height: 1; font-weight: 700;
+  font-size: 13px; line-height: 1; font-weight: 700;
   text-shadow: 0 0 5px rgba(110, 212, 248, 0.95), 0 0 10px rgba(78, 180, 216, 0.7);
   letter-spacing: -2px; cursor: pointer; user-select: none;
   z-index: 2;
@@ -2648,6 +2648,41 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   }
 }
 
+@media (max-width: 1160px) {
+  .pvfd-mainrow {
+    grid-template-columns: clamp(82px, 9vw, 108px) 38px minmax(0, 1fr) 38px clamp(82px, 9vw, 108px) !important;
+    gap: 5px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank {
+    display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    width: auto !important;
+    min-width: 34px !important;
+    transform: none !important;
+    gap: 6px !important;
+  }
+
+  .pvfd-pill {
+    min-height: 22px !important;
+    padding: 3px 0 !important;
+    font-size: 8px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .pvfd-mainrow {
+    grid-template-columns: 76px 34px minmax(0, 1fr) 34px 76px !important;
+    gap: 4px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank {
+    min-width: 32px !important;
+    gap: 5px !important;
+  }
+}
+
 /* ==============================================================
     version note v2.8-r1: library legibility
    - The library header lives on a dark panel, but the older nav rule colored
@@ -4029,4 +4064,375 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
     0 0 4px rgba(216, 246, 255, 0.92),
     0 0 10px rgba(78, 180, 216, 0.46);
   box-shadow: inset 0 -1px 0 rgba(126, 212, 240, 0.45);
+}
+
+/* v2.15: hard stop for flank buttons overlapping the side LCD boxes. */
+.pvfd-chassis {
+  container-type: inline-size;
+}
+
+@media (max-width: 1760px) {
+  .pvfd-mainrow {
+    grid-template-columns: 128px 42px minmax(0, 1fr) 42px 128px !important;
+    gap: 8px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank:nth-child(2) {
+    transform: translateX(-10px) !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: translateX(10px) !important;
+  }
+}
+
+@media (max-width: 1620px) {
+  .pvfd-mainrow {
+    grid-template-columns: clamp(108px, 8vw, 128px) minmax(0, 1fr) clamp(108px, 8vw, 128px) !important;
+    gap: 8px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    transform: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .pvfd-mainrow {
+    grid-template-columns: 88px minmax(0, 1fr) 88px !important;
+    gap: 6px !important;
+  }
+}
+
+@media (max-width: 1160px) {
+  .pvfd-mainrow {
+    grid-template-columns: clamp(82px, 9vw, 108px) 38px minmax(0, 1fr) 38px clamp(82px, 9vw, 108px) !important;
+    gap: 5px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank {
+    display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    width: auto !important;
+    min-width: 34px !important;
+    transform: none !important;
+    gap: 6px !important;
+  }
+
+  .pvfd-pill {
+    min-height: 22px !important;
+    padding: 3px 0 !important;
+    font-size: 8px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .pvfd-mainrow {
+    grid-template-columns: 76px 34px minmax(0, 1fr) 34px 76px !important;
+    gap: 4px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank {
+    min-width: 32px !important;
+    gap: 5px !important;
+  }
+}
+
+@container (max-width: 1760px) {
+  .pvfd-chassis .pvfd-mainrow {
+    grid-template-columns: 128px 42px minmax(0, 1fr) 42px 128px !important;
+    gap: 8px !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank:nth-child(2) {
+    transform: translateX(-10px) !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: translateX(10px) !important;
+  }
+}
+
+@container (max-width: 1620px) {
+  .pvfd-chassis .pvfd-mainrow {
+    grid-template-columns: clamp(108px, 8vw, 128px) minmax(0, 1fr) clamp(108px, 8vw, 128px) !important;
+    gap: 8px !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    transform: none !important;
+  }
+}
+
+@container (max-width: 900px) {
+  .pvfd-chassis .pvfd-mainrow {
+    grid-template-columns: 88px minmax(0, 1fr) 88px !important;
+    gap: 6px !important;
+  }
+}
+
+@container (max-width: 1160px) {
+  .pvfd-chassis .pvfd-mainrow {
+    grid-template-columns: clamp(82px, 9vw, 108px) 38px minmax(0, 1fr) 38px clamp(82px, 9vw, 108px) !important;
+    gap: 5px !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank {
+    display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    width: auto !important;
+    min-width: 34px !important;
+    transform: none !important;
+    gap: 6px !important;
+  }
+
+  .pvfd-chassis .pvfd-pill {
+    min-height: 22px !important;
+    padding: 3px 0 !important;
+    font-size: 8px !important;
+  }
+}
+
+@container (max-width: 900px) {
+  .pvfd-chassis .pvfd-mainrow {
+    grid-template-columns: 76px 34px minmax(0, 1fr) 34px 76px !important;
+    gap: 4px !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank {
+    min-width: 32px !important;
+    gap: 5px !important;
+  }
+}
+
+/* v2.16: collapsed controls keep knob clearance instead of sliding underneath. */
+@media (max-width: 1160px) {
+  .pvfd-mainrow {
+    grid-template-columns: 132px 42px minmax(0, 1fr) 42px 132px !important;
+    gap: 5px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank {
+    align-self: center !important;
+    justify-self: stretch !important;
+    min-width: 40px !important;
+    max-width: 42px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .pvfd-mainrow {
+    grid-template-columns: 98px 36px minmax(0, 1fr) 36px 98px !important;
+    gap: 4px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank {
+    min-width: 34px !important;
+    max-width: 36px !important;
+  }
+}
+
+@container (max-width: 1160px) {
+  .pvfd-chassis .pvfd-mainrow {
+    grid-template-columns: 132px 42px minmax(0, 1fr) 42px 132px !important;
+    gap: 5px !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank {
+    align-self: center !important;
+    justify-self: stretch !important;
+    min-width: 40px !important;
+    max-width: 42px !important;
+  }
+}
+
+@container (max-width: 900px) {
+  .pvfd-chassis .pvfd-mainrow {
+    grid-template-columns: 98px 36px minmax(0, 1fr) 36px 98px !important;
+    gap: 4px !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank {
+    min-width: 34px !important;
+    max-width: 36px !important;
+  }
+}
+
+/* v2.17: at hard shrink, the LCD obeys its center lane instead of spilling under controls. */
+@media (max-width: 1160px) {
+  .pvfd-display-stack {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-meta-lcd,
+  .pvfd-compact-stage {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .pvfd-compact-stage {
+    justify-items: stretch !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-compact-stage > .pvfd-lcd {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    justify-self: stretch !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .pvfd-mainrow {
+    grid-template-columns: 92px 34px minmax(0, 1fr) 34px 92px !important;
+    gap: 4px !important;
+  }
+
+  .pvfd-knob,
+  .pvfd-nav {
+    width: 88px !important;
+    height: 88px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank {
+    min-width: 32px !important;
+    max-width: 34px !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank:nth-child(2) {
+    transform: translateX(2px) !important;
+  }
+
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: translateX(-2px) !important;
+  }
+
+  .pvfd-nav-arrow {
+    font-size: 12px !important;
+  }
+
+  .pvfd-nav-inner-ring {
+    inset: 16.5px !important;
+  }
+
+  .pvfd-nav-button {
+    inset: 21.5px !important;
+  }
+
+  .pvfd-nav-arrow.up {
+    top: 27px !important;
+  }
+
+  .pvfd-nav-arrow.down {
+    bottom: 27px !important;
+  }
+
+  .pvfd-nav-arrow.left {
+    left: 27px !important;
+  }
+
+  .pvfd-nav-arrow.right {
+    right: 27px !important;
+  }
+}
+
+@container (max-width: 1160px) {
+  .pvfd-chassis .pvfd-display-stack {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-chassis .pvfd-meta-lcd,
+  .pvfd-chassis .pvfd-compact-stage {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage {
+    justify-items: stretch !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    justify-self: stretch !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@container (max-width: 860px) {
+  .pvfd-chassis .pvfd-mainrow {
+    grid-template-columns: 92px 34px minmax(0, 1fr) 34px 92px !important;
+    gap: 4px !important;
+  }
+
+  .pvfd-chassis .pvfd-knob,
+  .pvfd-chassis .pvfd-nav {
+    width: 88px !important;
+    height: 88px !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank {
+    min-width: 32px !important;
+    max-width: 34px !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank:nth-child(2) {
+    transform: translateX(2px) !important;
+  }
+
+  .pvfd-chassis .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+    transform: translateX(-2px) !important;
+  }
+
+  .pvfd-chassis .pvfd-nav-arrow {
+    font-size: 12px !important;
+  }
+
+  .pvfd-chassis .pvfd-nav-inner-ring {
+    inset: 16.5px !important;
+  }
+
+  .pvfd-chassis .pvfd-nav-button {
+    inset: 21.5px !important;
+  }
+
+  .pvfd-chassis .pvfd-nav-arrow.up {
+    top: 27px !important;
+  }
+
+  .pvfd-chassis .pvfd-nav-arrow.down {
+    bottom: 27px !important;
+  }
+
+  .pvfd-chassis .pvfd-nav-arrow.left {
+    left: 27px !important;
+  }
+
+  .pvfd-chassis .pvfd-nav-arrow.right {
+    right: 27px !important;
+  }
 }
