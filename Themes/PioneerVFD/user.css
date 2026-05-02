@@ -6508,6 +6508,49 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
     0 8px 18px rgba(0, 0, 0, 0.34) !important;
 }
 
+/* v2.51: remove stray edge bars from the focused Your Library search LCD. */
+:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
+  :is(.x-filterBox-filterInputContainer, [class*="filterBox" i]):has(.x-filterBox-filterInput)::before,
+:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
+  :is(.x-filterBox-filterInputContainer, [class*="filterBox" i]):has(.x-filterBox-filterInput)::after,
+:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
+  :is(.x-filterBox-filterInputContainer, [class*="filterBox" i]):has(.x-filterBox-filterInput):focus-within::before,
+:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
+  :is(.x-filterBox-filterInputContainer, [class*="filterBox" i]):has(.x-filterBox-filterInput):focus-within::after {
+  content: none !important;
+  display: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
+  .x-filterBox-filterInput {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
+  .x-filterBox-filterInputContainer :is(.x-filterBox-overlay, .x-filterBox-searchIconContainer, button, [role="button"]),
+:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
+  .x-filterBox-filterInputContainer :is(.x-filterBox-overlay, .x-filterBox-searchIconContainer, button, [role="button"]):is(:hover, :focus, :focus-visible) {
+  background: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
+  .x-filterBox-filterInputContainer :is(.x-filterBox-overlay, .x-filterBox-searchIconContainer)::before,
+:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
+  .x-filterBox-filterInputContainer :is(.x-filterBox-overlay, .x-filterBox-searchIconContainer)::after {
+  content: none !important;
+  display: none !important;
+}
+
 /* v2.50-temp: keep library playing indicators as clean outline glyphs. */
 .Root__nav-bar :is(
   [class*="playing" i],

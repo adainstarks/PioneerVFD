@@ -13,6 +13,7 @@
   const NUM_BARS = 48;
   const SMOOTHING = 0.72;
   const FRAME_INTERVAL_MS = 33;
+  const OEL_GLASS_OVERLAY_ENABLED = false;
   const TIMBRE_SCALE = 0.012;
   const PEAK_HOLD_MS = 600;
   const MODE_CYCLE_MS = 10000;
@@ -82,10 +83,21 @@
   let navDrag = null;
   let lastClipCacheKey = "";
   const CLIP_CACHE_BATCH_MS = 7;
+  const CLIP_RENDER_CACHE_ENABLED = true; // cached OEL frame path
+  const CONTROL_READOUT_INTERVAL_MS = 220;
+  const NAV_LED_INTERVAL_MS = 180;
+  const MUTATION_FLUSH_DELAY_MS = 80;
+  const PLAYER_STATE_SAMPLE_MS = 900;
+  const PLAYER_TIMING_SAMPLE_MS = 1000;
+  const TRACK_SYNC_INTERVAL_MS = 600;
+  const BAR_UPDATE_INTERVAL_MS = 140;
+  const VOLUME_SAMPLE_MS = 1200;
 
   let dolphinX = -50;
   const dolphinBubbles = [];
   let demoSweep = 0;
+  let lcdBackgroundCache = null;
+  const clipColorCache = new Map();
 
   function fmtTime(ms) {
     const s = Math.max(0, Math.floor((ms || 0) / 1000));
@@ -186,8 +198,6 @@
 
             <div class="pvfd-lcd" aria-label="Pioneer VFD animation display">
               <canvas class="pvfd-lcd-canvas"></canvas>
-              <div class="pvfd-lcd-pixelgrid"></div>
-              <div class="pvfd-lcd-phosphor"></div>
             </div>
 
             <div class="pvfd-lcd-side pvfd-lcd-side-right" aria-label="Playback status readouts">
@@ -279,18 +289,33 @@
       ctx = canvas.getContext("2d");
       if (ctx) ctx.imageSmoothingEnabled = false;
       sizeCanvas();
-      window.addEventListener("resize", sizeCanvas);
+      window.addEventListener("resize", scheduleSizeCanvas, { passive: true });
     }
     wireControls();
     return true;
   }
 
+  let canvasResizeRaf = 0;
+  function scheduleSizeCanvas() {
+    if (canvasResizeRaf) return;
+    canvasResizeRaf = requestAnimationFrame(() => {
+      canvasResizeRaf = 0;
+      sizeCanvas();
+    });
+  }
+
   function sizeCanvas() {
-    if (!canvas) return;
+    if (!canvas || !ctx) return;
     const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
     const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-    canvas.width  = Math.floor(rect.width  * dpr);
-    canvas.height = Math.floor(rect.height * dpr);
+    const pixelW = Math.max(1, Math.floor(rect.width * dpr));
+    const pixelH = Math.max(1, Math.floor(rect.height * dpr));
+    const dprKey = String(dpr);
+    if (canvas.width === pixelW && canvas.height === pixelH && canvas.dataset.pvfdDpr === dprKey) return;
+    canvas.width = pixelW;
+    canvas.height = pixelH;
+    canvas.dataset.pvfdDpr = dprKey;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = false;
   }
@@ -474,6 +499,8 @@
 
   let pvfdDom = null;
   const playerStateCache = { at: -Infinity, playing: false, shuffle: false, repeat: "OFF" };
+  const playerTimingCache = { at: -Infinity, progressMs: 0, durationMs: 0, playing: false };
+  const volumeStateCache = { at: -Infinity, value: 0.5 };
 
   function getPvfdDom() {
     if (!chassis) return {};
@@ -523,6 +550,10 @@
     if (el && el.textContent !== txt) el.textContent = txt;
   }
 
+  function setDataIfChanged(el, name, value) {
+    if (el && el.dataset && el.dataset[name] !== value) el.dataset[name] = value;
+  }
+
   function setAttrIfChanged(el, name, value) {
     if (el && el.getAttribute(name) !== value) el.setAttribute(name, value);
   }
@@ -533,7 +564,7 @@
   }
 
   function getSampledPlayerState(now = performance.now()) {
-    if (now - playerStateCache.at > 250) {
+    if (now - playerStateCache.at > PLAYER_STATE_SAMPLE_MS) {
       playerStateCache.at = now;
       playerStateCache.playing = Spicetify.Player.isPlaying();
       playerStateCache.shuffle = getShuffleState();
@@ -616,14 +647,20 @@
     else if (action === "dim") toggleDimMode();
   }
 
-  function getPlayerVolume() {
+  function getPlayerVolume(now = performance.now(), force = false) {
     if (pendingVolume !== null) return pendingVolume;
-    const raw = safeReturn(() => Spicetify.Player.getVolume(), 0.5);
-    return clamp(Number(raw) || 0, 0, 1);
+    if (force || now - volumeStateCache.at > VOLUME_SAMPLE_MS) {
+      const raw = safeReturn(() => Spicetify.Player.getVolume(), volumeStateCache.value);
+      volumeStateCache.value = clamp(Number(raw) || 0, 0, 1);
+      volumeStateCache.at = now;
+    }
+    return volumeStateCache.value;
   }
 
   function setVolumeSmooth(v) {
     pendingVolume = clamp(v, 0, 1);
+    volumeStateCache.value = pendingVolume;
+    volumeStateCache.at = performance.now();
     updateLknobLED();
     if (volumeCommitTimer) return;
     volumeCommitTimer = setTimeout(() => {
@@ -634,10 +671,27 @@
     }, 35);
   }
 
-  function getDisplayProgressMs() {
-    if (scrubPreviewMs !== null && performance.now() < scrubPreviewUntil) return scrubPreviewMs;
+  function getSampledPlaybackTiming(ts = performance.now(), force = false) {
+    if (force || ts - playerTimingCache.at >= PLAYER_TIMING_SAMPLE_MS) {
+      playerTimingCache.at = ts;
+      playerTimingCache.progressMs = Spicetify.Player.getProgress() || 0;
+      playerTimingCache.durationMs = getCurrentDurationMs();
+      playerTimingCache.playing = Spicetify.Player.isPlaying();
+    }
+
+    const elapsed = playerTimingCache.playing ? Math.max(0, ts - playerTimingCache.at) : 0;
+    const duration = playerTimingCache.durationMs;
+    return {
+      progressMs: duration > 0 ? clamp(playerTimingCache.progressMs + elapsed, 0, duration) : playerTimingCache.progressMs + elapsed,
+      durationMs: duration,
+      playing: playerTimingCache.playing,
+    };
+  }
+
+  function getDisplayProgressMs(ts = performance.now(), timing = getSampledPlaybackTiming(ts)) {
+    if (scrubPreviewMs !== null && ts < scrubPreviewUntil) return scrubPreviewMs;
     scrubPreviewMs = null;
-    return Spicetify.Player.getProgress() || 0;
+    return timing.progressMs;
   }
 
   function seekToMs(ms) {
@@ -660,8 +714,9 @@
 
   function bindProgressScrubber(el) {
     if (!el) return;
+    let scrubRect = null;
     const apply = (e) => {
-      const rect = el.getBoundingClientRect();
+      const rect = scrubRect || el.getBoundingClientRect();
       if (!rect.width) return;
       seekToFraction((e.clientX - rect.left) / rect.width);
     };
@@ -669,6 +724,7 @@
     el.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       activePointer = e.pointerId;
+      scrubRect = el.getBoundingClientRect();
       if (el.setPointerCapture) el.setPointerCapture(e.pointerId);
       apply(e);
       el.classList.add("scrubbing");
@@ -678,7 +734,11 @@
       e.preventDefault();
       apply(e);
     });
-    const end = () => { activePointer = null; el.classList.remove("scrubbing"); };
+    const end = () => {
+      activePointer = null;
+      scrubRect = null;
+      el.classList.remove("scrubbing");
+    };
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", end);
   }
@@ -688,10 +748,12 @@
 
     const lknob = $("[data-pvfd='lknob']");
     if (lknob) {
-      const pointerAngleDeg = (e) => {
+      const knobCenter = () => {
         const rect = lknob.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
+        return { cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2 };
+      };
+      const pointerAngleDeg = (e, center = knobCenter()) => {
+        const { cx, cy } = center;
         const dx = e.clientX - cx;
         const dy = e.clientY - cy;
         // 0deg is straight up / 12 o'clock. Positive is clockwise.
@@ -704,8 +766,10 @@
       }, { passive: false });
       let volumeDrag = null;
       lknob.addEventListener("pointerdown", (e) => {
+        const center = knobCenter();
         volumeDrag = {
-          lastAngle: pointerAngleDeg(e),
+          ...center,
+          lastAngle: pointerAngleDeg(e, center),
           startVolume: getPlayerVolume(),
           accumDeg: 0
         };
@@ -715,7 +779,7 @@
       });
       lknob.addEventListener("pointermove", (e) => {
         if (!volumeDrag) return;
-        const a = pointerAngleDeg(e);
+        const a = pointerAngleDeg(e, volumeDrag);
         let d = a - volumeDrag.lastAngle;
         if (d > 180) d -= 360;
         if (d < -180) d += 360;
@@ -841,10 +905,8 @@
     return Math.exp(-(tSec - last.start) * 5);
   }
 
-  function updateBars() {
-    const tSec = (Spicetify.Player.getProgress() || 0) / 1000;
+  function updateBars(tSec, isPlaying) {
     const seg = findCurrentSegment(tSec);
-    const isPlaying = Spicetify.Player.isPlaying();
     const wall = performance.now() / 1000;
 
     // Spotify audio-analysis can fail or return sparse data. Do NOT let the LCD go black.
@@ -879,12 +941,23 @@
   }
 
   function lcdBackground(w, h, targetCtx = ctx) {
-    targetCtx.fillStyle = "#02101c";
-    targetCtx.fillRect(0, 0, w, h);
-    targetCtx.fillStyle = "rgba(126, 212, 240, 0.045)";
-    for (let y = 0; y < h; y += 6) targetCtx.fillRect(0, y, w, 1);
-    targetCtx.fillStyle = "rgba(126, 212, 240, 0.025)";
-    for (let x = 0; x < w; x += 8) targetCtx.fillRect(x, 0, 1, h);
+    const bgW = Math.max(1, Math.round(w));
+    const bgH = Math.max(1, Math.round(h));
+    const key = `${bgW}x${bgH}`;
+    if (!lcdBackgroundCache || lcdBackgroundCache.key !== key) {
+      const bg = document.createElement("canvas");
+      bg.width = bgW;
+      bg.height = bgH;
+      const bgCtx = bg.getContext("2d");
+      bgCtx.fillStyle = "#02101c";
+      bgCtx.fillRect(0, 0, bgW, bgH);
+      bgCtx.fillStyle = "rgba(126, 212, 240, 0.045)";
+      for (let y = 0; y < bgH; y += 6) bgCtx.fillRect(0, y, bgW, 1);
+      bgCtx.fillStyle = "rgba(126, 212, 240, 0.025)";
+      for (let x = 0; x < bgW; x += 8) bgCtx.fillRect(x, 0, 1, bgH);
+      lcdBackgroundCache = { key, bg };
+    }
+    targetCtx.drawImage(lcdBackgroundCache.bg, 0, 0, w, h);
   }
 
   // Compose display filters. The animation canvas is still drawn cyan, so it
@@ -926,6 +999,21 @@
     const g = Math.max(0.08, Math.min(0.90, yy * 1.02 + 0.02));
     const b = Math.max(0.26, Math.min(1.00, 0.34 + yy * 0.92));
     return [r, g, b];
+  }
+
+  function clipCellColor(q, sparkleOn) {
+    const key = `${q}:${sparkleOn ? 1 : 0}`;
+    const cached = clipColorCache.get(key);
+    if (cached) return cached;
+    const y = Math.min(1, (q / 15) * 0.98);
+    const ramp = cyanRamp(y);
+    const sparkle = sparkleOn ? 0.035 : 0;
+    const r = Math.min(255, Math.round((ramp[0] + sparkle) * 255));
+    const g = Math.min(255, Math.round((ramp[1] + sparkle) * 255));
+    const b = Math.min(255, Math.round((ramp[2] + sparkle) * 255));
+    const color = `rgb(${r},${g},${b})`;
+    clipColorCache.set(key, color);
+    return color;
   }
 
   function decodePackedClip(clip) {
@@ -992,14 +1080,7 @@
           continue;
         }
 
-        const y = Math.min(1, (q / 15) * 0.98);
-        const ramp = cyanRamp(y);
-        const sparkle = ((px * 13 + py * 7 + frame) % 37 === 0) ? 0.035 : 0;
-        const r = Math.min(255, Math.round((ramp[0] + sparkle) * 255));
-        const g = Math.min(255, Math.round((ramp[1] + sparkle) * 255));
-        const b = Math.min(255, Math.round((ramp[2] + sparkle) * 255));
-
-        targetCtx.fillStyle = `rgb(${r},${g},${b})`;
+        targetCtx.fillStyle = clipCellColor(q, (px * 13 + py * 7 + frame) % 37 === 0);
         targetCtx.fillRect(dx, dy, drawW, drawH);
         if (q >= 13 && drawW > 1 && drawH > 1) {
           targetCtx.fillStyle = "rgba(168,228,244,0.075)";
@@ -1013,13 +1094,18 @@
     const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     const pixelW = Math.max(1, Math.floor(w * dpr));
     const pixelH = Math.max(1, Math.floor(h * dpr));
+    const renderW = pixelW / dpr;
+    const renderH = pixelH / dpr;
     const frameCount = clip.frames || 1;
-    const cacheKey = `${clip.source || clip.name}:${w.toFixed(2)}x${h.toFixed(2)}:${pixelW}x${pixelH}:${dpr}`;
-    return { cacheKey, dpr, pixelW, pixelH, frameCount, w, h };
+    const cacheKey = `${clip.source || clip.name}:${pixelW}x${pixelH}:${dpr}`;
+    return { cacheKey, dpr, pixelW, pixelH, frameCount, w: renderW, h: renderH };
   }
 
   function ensureClipRenderCache(clip, meta) {
     if (!clip.renderCache || clip.renderCache.key !== meta.cacheKey) {
+      if (clip.renderCache && clip.renderCache.ready) {
+        clip.lastReadyRenderCache = clip.renderCache;
+      }
       clip.renderCache = {
         key: meta.cacheKey,
         dpr: meta.dpr,
@@ -1061,8 +1147,10 @@
 
   function finishClipCacheIfReady(clip, cache) {
     if (cache.ready || cache.warmed < cache.frameCount) return;
+    const hadReadyCache = !!(clip.lastReadyRenderCache && clip.lastReadyRenderCache.ready);
     cache.ready = true;
-    if (clip === (CLIPS[clipIdx] || CLIPS[0])) clipStartMs = performance.now();
+    clip.lastReadyRenderCache = cache;
+    if (!hadReadyCache && clip === (CLIPS[clipIdx] || CLIPS[0])) clipStartMs = performance.now();
   }
 
   function warmClipCacheSlice(clip, meta) {
@@ -1098,7 +1186,10 @@
     const meta = getClipCacheMeta(clip, w, h);
     const cache = ensureClipRenderCache(clip, meta);
     scheduleClipCacheWarmup(clip, meta);
-    return cache.ready ? cache.frames[frame] : null;
+    if (cache.ready) return cache.frames[frame];
+    const fallback = clip.lastReadyRenderCache;
+    if (!fallback || !fallback.ready || !fallback.frames) return null;
+    return fallback.frames[frame % fallback.frameCount] || null;
   }
 
   function drawClipLoadingStatus(clip, w, h, t, pulse) {
@@ -1130,6 +1221,7 @@
   }
 
   function drawOelGlassGlow(w, h, t, pulse) {
+    if (!OEL_GLASS_OVERLAY_ENABLED) return;
     const p = clamp(Math.max(0, pulse), 0, 1.35);
     const edgeAlpha = 0.18 + p * 0.08;
     const innerAlpha = 0.09 + p * 0.04;
@@ -1172,6 +1264,11 @@
     const fps = clip.fps || 12;
     const elapsed = Math.max(0, (performance.now() - clipStartMs) / 1000);
     const frame = Math.floor(elapsed * fps) % frameCount;
+    if (!CLIP_RENDER_CACHE_ENABLED) {
+      renderPackedClipFrame(ctx, clip, frame, w, h);
+      drawOelGlassGlow(w, h, t, pulse);
+      return;
+    }
     const cachedFrame = getCachedClipFrame(clip, frame, w, h);
     if (!cachedFrame) {
       drawClipLoadingStatus(clip, w, h, t, pulse);
@@ -1450,7 +1547,9 @@
     // The main LCD is animation-only, so no drawn text labels here.
   }
 
-  function syncCurrentTrackFromPlayer() {
+  function syncCurrentTrackFromPlayer(force = false, ts = performance.now()) {
+    if (!force && ts - lastTrackSyncAt < TRACK_SYNC_INTERVAL_MS) return;
+    lastTrackSyncAt = ts;
     const item = Spicetify.Player.data && Spicetify.Player.data.item;
     if (!item) return;
 
@@ -1520,8 +1619,8 @@
     const shuffleOn = playerState.shuffle;
     if (shuffleBtn) {
       shuffleBtn.classList.toggle("active", shuffleOn);
-      shuffleBtn.dataset.label = shuffleOn ? "ON" : "OFF";
-      shuffleBtn.title = shuffleOn ? "Shuffle: on" : "Shuffle: off";
+      setDataIfChanged(shuffleBtn, "label", shuffleOn ? "ON" : "OFF");
+      setAttrIfChanged(shuffleBtn, "title", shuffleOn ? "Shuffle: on" : "Shuffle: off");
     }
     const repeatBtn = dom.buttons && dom.buttons.repeat;
     const rpt = playerState.repeat;
@@ -1529,8 +1628,8 @@
       repeatBtn.classList.toggle("active", rpt !== "OFF");
       repeatBtn.classList.toggle("repeat-context", rpt === "ALL");
       repeatBtn.classList.toggle("repeat-one", rpt === "ONE");
-      repeatBtn.dataset.label = rpt;
-      repeatBtn.title = rpt === "ONE" ? "Repeat: current song" : (rpt === "ALL" ? "Repeat: playlist/album" : "Repeat: off");
+      setDataIfChanged(repeatBtn, "label", rpt);
+      setAttrIfChanged(repeatBtn, "title", rpt === "ONE" ? "Repeat: current song" : (rpt === "ALL" ? "Repeat: playlist/album" : "Repeat: off"));
     }
     updateRoleButtonStates();
   }
@@ -1564,7 +1663,9 @@
     }
   }
 
-  function updateOverlays(progressMs, modeName) {
+  function updateOverlays(progressMs, modeName, timing, ts = performance.now()) {
+    if (ts - lastControlReadoutAt < CONTROL_READOUT_INTERVAL_MS) return;
+    lastControlReadoutAt = ts;
     const dom = getPvfdDom();
     const playerState = getSampledPlayerState();
     const metaEl = dom.meta;
@@ -1575,7 +1676,7 @@
     const artist = trackArtist || "";
     const label = artist ? `${artist} - ${title}` : title;
     const elapsed = fmtTime(progressMs);
-    const durationMs = getCurrentDurationMs();
+    const durationMs = timing && timing.durationMs !== undefined ? timing.durationMs : getCurrentDurationMs();
     const pct = durationMs > 0 ? clamp(progressMs / durationMs, 0, 1) : 0;
     const timeText = durationMs > 0 ? `${elapsed} / ${fmtTime(durationMs)}` : elapsed;
     if (metaEl) {
@@ -1623,6 +1724,11 @@
   }
 
   let lastFrame = 0;
+  let lastControlReadoutAt = -Infinity;
+  let lastTrackSyncAt = -Infinity;
+  let lastBarUpdateAt = -Infinity;
+  let lastKnobLedAt = -Infinity;
+  let lastNavLedAt = -Infinity;
   let lastModeName = "";
   function loop(ts) {
     requestAnimationFrame(loop);
@@ -1649,12 +1755,16 @@
       demoLastClipSwitchMs = ts;
     }
 
-    syncCurrentTrackFromPlayer();
-    updateBars();
+    syncCurrentTrackFromPlayer(false, ts);
 
     const w = canvas.clientWidth, h = canvas.clientHeight;
-    const progressMs = getDisplayProgressMs();
+    const timing = getSampledPlaybackTiming(ts);
+    const progressMs = getDisplayProgressMs(ts, timing);
     const tSec = progressMs / 1000;
+    if (ts - lastBarUpdateAt >= BAR_UPDATE_INTERVAL_MS) {
+      lastBarUpdateAt = ts;
+      updateBars(tSec, timing.playing);
+    }
     const tWall = ts / 1000;
     const pulse = beatPulse(tSec) + SINE_BASE * Math.sin(tWall * 2);
 
@@ -1664,14 +1774,22 @@
     else if (modeName === "DEMO")     drawDemo(w, h, tWall, pulse);
     else if (modeName === "CLIP")     drawClip(w, h, tWall, pulse + (demoAutoMode ? 0.28 : 0));
 
-    updateOverlays(progressMs, modeName);
-    updateLknobLED();
-    updateNavLED(tSec);
+    updateOverlays(progressMs, modeName, timing, ts);
+    if (pendingVolume !== null || ts - lastKnobLedAt >= CONTROL_READOUT_INTERVAL_MS) {
+      lastKnobLedAt = ts;
+      updateLknobLED();
+    }
+    if (ts - lastNavLedAt >= NAV_LED_INTERVAL_MS) {
+      lastNavLedAt = ts;
+      updateNavLED(tSec);
+    }
   }
 
   function onTrackChange() {
     playerStateCache.at = -Infinity;
-    syncCurrentTrackFromPlayer();
+    playerTimingCache.at = -Infinity;
+    lastTrackSyncAt = -Infinity;
+    syncCurrentTrackFromPlayer(true);
     const playBtn = chassis && chassis.querySelector("[data-pvfd='play']");
     if (playBtn) playBtn.textContent = Spicetify.Player.isPlaying() ? "⏸" : "▶";
   }
@@ -1679,9 +1797,13 @@
   const LIBRARY_SEARCH_FIX_STYLE_ID = "pvfd-library-search-fix";
   let librarySearchFixTimer = 0;
   let pvfdMutationTimer = 0;
+  let pvfdMutationFlushTimer = 0;
+  let queuedMutationRecords = [];
   let librarySearchLastRoot = null;
   let lyricsSyncFixTimer = 0;
   let lyricsSyncLastRoot = null;
+  let lyricsViewCacheAt = -Infinity;
+  let lyricsViewCache = false;
 
   function ensureLibrarySearchFixStyle() {
     if (document.getElementById(LIBRARY_SEARCH_FIX_STYLE_ID)) return;
@@ -1803,9 +1925,13 @@
   }
 
   function hasLyricsView() {
-    return !!document.querySelector(
+    const now = performance.now();
+    if (now - lyricsViewCacheAt < 500) return lyricsViewCache;
+    lyricsViewCacheAt = now;
+    lyricsViewCache = !!document.querySelector(
       "[data-testid*='lyrics' i], [class*='lyrics-lyrics' i], [class*='LyricsLyrics' i], [class*='lyricsPage' i], [class*='LyricsPage' i]"
     );
+    return lyricsViewCache;
   }
 
   function collectButtons(root) {
@@ -1817,11 +1943,16 @@
   }
 
   function reconcileLyricsSyncButtons(root = document) {
-    if (!hasLyricsView()) return;
+    if (!hasLyricsView()) return 0;
+    let tagged = 0;
     collectButtons(root).forEach((button) => {
       const label = String(button.textContent || "").replace(/\s+/g, " ").trim();
-      if (label === "Sync") button.classList.add("pvfd-lyrics-sync-button");
+      if (label === "Sync") {
+        button.classList.add("pvfd-lyrics-sync-button");
+        tagged++;
+      }
     });
+    return tagged;
   }
 
   function scheduleLyricsSyncReconcile(root, delay = 120) {
@@ -1831,8 +1962,8 @@
       const nextRoot = lyricsSyncLastRoot || document;
       lyricsSyncFixTimer = 0;
       lyricsSyncLastRoot = null;
-      reconcileLyricsSyncButtons(nextRoot);
-      if (nextRoot !== document) reconcileLyricsSyncButtons(document);
+      const tagged = reconcileLyricsSyncButtons(nextRoot);
+      if (!tagged && nextRoot !== document) reconcileLyricsSyncButtons(document);
     }, delay);
   }
 
@@ -1857,6 +1988,33 @@
     }, 250);
   }
 
+  function flushMutationRecords() {
+    const records = queuedMutationRecords;
+    queuedMutationRecords = [];
+    pvfdMutationFlushTimer = 0;
+    if (!records.length) return;
+
+    scheduleChassisRecheck();
+    const searchRoot = getLibrarySearchRootFromMutations(records);
+    if (searchRoot) scheduleLibrarySearchReconcile(searchRoot, 80);
+    if (hasLyricsView()) {
+      const lyricsRoot = getLyricsSyncRootFromMutations(records);
+      if (lyricsRoot) scheduleLyricsSyncReconcile(lyricsRoot, 80);
+    }
+  }
+
+  function queueMutationRecords(records) {
+    for (const record of records) {
+      const target = elementFromMutationNode(record.target);
+      if (chassis && target && chassis.contains(target)) continue;
+      queuedMutationRecords.push(record);
+    }
+    if (!queuedMutationRecords.length) return;
+    if (queuedMutationRecords.length > 240) queuedMutationRecords = queuedMutationRecords.slice(-240);
+    if (pvfdMutationFlushTimer) return;
+    pvfdMutationFlushTimer = window.setTimeout(flushMutationRecords, MUTATION_FLUSH_DELAY_MS);
+  }
+
   function attach() {
     if (!injectChassis()) {
       setTimeout(attach, 500);
@@ -1869,18 +2027,13 @@
     Spicetify.Player.addEventListener("songchange", onTrackChange);
     Spicetify.Player.addEventListener("onplaypause", () => {
       playerStateCache.at = -Infinity;
+      playerTimingCache.at = -Infinity;
       const playBtn = chassis && chassis.querySelector("[data-pvfd='play']");
       if (playBtn) playBtn.textContent = Spicetify.Player.isPlaying() ? "⏸" : "▶";
     });
     requestAnimationFrame(loop);
 
-    const obs = new MutationObserver((records) => {
-      scheduleChassisRecheck();
-      const searchRoot = getLibrarySearchRootFromMutations(records);
-      if (searchRoot) scheduleLibrarySearchReconcile(searchRoot, 80);
-      const lyricsRoot = getLyricsSyncRootFromMutations(records);
-      if (lyricsRoot) scheduleLyricsSyncReconcile(lyricsRoot, 80);
-    });
+    const obs = new MutationObserver(queueMutationRecords);
     obs.observe(document.body, { childList: true, subtree: true });
 
     document.addEventListener("focusin", (e) => {
