@@ -135,6 +135,7 @@
         <div style="display:flex;align-items:center;gap:14px;justify-content:flex-start;">
           <span class="pvfd-silk-eeq">EEQ</span>
           <span class="pvfd-silk-label">MOSFET 50W&times;4</span>
+          <button class="pvfd-silk-lyrics" type="button" data-pvfd="lyrics" aria-label="Open song lyrics" title="Open lyrics">Lyrics</button>
         </div>
         <span class="pvfd-silk-pioneer">Pioneer</span>
         <div style="display:flex;align-items:center;gap:12px;justify-content:flex-end;">
@@ -330,6 +331,18 @@
     return false;
   }
 
+  function clickFirstOutsideChassis(selectors) {
+    for (const selector of selectors) {
+      const els = safeReturn(() => Array.from(document.querySelectorAll(selector)), []);
+      const el = els.find((candidate) => !candidate.closest || !candidate.closest(".pvfd-chassis"));
+      if (el && typeof el.click === "function") {
+        el.click();
+        return true;
+      }
+    }
+    return false;
+  }
+
   function pushSpotifyPath(path) {
     const history = Spicetify.Platform && Spicetify.Platform.History;
     if (history && typeof history.push === "function") {
@@ -405,6 +418,26 @@
       "[role='button'][aria-label*='device' i]",
       "[role='button'][aria-label*='connect' i]"
     ]);
+  }
+
+  function openLyrics() {
+    const opened = clickFirstOutsideChassis([
+      "button[data-testid='lyrics-button']",
+      "button[data-testid='control-button-lyrics']",
+      "[data-testid='lyrics-button']",
+      "[data-testid='control-button-lyrics']",
+      "button[aria-label*='Lyrics' i]",
+      "[role='button'][aria-label*='Lyrics' i]",
+      "[data-testid*='lyrics' i]"
+    ]);
+    const lyrics = chassis && chassis.querySelector("[data-pvfd='lyrics']");
+    if (lyrics) {
+      lyrics.classList.add("active");
+      lyrics.title = opened ? "Open lyrics" : "Lyrics unavailable";
+      setTimeout(() => lyrics.classList.remove("active"), 850);
+    }
+    if (!opened) console.warn("[PVFD] lyrics control unavailable");
+    return opened;
   }
 
   function cycleSource() {
@@ -738,6 +771,7 @@
     bind($("[data-pvfd='navright']"), () => Spicetify.Player.next());
 
     bind($("[data-pvfd='scan']"), cycleSource);
+    bind($("[data-pvfd='lyrics']"), openLyrics);
     bind($("[data-pvfd='dim']"), toggleDimMode);
     bind($("[data-pvfd='clip']"), cycleClipMode);
     bind($("[data-pvfd='tint']"), cycleTintMode);
@@ -1646,6 +1680,8 @@
   let librarySearchFixTimer = 0;
   let pvfdMutationTimer = 0;
   let librarySearchLastRoot = null;
+  let lyricsSyncFixTimer = 0;
+  let lyricsSyncLastRoot = null;
 
   function ensureLibrarySearchFixStyle() {
     if (document.getElementById(LIBRARY_SEARCH_FIX_STYLE_ID)) return;
@@ -1766,6 +1802,52 @@
     return null;
   }
 
+  function hasLyricsView() {
+    return !!document.querySelector(
+      "[data-testid*='lyrics' i], [class*='lyrics-lyrics' i], [class*='LyricsLyrics' i], [class*='lyricsPage' i], [class*='LyricsPage' i]"
+    );
+  }
+
+  function collectButtons(root) {
+    const scope = root && root.querySelectorAll ? root : document;
+    const buttons = [];
+    if (scope.matches && scope.matches("button, [role='button']")) buttons.push(scope);
+    scope.querySelectorAll("button, [role='button']").forEach((button) => buttons.push(button));
+    return buttons;
+  }
+
+  function reconcileLyricsSyncButtons(root = document) {
+    if (!hasLyricsView()) return;
+    collectButtons(root).forEach((button) => {
+      const label = String(button.textContent || "").replace(/\s+/g, " ").trim();
+      if (label === "Sync") button.classList.add("pvfd-lyrics-sync-button");
+    });
+  }
+
+  function scheduleLyricsSyncReconcile(root, delay = 120) {
+    lyricsSyncLastRoot = root && root.querySelectorAll ? root : document;
+    if (lyricsSyncFixTimer) return;
+    lyricsSyncFixTimer = window.setTimeout(() => {
+      const nextRoot = lyricsSyncLastRoot || document;
+      lyricsSyncFixTimer = 0;
+      lyricsSyncLastRoot = null;
+      reconcileLyricsSyncButtons(nextRoot);
+      if (nextRoot !== document) reconcileLyricsSyncButtons(document);
+    }, delay);
+  }
+
+  function getLyricsSyncRootFromMutations(records) {
+    for (const record of records) {
+      const target = elementFromMutationNode(record.target);
+      if (target && (target.matches("button, [role='button']") || target.querySelector("button, [role='button']"))) return target;
+      for (const node of record.addedNodes || []) {
+        const el = elementFromMutationNode(node);
+        if (el && (el.matches("button, [role='button']") || el.querySelector("button, [role='button']"))) return el;
+      }
+    }
+    return null;
+  }
+
   function scheduleChassisRecheck() {
     if (chassis && chassis.isConnected) return;
     if (pvfdMutationTimer) return;
@@ -1782,6 +1864,7 @@
     }
     ensureLibrarySearchFixStyle();
     reconcileLibrarySearchBoxes();
+    reconcileLyricsSyncButtons();
     onTrackChange();
     Spicetify.Player.addEventListener("songchange", onTrackChange);
     Spicetify.Player.addEventListener("onplaypause", () => {
@@ -1795,6 +1878,8 @@
       scheduleChassisRecheck();
       const searchRoot = getLibrarySearchRootFromMutations(records);
       if (searchRoot) scheduleLibrarySearchReconcile(searchRoot, 80);
+      const lyricsRoot = getLyricsSyncRootFromMutations(records);
+      if (lyricsRoot) scheduleLyricsSyncReconcile(lyricsRoot, 80);
     });
     obs.observe(document.body, { childList: true, subtree: true });
 
