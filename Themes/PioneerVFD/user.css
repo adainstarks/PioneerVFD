@@ -5531,3 +5531,664 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
     font-size: 9.75px !important;
   }
 }
+
+/* v2.29: keep the MENU overlay inside the LCD and make rows directly usable. */
+.pvfd-menu-panel {
+  max-height: 118px !important;
+  overflow: hidden !important;
+  align-content: start !important;
+}
+
+.pvfd-menu-row[data-pvfd-menu-action] {
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+.pvfd-menu-row[data-pvfd-menu-action]:hover,
+.pvfd-menu-row[data-pvfd-menu-action]:focus-visible {
+  color: #d8f8ff !important;
+  background: linear-gradient(90deg, rgba(var(--pvfd-light-rgb), 0.13), rgba(var(--pvfd-light-rgb), 0.03)) !important;
+  outline: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.30) !important;
+  outline-offset: -1px !important;
+}
+
+.pvfd-menu-row[data-pvfd-menu-action]:active {
+  color: var(--pvfd-green) !important;
+  transform: translateX(1px);
+}
+
+@media (max-width: 1320px) {
+  .pvfd-menu-panel {
+    top: 32px !important;
+    width: min(300px, calc(100% - 22px)) !important;
+    max-height: 99px !important;
+    gap: 2px !important;
+    padding: 7px 9px 8px !important;
+  }
+
+  .pvfd-menu-title {
+    font-size: 11px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .pvfd-menu-row {
+    grid-template-columns: 48px minmax(0, 1fr) !important;
+    min-height: 14px !important;
+    font-size: 10.5px !important;
+    letter-spacing: 0.55px !important;
+  }
+
+  .pvfd-menu-row[data-pvfd-menu-action="dim"] {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1160px) {
+  .pvfd-menu-panel {
+    top: 30px !important;
+    width: min(272px, calc(100% - 18px)) !important;
+    max-height: 92px !important;
+    gap: 2px !important;
+    padding: 6px 8px 7px !important;
+  }
+
+  .pvfd-menu-title {
+    font-size: 10.5px !important;
+    letter-spacing: 1px !important;
+  }
+
+  .pvfd-menu-row {
+    grid-template-columns: 45px minmax(0, 1fr) !important;
+    min-height: 13px !important;
+    font-size: 10px !important;
+    letter-spacing: 0.45px !important;
+  }
+}
+
+@media (max-width: 1040px) {
+  .pvfd-menu-panel {
+    width: min(244px, calc(100% - 16px)) !important;
+    max-height: 76px !important;
+  }
+
+  .pvfd-menu-row[data-pvfd-menu-action="tint"] {
+    display: none !important;
+  }
+}
+
+@container (max-width: 1320px) {
+  .pvfd-chassis .pvfd-menu-panel {
+    top: 32px !important;
+    width: min(300px, calc(100% - 22px)) !important;
+    max-height: 99px !important;
+    gap: 2px !important;
+    padding: 7px 9px 8px !important;
+  }
+
+  .pvfd-chassis .pvfd-menu-title {
+    font-size: 11px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .pvfd-chassis .pvfd-menu-row {
+    grid-template-columns: 48px minmax(0, 1fr) !important;
+    min-height: 14px !important;
+    font-size: 10.5px !important;
+    letter-spacing: 0.55px !important;
+  }
+
+  .pvfd-chassis .pvfd-menu-row[data-pvfd-menu-action="dim"] {
+    display: none !important;
+  }
+}
+
+@container (max-width: 1160px) {
+  .pvfd-chassis .pvfd-menu-panel {
+    top: 30px !important;
+    width: min(272px, calc(100% - 18px)) !important;
+    max-height: 92px !important;
+    gap: 2px !important;
+    padding: 6px 8px 7px !important;
+  }
+
+  .pvfd-chassis .pvfd-menu-title {
+    font-size: 10.5px !important;
+    letter-spacing: 1px !important;
+  }
+
+  .pvfd-chassis .pvfd-menu-row {
+    grid-template-columns: 45px minmax(0, 1fr) !important;
+    min-height: 13px !important;
+    font-size: 10px !important;
+    letter-spacing: 0.45px !important;
+  }
+}
+
+@container (max-width: 1040px) {
+  .pvfd-chassis .pvfd-menu-panel {
+    width: min(244px, calc(100% - 16px)) !important;
+    max-height: 76px !important;
+  }
+
+  .pvfd-chassis .pvfd-menu-row[data-pvfd-menu-action="tint"] {
+    display: none !important;
+  }
+}
+
+/* v2.30: keep Spotify's top chrome from covering entity art, and brighten sticky titles. */
+.Root__top-bar,
+.main-topBar-container {
+  --text-base: var(--pvfd-cyan) !important;
+  --text-subdued: var(--pvfd-cyan-mid) !important;
+  --text-bright-accent: var(--pvfd-green) !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+  height: 48px !important;
+  overflow: hidden !important;
+  align-items: center !important;
+  z-index: 18 !important;
+}
+
+.Root__top-bar > *,
+.main-topBar-container > *,
+.main-topBar-container header,
+.main-topBar-container [class*="topBar"],
+.main-topBar-container [class*="TopBar"] {
+  min-height: 0 !important;
+  max-height: 48px !important;
+  overflow: hidden !important;
+}
+
+.Root__main-view .main-entityHeader-container,
+.Root__main-view [class*="entityHeader"][class*="container"],
+.Root__main-view [class*="EntityHeader"][class*="Container"],
+.Root__main-view [data-testid*="entity-header" i] {
+  padding-top: max(18px, env(safe-area-inset-top)) !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 1320px) {
+  .Root__main-view .main-entityHeader-container,
+  .Root__main-view [class*="entityHeader"][class*="container"],
+  .Root__main-view [class*="EntityHeader"][class*="Container"],
+  .Root__main-view [data-testid*="entity-header" i] {
+    padding-top: 24px !important;
+  }
+}
+
+@media (max-width: 1040px) {
+  .Root__top-bar,
+  .main-topBar-container {
+    min-height: 44px !important;
+    max-height: 44px !important;
+    height: 44px !important;
+  }
+
+  .Root__top-bar > *,
+  .main-topBar-container > *,
+  .main-topBar-container header,
+  .main-topBar-container [class*="topBar"],
+  .main-topBar-container [class*="TopBar"] {
+    max-height: 44px !important;
+  }
+
+  .Root__main-view .main-entityHeader-container,
+  .Root__main-view [class*="entityHeader"][class*="container"],
+  .Root__main-view [class*="EntityHeader"][class*="Container"],
+  .Root__main-view [data-testid*="entity-header" i] {
+    padding-top: 28px !important;
+  }
+}
+
+.Root__top-bar :is(h1, h2, h3, span, p, a, button, [data-encore-id="text"]),
+.main-topBar-container :is(h1, h2, h3, span, p, a, button, [data-encore-id="text"]) {
+  color: var(--pvfd-cyan) !important;
+  text-shadow: var(--pvfd-glow-cyan) !important;
+}
+
+.Root__top-bar button,
+.main-topBar-container button {
+  color: var(--pvfd-cyan) !important;
+}
+
+.Root__top-bar button svg,
+.main-topBar-container button svg {
+  color: currentColor !important;
+  fill: currentColor !important;
+}
+
+.Root__top-bar button[aria-label*="Play" i],
+.main-topBar-container button[aria-label*="Play" i] {
+  background: rgba(var(--pvfd-light-rgb), 0.16) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.42) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 0 8px rgba(var(--pvfd-light-rgb), 0.18) !important;
+}
+
+/* v2.31: make the sticky header play control float on the banner color. */
+.Root__top-bar button[aria-label*="Play" i],
+.Root__top-bar button[aria-label*="Pause" i],
+.main-topBar-container button[aria-label*="Play" i],
+.main-topBar-container button[aria-label*="Pause" i] {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.Root__top-bar button[aria-label*="Play" i] *,
+.Root__top-bar button[aria-label*="Pause" i] *,
+.main-topBar-container button[aria-label*="Play" i] *,
+.main-topBar-container button[aria-label*="Pause" i] * {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.Root__top-bar button[aria-label*="Play" i] svg,
+.Root__top-bar button[aria-label*="Pause" i] svg,
+.main-topBar-container button[aria-label*="Play" i] svg,
+.main-topBar-container button[aria-label*="Pause" i] svg {
+  color: var(--pvfd-cyan) !important;
+  fill: currentColor !important;
+  filter: drop-shadow(0 0 4px rgba(var(--pvfd-light-rgb), 0.58)) !important;
+}
+
+.Root__top-bar button[aria-label*="Play" i]:hover,
+.Root__top-bar button[aria-label*="Pause" i]:hover,
+.main-topBar-container button[aria-label*="Play" i]:hover,
+.main-topBar-container button[aria-label*="Pause" i]:hover {
+  background: rgba(var(--pvfd-light-rgb), 0.07) !important;
+}
+
+/* v2.32: dock the scrolled track-list header directly under the capped top bar. */
+.Root__main-view .main-trackList-trackListHeader,
+.Root__main-view .main-trackList-trackListHeaderRow,
+.Root__main-view [class*="trackList"][class*="Header"],
+.Root__main-view [class*="TrackList"][class*="Header"],
+.Root__main-view [data-testid*="tracklist-header" i],
+.Root__main-view [role="row"][aria-rowindex="1"] {
+  top: 48px !important;
+  margin-top: 0 !important;
+  transform: none !important;
+}
+
+.Root__main-view .main-trackList-trackListHeader::before,
+.Root__main-view .main-trackList-trackListHeaderRow::before,
+.Root__main-view [class*="trackList"][class*="Header"]::before,
+.Root__main-view [class*="TrackList"][class*="Header"]::before,
+.Root__main-view [data-testid*="tracklist-header" i]::before {
+  display: none !important;
+}
+
+@media (max-width: 1040px) {
+  .Root__main-view .main-trackList-trackListHeader,
+  .Root__main-view .main-trackList-trackListHeaderRow,
+  .Root__main-view [class*="trackList"][class*="Header"],
+  .Root__main-view [class*="TrackList"][class*="Header"],
+  .Root__main-view [data-testid*="tracklist-header" i],
+  .Root__main-view [role="row"][aria-rowindex="1"] {
+    top: 44px !important;
+  }
+}
+
+/* v2.33: remove Spotify's square tiles from top-bar Home/Marketplace/avatar controls. */
+.Root__top-bar :is(button, [role="button"], a[aria-label]),
+.main-topBar-container :is(button, [role="button"], a[aria-label]) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.Root__top-bar :is(button, [role="button"], a[aria-label]) *,
+.main-topBar-container :is(button, [role="button"], a[aria-label]) * {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.Root__top-bar :is(button, [role="button"], a[aria-label]):is(:hover, :focus-visible),
+.main-topBar-container :is(button, [role="button"], a[aria-label]):is(:hover, :focus-visible) {
+  background: rgba(var(--pvfd-light-rgb), 0.07) !important;
+  outline: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.22) !important;
+  outline-offset: -1px !important;
+}
+
+.Root__top-bar :is(button, [role="button"], a[aria-label]) :is(svg, path),
+.main-topBar-container :is(button, [role="button"], a[aria-label]) :is(svg, path) {
+  color: var(--pvfd-cyan) !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+  filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-rgb), 0.45)) !important;
+}
+
+.Root__top-bar :is(button, [role="button"], a[aria-label]) :is(img, figure),
+.main-topBar-container :is(button, [role="button"], a[aria-label]) :is(img, figure) {
+  box-shadow: 0 0 0 1px rgba(var(--pvfd-light-mid-rgb), 0.18) !important;
+}
+
+/* v2.34: correct global-nav tile cleanup; preserve outline icons instead of filling them. */
+:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
+  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i]) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
+  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
+  :is(div, span, figure) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
+  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
+  :is(svg, path, circle, rect, line, polyline, polygon) {
+  color: var(--pvfd-cyan) !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-rgb), 0.45)) !important;
+}
+
+:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
+  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
+  :is(img, picture) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
+  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
+  :is(:hover, :focus-visible) {
+  background: rgba(var(--pvfd-light-rgb), 0.06) !important;
+  outline: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.20) !important;
+  outline-offset: -1px !important;
+}
+
+.Root__top-bar button[aria-label*="Play" i] :is(svg, path, polygon),
+.Root__top-bar button[aria-label*="Pause" i] :is(svg, path, polygon),
+.main-topBar-container button[aria-label*="Play" i] :is(svg, path, polygon),
+.main-topBar-container button[aria-label*="Pause" i] :is(svg, path, polygon) {
+  fill: currentColor !important;
+  stroke: none !important;
+}
+
+/* v2.36: make the Marketplace filter/search strip look intentional and scoped. */
+.Root__main-view .marketplace-header {
+  --pvfd-light-rgb: 168, 228, 244;
+  --pvfd-light-mid-rgb: 126, 212, 240;
+  --pvfd-light-deep-rgb: 78, 180, 216;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 8px 10px 10px !important;
+  margin-bottom: 14px !important;
+  transform: translateY(-2px) !important;
+  background:
+    linear-gradient(180deg, rgba(7, 16, 24, 0.98), rgba(1, 6, 12, 0.99)) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.26) !important;
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+  color: var(--pvfd-cyan) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.72),
+    inset 0 0 14px rgba(var(--pvfd-light-deep-rgb), 0.11),
+    0 6px 12px rgba(0, 0, 0, 0.22) !important;
+}
+
+.Root__main-view .marketplace-header__left,
+.Root__main-view .marketplace-header__right {
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+.Root__main-view .marketplace-header__left > :is(div, button),
+.Root__main-view .marketplace-header__right > :is(div, button) {
+  margin-left: 0 !important;
+}
+
+.Root__main-view .marketplace-header__left {
+  flex: 0 1 auto !important;
+}
+
+.Root__main-view .marketplace-header__right {
+  flex: 1 1 auto !important;
+  justify-content: flex-end !important;
+}
+
+.Root__main-view .marketplace-header__label {
+  align-self: center !important;
+  color: var(--pvfd-cyan) !important;
+  font-size: 24px !important;
+  line-height: 1 !important;
+  margin: 0 2px 0 0 !important;
+  text-shadow: var(--pvfd-glow-cyan) !important;
+  white-space: nowrap !important;
+}
+
+.Root__main-view .marketplace-header .marketplace-sortBox {
+  min-width: 86px !important;
+}
+
+.Root__main-view .marketplace-header .Dropdown-control {
+  align-items: center !important;
+  display: flex !important;
+  min-height: 36px !important;
+  padding: 6px 32px 6px 12px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--pvfd-light-rgb), 0.10), rgba(var(--pvfd-light-deep-rgb), 0.06)),
+    var(--pvfd-lcd-deep) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.32) !important;
+  color: var(--pvfd-cyan) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.72),
+    inset 0 0 8px rgba(var(--pvfd-light-rgb), 0.08) !important;
+}
+
+.Root__main-view .marketplace-header .Dropdown-control:hover,
+.Root__main-view .marketplace-header .Dropdown-root.is-open .Dropdown-control {
+  background:
+    linear-gradient(180deg, rgba(var(--pvfd-light-rgb), 0.16), rgba(var(--pvfd-light-deep-rgb), 0.09)),
+    var(--pvfd-lcd-deep) !important;
+  border-color: rgba(var(--pvfd-light-mid-rgb), 0.55) !important;
+  color: #d8f8ff !important;
+}
+
+.Root__main-view .marketplace-header .Dropdown-placeholder {
+  color: inherit !important;
+  font-size: 17px !important;
+  line-height: 1 !important;
+  text-shadow: 0 0 4px rgba(var(--pvfd-light-rgb), 0.42) !important;
+}
+
+.Root__main-view .marketplace-header .Dropdown-arrow {
+  border-color: rgba(var(--pvfd-light-mid-rgb), 0.78) transparent transparent !important;
+  right: 12px !important;
+  top: 16px !important;
+}
+
+.Root__main-view .marketplace-header .Dropdown-root.is-open .Dropdown-arrow {
+  border-color: transparent transparent rgba(var(--pvfd-light-mid-rgb), 0.78) !important;
+}
+
+.Root__main-view .marketplace-header .Dropdown-menu {
+  background: var(--pvfd-lcd-void) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.32) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.70),
+    0 8px 16px rgba(0, 0, 0, 0.38) !important;
+}
+
+.Root__main-view .marketplace-header .Dropdown-option {
+  color: rgba(var(--pvfd-light-rgb), 0.82) !important;
+  font-size: 17px !important;
+  text-shadow: 0 0 4px rgba(var(--pvfd-light-rgb), 0.30) !important;
+}
+
+.Root__main-view .marketplace-header .Dropdown-option:hover,
+.Root__main-view .marketplace-header .Dropdown-option.is-selected {
+  background: rgba(var(--pvfd-light-rgb), 0.13) !important;
+  color: #d8f8ff !important;
+}
+
+.Root__main-view .marketplace-header .searchbar--bar__wrapper {
+  align-items: stretch !important;
+  flex: 0 1 300px !important;
+  max-width: 300px !important;
+  min-width: 190px !important;
+}
+
+.Root__main-view .marketplace-header input.searchbar-bar[type="text"] {
+  box-sizing: border-box !important;
+  height: 36px !important;
+  width: 100% !important;
+  padding: 0 12px !important;
+  background:
+    linear-gradient(90deg, rgba(var(--pvfd-light-rgb), 0.045), transparent 22%),
+    linear-gradient(180deg, rgba(4, 14, 22, 0.99), rgba(1, 6, 12, 0.99)) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.34) !important;
+  color: var(--pvfd-cyan) !important;
+  font-family: var(--pvfd-font-pixel) !important;
+  font-size: 18px !important;
+  letter-spacing: 0.8px !important;
+  line-height: 36px !important;
+  text-shadow: 0 0 4px rgba(var(--pvfd-light-rgb), 0.48) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.72),
+    inset 0 0 10px rgba(var(--pvfd-light-deep-rgb), 0.12) !important;
+}
+
+.Root__main-view .marketplace-header input.searchbar-bar[type="text"]::placeholder {
+  color: rgba(var(--pvfd-light-rgb), 0.50) !important;
+  text-shadow: none !important;
+}
+
+.Root__main-view .marketplace-header input.searchbar-bar[type="text"]:is(:hover, :focus) {
+  border-color: rgba(var(--pvfd-light-mid-rgb), 0.62) !important;
+  outline: none !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.72),
+    inset 0 0 12px rgba(var(--pvfd-light-deep-rgb), 0.18),
+    0 0 9px rgba(var(--pvfd-light-rgb), 0.14) !important;
+}
+
+.Root__main-view .marketplace-header .marketplace-header-icon-button {
+  align-items: center !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  height: 36px !important;
+  min-width: 40px !important;
+  padding: 0 12px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--pvfd-light-rgb), 0.10), rgba(var(--pvfd-light-deep-rgb), 0.06)),
+    var(--pvfd-lcd-deep) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.32) !important;
+  color: var(--pvfd-cyan) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.68),
+    inset 0 0 8px rgba(var(--pvfd-light-rgb), 0.08) !important;
+}
+
+.Root__main-view .marketplace-header #marketplace-settings-button {
+  width: 40px !important;
+  padding: 0 !important;
+}
+
+.Root__main-view .marketplace-header .marketplace-header-icon-button :is(svg, path, circle, rect, line, polyline, polygon) {
+  color: var(--pvfd-cyan) !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+  filter: drop-shadow(0 0 4px rgba(var(--pvfd-light-rgb), 0.58)) !important;
+}
+
+.Root__main-view .marketplace-header .marketplace-header-icon-button:is(:hover, :focus-visible) {
+  background:
+    linear-gradient(180deg, rgba(var(--pvfd-light-rgb), 0.18), rgba(var(--pvfd-light-deep-rgb), 0.10)),
+    var(--pvfd-lcd-deep) !important;
+  border-color: rgba(var(--pvfd-light-mid-rgb), 0.58) !important;
+  color: #d8f8ff !important;
+  outline: none !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.58),
+    0 0 9px rgba(var(--pvfd-light-rgb), 0.18) !important;
+}
+
+.Root__main-view .marketplace-card-type-heading {
+  position: relative !important;
+  z-index: 0 !important;
+}
+
+@media (max-width: 980px) {
+  .Root__main-view .marketplace-header {
+    flex-wrap: wrap !important;
+  }
+
+  .Root__main-view .marketplace-header__right {
+    flex-basis: 100% !important;
+  }
+
+  .Root__main-view .marketplace-header .searchbar--bar__wrapper {
+    flex: 1 1 220px !important;
+    max-width: none !important;
+  }
+}
+
+/* v2.35: restore global-nav icon strength and add a non-tile hover state. */
+:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
+  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i]) {
+  color: var(--pvfd-cyan) !important;
+  opacity: 1 !important;
+}
+
+:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
+  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
+  :is(svg, path, circle, rect, line, polyline, polygon) {
+  color: var(--pvfd-cyan) !important;
+  opacity: 1 !important;
+  stroke: currentColor !important;
+  stroke-width: 1.8px !important;
+  fill: none !important;
+  filter: drop-shadow(0 0 4px rgba(var(--pvfd-light-rgb), 0.62)) !important;
+}
+
+:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
+  :is(button, [role="button"], a[aria-label]):is([disabled], [aria-disabled="true"]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i]) {
+  opacity: 0.58 !important;
+}
+
+:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
+  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
+  :is(:hover, :focus-visible) {
+  background:
+    linear-gradient(180deg, rgba(var(--pvfd-light-rgb), 0.16), rgba(var(--pvfd-light-deep-rgb), 0.08)) !important;
+  outline: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.48) !important;
+  outline-offset: -1px !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.34),
+    0 0 8px rgba(var(--pvfd-light-rgb), 0.20) !important;
+}
+
+:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
+  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
+  :is(:hover, :focus-visible) :is(svg, path, circle, rect, line, polyline, polygon) {
+  color: #d8f8ff !important;
+  filter: drop-shadow(0 0 6px rgba(var(--pvfd-light-rgb), 0.78)) !important;
+}
+
+.Root__top-bar button[aria-label*="Play" i] :is(svg, path, polygon),
+.Root__top-bar button[aria-label*="Pause" i] :is(svg, path, polygon),
+.main-topBar-container button[aria-label*="Play" i] :is(svg, path, polygon),
+.main-topBar-container button[aria-label*="Pause" i] :is(svg, path, polygon) {
+  fill: currentColor !important;
+  stroke: none !important;
+}

@@ -206,11 +206,11 @@
 
           <div class="pvfd-menu-panel" data-pvfd="menu-panel" aria-hidden="true">
             <div class="pvfd-menu-title">PIONEER MENU</div>
-            <div class="pvfd-menu-row"><b>SRC</b><span data-pvfd="menu-src">PLAY</span></div>
-            <div class="pvfd-menu-row"><b>OEL</b><span data-pvfd="menu-oel">----</span></div>
-            <div class="pvfd-menu-row"><b>DEMO</b><span data-pvfd="menu-demo">OFF</span></div>
-            <div class="pvfd-menu-row"><b>TINT</b><span data-pvfd="menu-tint">CYAN</span></div>
-            <div class="pvfd-menu-row"><b>LCD</b><span data-pvfd="menu-lcd">FULL</span></div>
+            <div class="pvfd-menu-row" data-pvfd-menu-action="source"><b>SRC</b><span data-pvfd="menu-src">PLAY</span></div>
+            <div class="pvfd-menu-row" data-pvfd-menu-action="clip"><b>OEL</b><span data-pvfd="menu-oel">----</span></div>
+            <div class="pvfd-menu-row" data-pvfd-menu-action="demo"><b>DEMO</b><span data-pvfd="menu-demo">OFF</span></div>
+            <div class="pvfd-menu-row" data-pvfd-menu-action="tint"><b>TINT</b><span data-pvfd="menu-tint">CYAN</span></div>
+            <div class="pvfd-menu-row" data-pvfd-menu-action="dim"><b>LCD</b><span data-pvfd="menu-lcd">FULL</span></div>
           </div>
         </div>
 
@@ -463,6 +463,57 @@
     if (menuBtn) menuBtn.classList.toggle("active", menuOpen);
   }
 
+  function toggleDimMode() {
+    lcdDimmed = !lcdDimmed;
+    applyLcdFilter();
+    const dimBtn = chassis && chassis.querySelector("[data-pvfd='dim']");
+    if (dimBtn) dimBtn.classList.toggle("active", lcdDimmed);
+    updateMenuPanel();
+  }
+
+  function cycleClipMode() {
+    const idx = MODES.indexOf("CLIP");
+    if (idx < 0) return;
+    if (modeIdx === idx) setActiveClip(clipIdx + 1);
+    else setActiveClip(clipIdx);
+    modeIdx = idx;
+    modeLastSwitchMs = performance.now();
+    if (modeForcedIdx >= 0) modeForcedIdx = idx;
+    const clipBtn = chassis && chassis.querySelector("[data-pvfd='clip']");
+    if (clipBtn) {
+      clipBtn.classList.add("active");
+      setTimeout(() => clipBtn.classList.remove("active"), 900);
+    }
+    updateMenuPanel();
+  }
+
+  function cycleTintMode() {
+    tintIdx = (tintIdx + 1) % TINT_HUE_DEG.length;
+    applyLcdFilter();
+    const tintBtn = chassis && chassis.querySelector("[data-pvfd='tint']");
+    if (tintBtn) {
+      tintBtn.textContent = TINT_LABELS[tintIdx];
+      tintBtn.classList.toggle("active", tintIdx !== 0);
+    }
+    updateMenuPanel();
+  }
+
+  function toggleDemoMode() {
+    demoAutoMode = !demoAutoMode;
+    demoLastClipSwitchMs = performance.now();
+    if (chassis) chassis.setAttribute("data-pvfd-demo", demoAutoMode ? "on" : "off");
+    updateRoleButtonStates();
+    updateMenuPanel();
+  }
+
+  function activateMenuAction(action) {
+    if (action === "source") cycleSource();
+    else if (action === "clip") cycleClipMode();
+    else if (action === "demo") toggleDemoMode();
+    else if (action === "tint") cycleTintMode();
+    else if (action === "dim") toggleDimMode();
+  }
+
   function getPlayerVolume() {
     if (pendingVolume !== null) return pendingVolume;
     const raw = safeReturn(() => Spicetify.Player.getVolume(), 0.5);
@@ -618,46 +669,22 @@
     bind($("[data-pvfd='navright']"), () => Spicetify.Player.next());
 
     bind($("[data-pvfd='scan']"), cycleSource);
-    bind($("[data-pvfd='dim']"), () => {
-      lcdDimmed = !lcdDimmed;
-      applyLcdFilter();
-      $("[data-pvfd='dim']").classList.toggle("active", lcdDimmed);
-      updateMenuPanel();
-    });
-    bind($("[data-pvfd='clip']"), () => {
-      const idx = MODES.indexOf("CLIP");
-      if (idx < 0) return;
-      if (modeIdx === idx) setActiveClip(clipIdx + 1);
-      else setActiveClip(clipIdx);
-      modeIdx = idx;
-      modeLastSwitchMs = performance.now();
-      if (modeForcedIdx >= 0) modeForcedIdx = idx;
-      const clipBtn = $("[data-pvfd='clip']");
-      if (clipBtn) {
-        clipBtn.classList.add("active");
-        setTimeout(() => clipBtn.classList.remove("active"), 900);
-      }
-      updateMenuPanel();
-    });
-    bind($("[data-pvfd='tint']"), () => {
-      tintIdx = (tintIdx + 1) % TINT_HUE_DEG.length;
-      applyLcdFilter();
-      const tintBtn = $("[data-pvfd='tint']");
-      if (tintBtn) {
-        tintBtn.textContent = TINT_LABELS[tintIdx];
-        tintBtn.classList.toggle("active", tintIdx !== 0);
-      }
-      updateMenuPanel();
-    });
-    bind($("[data-pvfd='demo']"), () => {
-      demoAutoMode = !demoAutoMode;
-      demoLastClipSwitchMs = performance.now();
-      if (chassis) chassis.setAttribute("data-pvfd-demo", demoAutoMode ? "on" : "off");
-      updateRoleButtonStates();
-      updateMenuPanel();
-    });
+    bind($("[data-pvfd='dim']"), toggleDimMode);
+    bind($("[data-pvfd='clip']"), cycleClipMode);
+    bind($("[data-pvfd='tint']"), cycleTintMode);
+    bind($("[data-pvfd='demo']"), toggleDemoMode);
     bind($("[data-pvfd='menu']"), () => {
       setMenuOpen(!menuOpen);
+    });
+    chassis.querySelectorAll("[data-pvfd-menu-action]").forEach((row) => {
+      row.setAttribute("role", "menuitem");
+      row.setAttribute("tabindex", "0");
+      row.addEventListener("click", () => activateMenuAction(row.dataset.pvfdMenuAction));
+      row.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        activateMenuAction(row.dataset.pvfdMenuAction);
+      });
     });
     bind($("[data-pvfd='open']"), () => {
       openDevicePicker();
