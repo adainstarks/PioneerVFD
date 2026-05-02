@@ -4782,3 +4782,752 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
     transform: none !important;
   }
 }
+
+/* v2.24: keep the center animation LCD vertically locked to the side LCD boxes. */
+@media (max-width: 1680px) and (min-width: 1421px) {
+  .pvfd-compact-stage > .pvfd-lcd {
+    height: 116px !important;
+    min-height: 116px !important;
+    max-height: 116px !important;
+    aspect-ratio: auto !important;
+    align-self: center !important;
+    transform: translateY(-8px) !important;
+  }
+}
+
+@media (max-width: 1420px) and (min-width: 1321px) {
+  .pvfd-compact-stage > .pvfd-lcd {
+    height: 110px !important;
+    min-height: 110px !important;
+    max-height: 110px !important;
+    aspect-ratio: auto !important;
+    align-self: center !important;
+    transform: translateY(-7px) !important;
+  }
+}
+
+@container (max-width: 1680px) and (min-width: 1421px) {
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd {
+    height: 116px !important;
+    min-height: 116px !important;
+    max-height: 116px !important;
+    aspect-ratio: auto !important;
+    align-self: center !important;
+    transform: translateY(-8px) !important;
+  }
+}
+
+@container (max-width: 1420px) and (min-width: 1321px) {
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd {
+    height: 110px !important;
+    min-height: 110px !important;
+    max-height: 110px !important;
+    aspect-ratio: auto !important;
+    align-self: center !important;
+    transform: translateY(-7px) !important;
+  }
+}
+
+/* v2.25: keep blank side LCD glass below 1320px instead of stretching the OEL. */
+@media (max-width: 1320px) and (min-width: 1161px) {
+  .pvfd-compact-stage {
+    width: min(100%, 680px) !important;
+    max-width: 680px !important;
+    grid-template-columns: minmax(70px, 1fr) minmax(420px, 440px) minmax(70px, 1fr) !important;
+    column-gap: 8px !important;
+    justify-content: center !important;
+    justify-items: stretch !important;
+    overflow: visible !important;
+  }
+
+  .pvfd-compact-stage > .pvfd-lcd {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 440px !important;
+    height: 110px !important;
+    min-height: 110px !important;
+    max-height: 110px !important;
+    aspect-ratio: auto !important;
+    justify-self: stretch !important;
+    align-self: center !important;
+    transform: translateY(-7px) !important;
+  }
+
+  .pvfd-compact-stage > .pvfd-lcd-side,
+  .pvfd-compact-stage > .pvfd-lcd-side-left,
+  .pvfd-compact-stage > .pvfd-lcd-side-right {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 110px !important;
+    min-height: 110px !important;
+    max-height: 110px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.24) !important;
+    transform: translateY(-7px) !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-lcd-side .pvfd-side-readouts-right,
+  .pvfd-lcd-side .pvfd-side-model,
+  .pvfd-lcd-side .pvfd-side-badges,
+  .pvfd-lcd-side .pvfd-side-vu {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
+@container (max-width: 1320px) and (min-width: 1161px) {
+  .pvfd-chassis .pvfd-compact-stage {
+    width: min(100%, 680px) !important;
+    max-width: 680px !important;
+    grid-template-columns: minmax(70px, 1fr) minmax(420px, 440px) minmax(70px, 1fr) !important;
+    column-gap: 8px !important;
+    justify-content: center !important;
+    justify-items: stretch !important;
+    overflow: visible !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 440px !important;
+    height: 110px !important;
+    min-height: 110px !important;
+    max-height: 110px !important;
+    aspect-ratio: auto !important;
+    justify-self: stretch !important;
+    align-self: center !important;
+    transform: translateY(-7px) !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side,
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side-left,
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side-right {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 110px !important;
+    min-height: 110px !important;
+    max-height: 110px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.24) !important;
+    transform: translateY(-7px) !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readouts-right,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-model,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-badges,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-vu {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
+/* v2.26: shed side-box detail gradually and protect the OEL width below 1160px. */
+@media (max-width: 1320px) and (min-width: 1161px) {
+  .pvfd-compact-stage > .pvfd-lcd-side,
+  .pvfd-compact-stage > .pvfd-lcd-side-left,
+  .pvfd-compact-stage > .pvfd-lcd-side-right {
+    padding: 8px 9px !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-lcd-side .pvfd-side-readouts-right,
+  .pvfd-lcd-side .pvfd-side-model {
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-lcd-side .pvfd-side-model {
+    display: block !important;
+    font-size: 8px !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 26px minmax(0, 1fr) !important;
+    gap: 5px !important;
+    font-size: 8px !important;
+    line-height: 1.15 !important;
+    min-height: 12px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout b {
+    font-size: 7px !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout span {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+  }
+
+  .pvfd-lcd-side-left .pvfd-side-readout:nth-of-type(n+5),
+  .pvfd-lcd-side .pvfd-side-badges,
+  .pvfd-lcd-side .pvfd-side-vu,
+  .pvfd-side-readouts-right .pvfd-side-readout:nth-of-type(n+3) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+
+  .pvfd-lcd-side-right .pvfd-side-readouts-right {
+    padding-right: 0 !important;
+  }
+}
+
+@media (max-width: 1230px) and (min-width: 1161px) {
+  .pvfd-lcd-side-left .pvfd-side-readout:nth-of-type(n+4) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-lcd-side .pvfd-side-model,
+  .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    font-size: 7.5px !important;
+  }
+}
+
+@media (max-width: 1160px) and (min-width: 1041px) {
+  .pvfd-meta-lcd,
+  .pvfd-compact-stage {
+    width: min(100%, 640px) !important;
+    max-width: 640px !important;
+    min-width: 0 !important;
+    justify-self: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .pvfd-compact-stage {
+    grid-template-columns: minmax(62px, 1fr) minmax(380px, 420px) minmax(62px, 1fr) !important;
+    column-gap: 7px !important;
+    justify-content: center !important;
+    justify-items: stretch !important;
+    align-items: center !important;
+    overflow: visible !important;
+  }
+
+  .pvfd-compact-stage > .pvfd-lcd {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 420px !important;
+    height: 104px !important;
+    min-height: 104px !important;
+    max-height: 104px !important;
+    aspect-ratio: auto !important;
+    justify-self: stretch !important;
+    align-self: center !important;
+    transform: translateY(-6px) !important;
+  }
+
+  .pvfd-compact-stage > .pvfd-lcd-side,
+  .pvfd-compact-stage > .pvfd-lcd-side-left,
+  .pvfd-compact-stage > .pvfd-lcd-side-right {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 104px !important;
+    min-height: 104px !important;
+    max-height: 104px !important;
+    padding: 8px 8px !important;
+    margin: 0 !important;
+    border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.22) !important;
+    transform: translateY(-6px) !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-lcd-side .pvfd-side-model {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: 7px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    grid-template-columns: 24px minmax(0, 1fr) !important;
+    gap: 4px !important;
+    font-size: 7px !important;
+    line-height: 1.1 !important;
+    min-height: 11px !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout b {
+    font-size: 6.5px !important;
+  }
+
+  .pvfd-lcd-side-left .pvfd-side-readout:nth-of-type(n+4),
+  .pvfd-lcd-side .pvfd-side-badges,
+  .pvfd-lcd-side .pvfd-side-vu,
+  .pvfd-side-readouts-right .pvfd-side-readout:nth-of-type(n+3) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+
+  .pvfd-lcd-side-right .pvfd-side-readouts-right {
+    padding-right: 0 !important;
+  }
+}
+
+@container (max-width: 1320px) and (min-width: 1161px) {
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side,
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side-left,
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side-right {
+    padding: 8px 9px !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readouts-right,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-model {
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-model {
+    display: block !important;
+    font-size: 8px !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 26px minmax(0, 1fr) !important;
+    gap: 5px !important;
+    font-size: 8px !important;
+    line-height: 1.15 !important;
+    min-height: 12px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout b {
+    font-size: 7px !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout span {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side-left .pvfd-side-readout:nth-of-type(n+5),
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-badges,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-vu,
+  .pvfd-chassis .pvfd-side-readouts-right .pvfd-side-readout:nth-of-type(n+3) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side-right .pvfd-side-readouts-right {
+    padding-right: 0 !important;
+  }
+}
+
+@container (max-width: 1230px) and (min-width: 1161px) {
+  .pvfd-chassis .pvfd-lcd-side-left .pvfd-side-readout:nth-of-type(n+4) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-model,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    font-size: 7.5px !important;
+  }
+}
+
+@container (max-width: 1160px) and (min-width: 1041px) {
+  .pvfd-chassis .pvfd-meta-lcd,
+  .pvfd-chassis .pvfd-compact-stage {
+    width: min(100%, 640px) !important;
+    max-width: 640px !important;
+    min-width: 0 !important;
+    justify-self: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage {
+    grid-template-columns: minmax(62px, 1fr) minmax(380px, 420px) minmax(62px, 1fr) !important;
+    column-gap: 7px !important;
+    justify-content: center !important;
+    justify-items: stretch !important;
+    align-items: center !important;
+    overflow: visible !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 420px !important;
+    height: 104px !important;
+    min-height: 104px !important;
+    max-height: 104px !important;
+    aspect-ratio: auto !important;
+    justify-self: stretch !important;
+    align-self: center !important;
+    transform: translateY(-6px) !important;
+  }
+
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side,
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side-left,
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side-right {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 104px !important;
+    min-height: 104px !important;
+    max-height: 104px !important;
+    padding: 8px 8px !important;
+    margin: 0 !important;
+    border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.22) !important;
+    transform: translateY(-6px) !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-model {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: 7px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    grid-template-columns: 24px minmax(0, 1fr) !important;
+    gap: 4px !important;
+    font-size: 7px !important;
+    line-height: 1.1 !important;
+    min-height: 11px !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout b {
+    font-size: 6.5px !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side-left .pvfd-side-readout:nth-of-type(n+4),
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-badges,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-vu,
+  .pvfd-chassis .pvfd-side-readouts-right .pvfd-side-readout:nth-of-type(n+3) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side-right .pvfd-side-readouts-right {
+    padding-right: 0 !important;
+  }
+}
+
+/* v2.27: keep compressed side-box text readable after the detail shed. */
+@media (max-width: 1320px) and (min-width: 1161px) {
+  .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-lcd-side .pvfd-side-model {
+    font-size: 9px !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0.7px !important;
+    margin-bottom: 6px !important;
+    text-shadow: 0 0 4px rgba(var(--pvfd-light-rgb), 0.62) !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 30px minmax(0, 1fr) !important;
+    gap: 5px !important;
+    font-size: 9px !important;
+    line-height: 1.12 !important;
+    min-height: 13px !important;
+    letter-spacing: 0.45px !important;
+    text-shadow: 0 0 4px rgba(var(--pvfd-light-rgb), 0.58) !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout b {
+    font-size: 8px !important;
+    letter-spacing: 0.55px !important;
+  }
+}
+
+@media (max-width: 1230px) and (min-width: 1161px) {
+  .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-lcd-side .pvfd-side-model,
+  .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    font-size: 8.75px !important;
+  }
+}
+
+@media (max-width: 1160px) and (min-width: 1041px) {
+  .pvfd-compact-stage > .pvfd-lcd-side,
+  .pvfd-compact-stage > .pvfd-lcd-side-left,
+  .pvfd-compact-stage > .pvfd-lcd-side-right {
+    padding: 9px 9px !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-lcd-side .pvfd-side-model {
+    font-size: 8.75px !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0.55px !important;
+    margin-bottom: 6px !important;
+    text-shadow: 0 0 4px rgba(var(--pvfd-light-rgb), 0.64) !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 29px minmax(0, 1fr) !important;
+    gap: 5px !important;
+    font-size: 8.75px !important;
+    line-height: 1.12 !important;
+    min-height: 13px !important;
+    letter-spacing: 0.35px !important;
+    text-shadow: 0 0 4px rgba(var(--pvfd-light-rgb), 0.60) !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout b {
+    font-size: 7.75px !important;
+    letter-spacing: 0.45px !important;
+  }
+}
+
+@container (max-width: 1320px) and (min-width: 1161px) {
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-model {
+    font-size: 9px !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0.7px !important;
+    margin-bottom: 6px !important;
+    text-shadow: 0 0 4px rgba(var(--pvfd-light-rgb), 0.62) !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 30px minmax(0, 1fr) !important;
+    gap: 5px !important;
+    font-size: 9px !important;
+    line-height: 1.12 !important;
+    min-height: 13px !important;
+    letter-spacing: 0.45px !important;
+    text-shadow: 0 0 4px rgba(var(--pvfd-light-rgb), 0.58) !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout b {
+    font-size: 8px !important;
+    letter-spacing: 0.55px !important;
+  }
+}
+
+@container (max-width: 1230px) and (min-width: 1161px) {
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-model,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    font-size: 8.75px !important;
+  }
+}
+
+@container (max-width: 1160px) and (min-width: 1041px) {
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side,
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side-left,
+  .pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side-right {
+    padding: 9px 9px !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-model {
+    font-size: 8.75px !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0.55px !important;
+    margin-bottom: 6px !important;
+    text-shadow: 0 0 4px rgba(var(--pvfd-light-rgb), 0.64) !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 29px minmax(0, 1fr) !important;
+    gap: 5px !important;
+    font-size: 8.75px !important;
+    line-height: 1.12 !important;
+    min-height: 13px !important;
+    letter-spacing: 0.35px !important;
+    text-shadow: 0 0 4px rgba(var(--pvfd-light-rgb), 0.60) !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout b {
+    font-size: 7.75px !important;
+    letter-spacing: 0.45px !important;
+  }
+}
+
+/* v2.28: +2px compressed side-box typography pass. */
+@media (max-width: 1320px) and (min-width: 1161px) {
+  .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-lcd-side .pvfd-side-model {
+    font-size: 11px !important;
+    line-height: 1.08 !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 35px minmax(0, 1fr) !important;
+    font-size: 11px !important;
+    line-height: 1.08 !important;
+    min-height: 15px !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout b {
+    font-size: 10px !important;
+  }
+}
+
+@media (max-width: 1230px) and (min-width: 1161px) {
+  .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-lcd-side .pvfd-side-model,
+  .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    font-size: 10.75px !important;
+  }
+}
+
+@media (max-width: 1160px) and (min-width: 1041px) {
+  .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-lcd-side .pvfd-side-model {
+    font-size: 10.75px !important;
+    line-height: 1.08 !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    font-size: 10.75px !important;
+    line-height: 1.08 !important;
+    min-height: 15px !important;
+  }
+
+  .pvfd-lcd-side .pvfd-side-readout b {
+    font-size: 9.75px !important;
+  }
+}
+
+@container (max-width: 1320px) and (min-width: 1161px) {
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-model {
+    font-size: 11px !important;
+    line-height: 1.08 !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 35px minmax(0, 1fr) !important;
+    font-size: 11px !important;
+    line-height: 1.08 !important;
+    min-height: 15px !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout b {
+    font-size: 10px !important;
+  }
+}
+
+@container (max-width: 1230px) and (min-width: 1161px) {
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-model,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    font-size: 10.75px !important;
+  }
+}
+
+@container (max-width: 1160px) and (min-width: 1041px) {
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-label,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-model {
+    font-size: 10.75px !important;
+    line-height: 1.08 !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout,
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readouts-right .pvfd-side-readout {
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    font-size: 10.75px !important;
+    line-height: 1.08 !important;
+    min-height: 15px !important;
+  }
+
+  .pvfd-chassis .pvfd-lcd-side .pvfd-side-readout b {
+    font-size: 9.75px !important;
+  }
+}
