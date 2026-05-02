@@ -13,7 +13,7 @@ Fullscreen:
 
 Shrunken window:
 
-<img width="100" height="925" alt="Screenshot 2026-05-02 164145" src="https://github.com/user-attachments/assets/520d3df1-6c0a-462c-a8cb-4dd6ac2ed3e4" />
+<img width="1000" height="925" alt="Screenshot 2026-05-02 164145" src="https://github.com/user-attachments/assets/520d3df1-6c0a-462c-a8cb-4dd6ac2ed3e4" />
 
 
 ## What It Does
