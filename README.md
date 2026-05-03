@@ -21,6 +21,22 @@ This is a Spicetify theme and extension that turns Spotify desktop into a 2000s 
 - Adds live side LCD readouts, transport controls, tint modes, and a period-correct cyan, amber, and violet display treatment.
 - Keeps the layout clean when the Spotify window is narrowed.
 
+## Controls And Performance
+
+The Pioneer `MENU` button exposes the core runtime controls:
+
+- `SRC` opens the current source target, such as the now playing view, queue, or lyrics.
+- `OEL` cycles the center LCD/OEL animation.
+- `DEMO` cycles OEL animations automatically without changing the saved startup animation.
+- `TINT` switches the display treatment between cyan, amber, and violet.
+- `TYPE` switches the Spotify content font preset.
+- `PERF` switches between `FULL` and `ECO`.
+- `PULSE` toggles the beat-synced Pioneer logo glow.
+
+`ECO` is a low-end-system mode that prioritizes smooth center LCD/OEL animation over the surrounding chrome. It caps OEL canvas cost, reduces display pixel density on high-DPI screens, releases inactive clip frame memory, throttles nonessential side-panel updates, disables the side VU meter, and strips decorative LCD/glow treatment from the side panels. Steady state readouts such as volume, repeat, shuffle, tint, and an `ECO` indicator remain visible so the player still explains what it is doing.
+
+The extension saves the preferences users are likely to expect across Spotify launches: `PERF`, `PULSE`, `TINT`, `DIM`, `TYPE`, and the selected `OEL` animation.
+
 ## Requirements
 
 - Spotify desktop
@@ -48,6 +64,12 @@ chmod +x ./install-linux.sh
 ```bash
 chmod +x ./install-macos.sh
 ./install-macos.sh
+```
+
+The macOS installer enables Spicetify DevTools by default because some Mac installs do not load exposed APIs or extensions reliably until Spicetify reapplies with developer tooling enabled. To skip that step:
+
+```bash
+PVFD_ENABLE_DEVTOOLS=0 ./install-macos.sh
 ```
 
 ### Manual Windows install
@@ -78,6 +100,7 @@ PioneerVFD/
 |   `-- pioneerVFD.js
 |-- Themes/
 |   `-- PioneerVFD/
+|       |-- fonts/
 |       |-- color.ini
 |       `-- user.css
 |-- install-windows.ps1
@@ -93,6 +116,21 @@ PioneerVFD/
 - `Themes/PioneerVFD/color.ini` defines the `Pioneer DEH-P7600MP` color scheme.
 - The center OEL animation path caches rendered frames for smoother playback. This may mean that when you first open Spotify, the animations could lag until the frames are cached.
 - The Linux and macOS installers resolve the Spicetify config directory with `spicetify -c`, then copy the same theme and extension files used on Windows. Also, it is not completely necessary to `chmod +x` but may help if you experience file permission issues.
+- If macOS opens Spotify to a black screen or the Pioneer player appears without working JavaScript, fully quit Spotify and rerun:
+
+```bash
+spicetify backup
+spicetify config expose_apis 1 inject_css 1 replace_colors 1 overwrite_assets 1
+spicetify enable-devtools
+spicetify apply
+```
+
+If `spicetify enable-devtools` is unavailable, use:
+
+```bash
+spicetify config always_enable_devtools 1
+spicetify apply
+```
 
 ## Disclaimer
 

@@ -5,10 +5,24 @@
 // =====================================================================
 
 (function PioneerVFD() {
-  if (!window.Spicetify || !Spicetify.Player || !Spicetify.CosmosAsync) {
+  const bootStartedAt = window.__PVFD_BOOT_STARTED_AT || Date.now();
+  window.__PVFD_BOOT_STARTED_AT = bootStartedAt;
+  const playerReady = !!(
+    window.Spicetify
+    && Spicetify.Player
+    && typeof Spicetify.Player.isPlaying === "function"
+  );
+
+  if (!playerReady) {
+    if (!window.__PVFD_BOOT_WARNED__ && Date.now() - bootStartedAt > 10000) {
+      window.__PVFD_BOOT_WARNED__ = true;
+      console.warn("[PVFD] Waiting for Spicetify Player API. If this never loads, run `spicetify config expose_apis 1`, then `spicetify apply`.");
+    }
     setTimeout(PioneerVFD, 300);
     return;
   }
+  if (window.__PVFD_EXTENSION_RUNNING__) return;
+  window.__PVFD_EXTENSION_RUNNING__ = true;
 
   const NUM_BARS = 48;
   const SMOOTHING = 0.72;
@@ -17,7 +31,6 @@
   const TIMBRE_SCALE = 0.012;
   const PEAK_HOLD_MS = 600;
   const MODE_CYCLE_MS = 10000;
-  const SINE_BASE = 0.30;
   const MODES = ["CLIP"];
   const SCRUB_MS_PER_TICK = 5000;
   // LCD clip frame constants. Panel res matches the DEH-P7600MP logical cell grid.
@@ -40,7 +53,12 @@
   // and violet (~280°): rotation = (target - 180) mod 360.
   const TINT_LABELS = ["CYAN", "AMBER", "VIOLET"];
   const TINT_HUE_DEG = [0, 225, 100];
+  const TINT_STORAGE_KEY = "pvfd-tint-mode";
+  const DIM_STORAGE_KEY = "pvfd-dim-mode";
   const FONT_STORAGE_KEY = "pvfd-font-preset";
+  const PERF_STORAGE_KEY = "pvfd-performance-mode";
+  const LOGO_GLOW_STORAGE_KEY = "pvfd-logo-bpm-glow";
+  const CLIP_STORAGE_KEY = "pvfd-oel-clip";
   const FONT_PRESETS = [
     { label: "DOT",  stack: "\"VT323\", \"Share Tech Mono\", monospace" },
     { label: "LCD",  stack: "\"Iceland\", \"Share Tech Mono\", monospace" },
@@ -50,6 +68,8 @@
   const DEFAULT_FONT_PRESET = "TECH";
   let tintIdx = 0;
   let fontPresetIdx = FONT_PRESETS.findIndex(p => p.label === DEFAULT_FONT_PRESET);
+  let performanceModeIdx = 0;
+  let logoGlowEnabled = false;
 
   const DEMO_CLIP_CYCLE_MS = 8000;
   const SOURCE_TARGETS = [
@@ -71,7 +91,13 @@
   let clipStartMs = 0;
 
 
-  let analysis = null, segments = [], beats = [], beatIdx = 0;
+  let analysis = null, segments = [], beats = [], logoBeatTargets = [];
+  let tempoBpm = 0;
+  let logoBeatIdx = 0;
+  let lastLogoGlowTrackSec = NaN;
+  let lastLogoGlowBeatKey = "";
+  let logoGlowBurstTimer = 0;
+  let logoGlowSchedulerTimer = 0;
   let barHeights = new Array(NUM_BARS).fill(0);
   let peakHeights = new Array(NUM_BARS).fill(0);
   let peakTimestamps = new Array(NUM_BARS).fill(0);
@@ -94,14 +120,57 @@
   let lastCanvasFrameKey = "";
   const CLIP_CACHE_BATCH_MS = 4;
   const CLIP_RENDER_CACHE_ENABLED = true; // cached OEL frame path
-  const CONTROL_READOUT_INTERVAL_MS = 220;
-  const NAV_LED_INTERVAL_MS = 180;
   const MUTATION_FLUSH_DELAY_MS = 80;
   const PLAYER_STATE_SAMPLE_MS = 900;
   const PLAYER_TIMING_SAMPLE_MS = 1000;
+  const LOGO_GLOW_TIMING_SAMPLE_MS = 160;
+  const LOGO_GLOW_TIMING_SMOOTHING = 0.35;
+  const LOGO_GLOW_SCHEDULER_MS = 24;
   const TRACK_SYNC_INTERVAL_MS = 600;
   const BAR_UPDATE_INTERVAL_MS = 140;
+  const PROGRESS_READOUT_INTERVAL_MS = 220;
+  const STATIC_READOUT_INTERVAL_MS = 1200;
+  const ECO_STATIC_READOUT_INTERVAL_MS = 4200;
+  const EXTERNAL_VOLUME_LED_SAMPLE_MS = 5000;
   const VOLUME_SAMPLE_MS = 1200;
+  const PERFORMANCE_MODES = [
+    {
+      label: "FULL",
+      frameMs: FRAME_INTERVAL_MS,
+      maxClipFps: 60,
+      maxDpr: 2,
+      cacheBatchMs: CLIP_CACHE_BATCH_MS,
+      cacheFramesPerSlice: 3,
+      navLed: true,
+      barUpdateMs: BAR_UPDATE_INTERVAL_MS,
+      sideVu: true,
+      sideReadouts: true,
+      reducedEffects: false,
+      preloadFullClipCache: true,
+      allowPartialClipCache: false,
+      keepPreviousClipCache: true,
+      releaseInactiveClipBytes: false,
+      maxCachedClipFrames: Infinity,
+    },
+    {
+      label: "ECO",
+      frameMs: FRAME_INTERVAL_MS,
+      maxClipFps: 12,
+      maxDpr: 1,
+      cacheBatchMs: 8,
+      cacheFramesPerSlice: 6,
+      navLed: false,
+      barUpdateMs: 1000,
+      sideVu: false,
+      sideReadouts: false,
+      reducedEffects: true,
+      preloadFullClipCache: true,
+      allowPartialClipCache: true,
+      keepPreviousClipCache: false,
+      releaseInactiveClipBytes: true,
+      maxCachedClipFrames: Infinity,
+    },
+  ];
 
   let dolphinX = -50;
   const dolphinBubbles = [];
@@ -204,6 +273,7 @@
               <div class="pvfd-side-readout"><b>TINT</b><span data-pvfd="side-tint">CYAN</span></div>
               <div class="pvfd-side-readout"><b>LCD</b><span data-pvfd="side-dim">FULL</span></div>
               <div class="pvfd-side-badges"><span>LIVE</span><span>VFD</span></div>
+              <div class="pvfd-side-model pvfd-side-eco-model" data-pvfd="side-eco-model">ECO</div>
             </div>
 
             <div class="pvfd-lcd" aria-label="Pioneer VFD animation display">
@@ -228,8 +298,14 @@
 
           <div class="pvfd-menu-panel" data-pvfd="menu-panel" aria-hidden="true">
             <div class="pvfd-menu-title">PIONEER MENU</div>
-            <div class="pvfd-menu-row" data-pvfd-menu-action="source"><b>SRC</b><span data-pvfd="menu-src">PLAY</span></div>
-            <div class="pvfd-menu-row" data-pvfd-menu-action="clip"><b>OEL</b><span data-pvfd="menu-oel">----</span></div>
+            <div class="pvfd-menu-row-split">
+              <div class="pvfd-menu-row" data-pvfd-menu-action="source"><b>SRC</b><span data-pvfd="menu-src">PLAY</span></div>
+              <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-perf-toggle" type="button" data-pvfd-menu-action="perf" title="Cycle performance mode"><b>PERF</b><span data-pvfd="menu-perf">FULL</span></button>
+            </div>
+            <div class="pvfd-menu-row-split">
+              <div class="pvfd-menu-row" data-pvfd-menu-action="clip"><b>OEL</b><span data-pvfd="menu-oel">----</span></div>
+              <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-logo-toggle" type="button" data-pvfd-menu-action="logoGlow" title="Toggle logo beat glow"><b>PULSE</b><span data-pvfd="menu-logo-glow">OFF</span></button>
+            </div>
             <div class="pvfd-menu-row" data-pvfd-menu-action="demo"><b>DEMO</b><span data-pvfd="menu-demo">OFF</span></div>
             <div class="pvfd-menu-row" data-pvfd-menu-action="tint"><b>TINT</b><span data-pvfd="menu-tint">CYAN</span></div>
             <div class="pvfd-menu-row" data-pvfd-menu-action="type"><b>TYPE</b><span data-pvfd="menu-type">DOT</span></div>
@@ -318,7 +394,8 @@
     if (!canvas || !ctx) return;
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const perf = activePerformanceConfig();
+    const dpr = Math.max(1, Math.min(perf.maxDpr || 2, window.devicePixelRatio || 1));
     const pixelW = Math.max(1, Math.floor(rect.width * dpr));
     const pixelH = Math.max(1, Math.floor(rect.height * dpr));
     const dprKey = String(dpr);
@@ -333,13 +410,83 @@
   function bind(el, fn) { if (el) el.addEventListener("click", fn); }
   function safe(fn) { try { fn(); } catch (e) { console.warn("[PVFD]", e); } }
   function safeReturn(fn, fallback) { try { return fn(); } catch (e) { return fallback; } }
+  function invokePlayerAction(fn, refreshDelay = 140) {
+    safe(fn);
+    schedulePlayerStateRefresh(refreshDelay);
+  }
+  function getCosmosAsync() {
+    return window.Spicetify && Spicetify.CosmosAsync && typeof Spicetify.CosmosAsync.get === "function"
+      ? Spicetify.CosmosAsync
+      : null;
+  }
 
   function readFontPresetIdx() {
     const saved = safeReturn(() => window.localStorage.getItem(FONT_STORAGE_KEY), "");
     const idx = FONT_PRESETS.findIndex(p => p.label === saved);
     return idx >= 0 ? idx : Math.max(0, FONT_PRESETS.findIndex(p => p.label === DEFAULT_FONT_PRESET));
   }
+
+  function readTintIdx() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(TINT_STORAGE_KEY), "") || "").toUpperCase();
+    const idx = TINT_LABELS.findIndex(label => label === saved);
+    if (idx >= 0) return idx;
+    const numericIdx = Number(saved);
+    return Number.isInteger(numericIdx) && numericIdx >= 0 && numericIdx < TINT_LABELS.length ? numericIdx : 0;
+  }
+
+  function readDimEnabled() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(DIM_STORAGE_KEY), "") || "").toUpperCase();
+    return saved === "ON" || saved === "TRUE" || saved === "1" || saved === "DIM";
+  }
+
+  function clipStorageId(clip, idx = 0) {
+    return String((clip && (clip.source || clip.name)) || idx);
+  }
+
+  function readClipIdx() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(CLIP_STORAGE_KEY), "") || "");
+    if (!saved) return 0;
+    const savedUpper = saved.toUpperCase();
+    const exactIdx = CLIPS.findIndex((clip, idx) => clipStorageId(clip, idx) === saved);
+    if (exactIdx >= 0) return exactIdx;
+    const nameIdx = CLIPS.findIndex(clip => String(clip && clip.name || "").toUpperCase() === savedUpper);
+    if (nameIdx >= 0) return nameIdx;
+    const numericIdx = Number(saved);
+    return Number.isInteger(numericIdx) && numericIdx >= 0 && numericIdx < CLIPS.length ? numericIdx : 0;
+  }
+
+  function readPerformanceModeIdx() {
+    const saved = safeReturn(() => window.localStorage.getItem(PERF_STORAGE_KEY), "");
+    const idx = PERFORMANCE_MODES.findIndex(p => p.label === saved);
+    return idx >= 0 ? idx : 0;
+  }
+
+  function readLogoGlowEnabled() {
+    const saved = safeReturn(() => window.localStorage.getItem(LOGO_GLOW_STORAGE_KEY), "");
+    return saved === "ON" || saved === "true";
+  }
+
+  function activePerformanceConfig() {
+    return PERFORMANCE_MODES[performanceModeIdx] || PERFORMANCE_MODES[0];
+  }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function validTempo(value) {
+    const tempo = Number(value);
+    return Number.isFinite(tempo) && tempo >= 45 && tempo <= 210 ? tempo : 0;
+  }
+
+  function readTempoFromObject(obj) {
+    if (!obj || typeof obj !== "object") return 0;
+    return validTempo(obj.tempo)
+      || validTempo(obj.bpm)
+      || validTempo(obj.audio_features && obj.audio_features.tempo)
+      || validTempo(obj.audioFeatures && obj.audioFeatures.tempo)
+      || validTempo(obj.metadata && obj.metadata.tempo)
+      || validTempo(obj.metadata && obj.metadata.bpm)
+      || validTempo(obj.metadata && obj.metadata.audio_features && obj.metadata.audio_features.tempo)
+      || validTempo(obj.metadata && obj.metadata.audioFeatures && obj.metadata.audioFeatures.tempo);
+  }
 
   function bindNowPlayingShortcut(el) {
     if (!el) return;
@@ -492,6 +639,8 @@
       source.kind === "queue" ? openQueueSource() :
       false;
     sourceFlashUntil = performance.now() + 1600;
+    markStaticReadoutsDirty();
+    window.setTimeout(markStaticReadoutsDirty, 1650);
     const srcBtn = chassis && chassis.querySelector("[data-pvfd='scan']");
     if (srcBtn) {
       srcBtn.classList.add("active");
@@ -517,6 +666,10 @@
   const playerStateCache = { at: -Infinity, playing: false, shuffle: false, repeat: "OFF" };
   const playerTimingCache = { at: -Infinity, progressMs: 0, durationMs: 0, playing: false };
   const volumeStateCache = { at: -Infinity, value: 0.5 };
+  let browseFontPresetKey = "";
+  let staticReadoutsDirty = true;
+  let knobLedDirty = true;
+  let navLedDirty = true;
 
   function getPvfdDom() {
     if (!chassis) return {};
@@ -530,6 +683,8 @@
         demo: chassis.querySelector("[data-pvfd='menu-demo']"),
         tint: chassis.querySelector("[data-pvfd='menu-tint']"),
         type: chassis.querySelector("[data-pvfd='menu-type']"),
+        perf: chassis.querySelector("[data-pvfd='menu-perf']"),
+        logoGlow: chassis.querySelector("[data-pvfd='menu-logo-glow']"),
       },
       buttons: {
         play: chassis.querySelector("[data-pvfd='play']"),
@@ -543,6 +698,7 @@
         mode: chassis.querySelector("[data-pvfd='side-mode']"),
         tint: chassis.querySelector("[data-pvfd='side-tint']"),
         dim: chassis.querySelector("[data-pvfd='side-dim']"),
+        ecoModel: chassis.querySelector("[data-pvfd='side-eco-model']"),
         prog: chassis.querySelector("[data-pvfd='side-prog']"),
         left: chassis.querySelector("[data-pvfd='side-left']"),
         repeat: chassis.querySelector("[data-pvfd='side-repeat']"),
@@ -589,6 +745,30 @@
     return playerStateCache;
   }
 
+  function markStaticReadoutsDirty() {
+    staticReadoutsDirty = true;
+  }
+
+  function markPlayerStateDirty() {
+    playerStateCache.at = -Infinity;
+    markStaticReadoutsDirty();
+  }
+
+  function schedulePlayerStateRefresh(delay = 140) {
+    markPlayerStateDirty();
+    window.setTimeout(markPlayerStateDirty, delay);
+  }
+
+  function markVolumeReadoutsDirty() {
+    knobLedDirty = true;
+    markStaticReadoutsDirty();
+  }
+
+  function markTintReadoutsDirty() {
+    navLedDirty = true;
+    markStaticReadoutsDirty();
+  }
+
   function updateMenuPanel() {
     if (!chassis) return;
     const dom = getPvfdDom();
@@ -598,6 +778,8 @@
     setTextIfChanged(dom.menu && dom.menu.demo, demoAutoMode ? "AUTO" : "OFF");
     setTextIfChanged(dom.menu && dom.menu.tint, TINT_LABELS[tintIdx]);
     setTextIfChanged(dom.menu && dom.menu.type, FONT_PRESETS[fontPresetIdx].label);
+    setTextIfChanged(dom.menu && dom.menu.perf, activePerformanceConfig().label);
+    setTextIfChanged(dom.menu && dom.menu.logoGlow, logoGlowEnabled ? "ON" : "OFF");
   }
 
   function updateRoleButtonStates() {
@@ -612,21 +794,39 @@
     if (menuBtn) menuBtn.classList.toggle("active", menuOpen);
   }
 
-  function toggleDimMode() {
-    lcdDimmed = !lcdDimmed;
+  function applyDimMode(persist = false) {
     applyLcdFilter();
     const dimBtn = chassis && chassis.querySelector("[data-pvfd='dim']");
     if (dimBtn) dimBtn.classList.toggle("active", lcdDimmed);
+    if (persist) safe(() => window.localStorage.setItem(DIM_STORAGE_KEY, lcdDimmed ? "ON" : "OFF"));
+    markStaticReadoutsDirty();
     updateMenuPanel();
+  }
+
+  function toggleDimMode() {
+    lcdDimmed = !lcdDimmed;
+    applyDimMode(true);
   }
 
   function applyBrowseFontPreset(persist = false) {
     fontPresetIdx = ((fontPresetIdx % FONT_PRESETS.length) + FONT_PRESETS.length) % FONT_PRESETS.length;
     const preset = FONT_PRESETS[fontPresetIdx];
+    const key = `${preset.label}:${preset.stack}`;
+    let applied = false;
     document.querySelectorAll(".Root__main-view, .main-view-container, .main-view-container__scroll-node").forEach((el) => {
-      el.style.setProperty("--pvfd-font-pixel", preset.stack);
-      el.style.setProperty("--pvfd-font-vfd", preset.stack);
+      const pixelCurrent = el.style.getPropertyValue("--pvfd-font-pixel");
+      const vfdCurrent = el.style.getPropertyValue("--pvfd-font-vfd");
+      if (pixelCurrent !== preset.stack) {
+        el.style.setProperty("--pvfd-font-pixel", preset.stack);
+        applied = true;
+      }
+      if (vfdCurrent !== preset.stack) {
+        el.style.setProperty("--pvfd-font-vfd", preset.stack);
+        applied = true;
+      }
     });
+    if (!applied && browseFontPresetKey === key && !persist) return;
+    browseFontPresetKey = key;
     if (persist) safe(() => window.localStorage.setItem(FONT_STORAGE_KEY, preset.label));
     updateMenuPanel();
   }
@@ -636,11 +836,57 @@
     applyBrowseFontPreset(true);
   }
 
+  function applyPerformanceMode(persist = false) {
+    performanceModeIdx = ((performanceModeIdx % PERFORMANCE_MODES.length) + PERFORMANCE_MODES.length) % PERFORMANCE_MODES.length;
+    const perf = activePerformanceConfig();
+    const perfName = perf.label.toLowerCase();
+    if (chassis) chassis.setAttribute("data-pvfd-performance", perfName);
+    document.documentElement.setAttribute("data-pvfd-performance", perfName);
+    if (document.body) document.body.setAttribute("data-pvfd-performance", perfName);
+    if (persist) safe(() => window.localStorage.setItem(PERF_STORAGE_KEY, perf.label));
+    lastCanvasFrameKey = "";
+    clearAllClipRenderCaches(!perf.keepPreviousClipCache);
+    if (perf.releaseInactiveClipBytes) releaseInactiveClipBytes(CLIPS[clipIdx] || null);
+    scheduleSizeCanvas();
+    applyLcdFilter();
+    markStaticReadoutsDirty();
+    knobLedDirty = true;
+    navLedDirty = true;
+    updateMenuPanel();
+  }
+
+  function applyLogoGlowMode(persist = false) {
+    if (chassis) {
+      chassis.setAttribute("data-pvfd-logo-glow", logoGlowEnabled ? "on" : "off");
+      chassis.classList.remove("pvfd-logo-burst");
+    }
+    if (logoGlowBurstTimer) window.clearTimeout(logoGlowBurstTimer);
+    logoGlowBurstTimer = 0;
+    lastLogoGlowTrackSec = NaN;
+    lastLogoGlowBeatKey = "";
+    logoBeatIdx = 0;
+    playerTimingCache.at = -Infinity;
+    if (logoGlowEnabled) startLogoGlowScheduler();
+    else stopLogoGlowScheduler();
+    if (persist) safe(() => window.localStorage.setItem(LOGO_GLOW_STORAGE_KEY, logoGlowEnabled ? "ON" : "OFF"));
+    updateMenuPanel();
+  }
+
+  function toggleLogoGlowMode() {
+    logoGlowEnabled = !logoGlowEnabled;
+    applyLogoGlowMode(true);
+  }
+
+  function cyclePerformanceMode() {
+    performanceModeIdx = (performanceModeIdx + 1) % PERFORMANCE_MODES.length;
+    applyPerformanceMode(true);
+  }
+
   function cycleClipMode() {
     const idx = MODES.indexOf("CLIP");
     if (idx < 0) return;
-    if (modeIdx === idx) setActiveClip(clipIdx + 1);
-    else setActiveClip(clipIdx);
+    if (modeIdx === idx) setActiveClip(clipIdx + 1, true);
+    else setActiveClip(clipIdx, true);
     modeIdx = idx;
     modeLastSwitchMs = performance.now();
     if (modeForcedIdx >= 0) modeForcedIdx = idx;
@@ -649,24 +895,34 @@
       clipBtn.classList.add("active");
       setTimeout(() => clipBtn.classList.remove("active"), 900);
     }
+    markStaticReadoutsDirty();
     updateMenuPanel();
   }
 
-  function cycleTintMode() {
-    tintIdx = (tintIdx + 1) % TINT_HUE_DEG.length;
+  function applyTintMode(persist = false) {
+    tintIdx = ((tintIdx % TINT_HUE_DEG.length) + TINT_HUE_DEG.length) % TINT_HUE_DEG.length;
     applyLcdFilter();
+    markTintReadoutsDirty();
+    updateNavLED();
     const tintBtn = chassis && chassis.querySelector("[data-pvfd='tint']");
     if (tintBtn) {
       tintBtn.textContent = TINT_LABELS[tintIdx];
       tintBtn.classList.toggle("active", tintIdx !== 0);
     }
+    if (persist) safe(() => window.localStorage.setItem(TINT_STORAGE_KEY, TINT_LABELS[tintIdx]));
     updateMenuPanel();
+  }
+
+  function cycleTintMode() {
+    tintIdx = (tintIdx + 1) % TINT_HUE_DEG.length;
+    applyTintMode(true);
   }
 
   function toggleDemoMode() {
     demoAutoMode = !demoAutoMode;
     demoLastClipSwitchMs = performance.now();
     if (chassis) chassis.setAttribute("data-pvfd-demo", demoAutoMode ? "on" : "off");
+    markStaticReadoutsDirty();
     updateRoleButtonStates();
     updateMenuPanel();
   }
@@ -677,6 +933,8 @@
     else if (action === "demo") toggleDemoMode();
     else if (action === "tint") cycleTintMode();
     else if (action === "type") cycleFontPreset();
+    else if (action === "perf") cyclePerformanceMode();
+    else if (action === "logoGlow") toggleLogoGlowMode();
   }
 
   function getPlayerVolume(now = performance.now(), force = false) {
@@ -693,6 +951,7 @@
     pendingVolume = clamp(v, 0, 1);
     volumeStateCache.value = pendingVolume;
     volumeStateCache.at = performance.now();
+    markStaticReadoutsDirty();
     updateLknobLED();
     if (volumeCommitTimer) return;
     volumeCommitTimer = setTimeout(() => {
@@ -700,22 +959,46 @@
       volumeCommitTimer = null;
       pendingVolume = null;
       safe(() => Spicetify.Player.setVolume(next));
+      markVolumeReadoutsDirty();
     }, 35);
   }
 
-  function getSampledPlaybackTiming(ts = performance.now(), force = false) {
-    if (force || ts - playerTimingCache.at >= PLAYER_TIMING_SAMPLE_MS) {
-      playerTimingCache.at = ts;
-      playerTimingCache.progressMs = Spicetify.Player.getProgress() || 0;
-      playerTimingCache.durationMs = getCurrentDurationMs();
-      playerTimingCache.playing = Spicetify.Player.isPlaying();
-    }
+  function activePlayerTimingSampleMs() {
+    return logoGlowEnabled ? LOGO_GLOW_TIMING_SAMPLE_MS : PLAYER_TIMING_SAMPLE_MS;
+  }
 
+  function projectedPlayerProgressMs(ts = performance.now()) {
+    if (!Number.isFinite(playerTimingCache.at)) return playerTimingCache.progressMs || 0;
     const elapsed = playerTimingCache.playing ? Math.max(0, ts - playerTimingCache.at) : 0;
     const duration = playerTimingCache.durationMs;
+    const projected = playerTimingCache.progressMs + elapsed;
+    return duration > 0 ? clamp(projected, 0, duration) : projected;
+  }
+
+  function getSampledPlaybackTiming(ts = performance.now(), force = false) {
+    if (force || ts - playerTimingCache.at >= activePlayerTimingSampleMs()) {
+      const projectedProgressMs = projectedPlayerProgressMs(ts);
+      const sampledProgressMs = safeReturn(() => Spicetify.Player.getProgress(), projectedProgressMs) || 0;
+      const durationMs = getCurrentDurationMs();
+      const playing = safeReturn(() => Spicetify.Player.isPlaying(), false);
+      let progressMs = sampledProgressMs;
+
+      if (logoGlowEnabled && !force && playing && playerTimingCache.playing && Number.isFinite(playerTimingCache.at)) {
+        const correctionMs = sampledProgressMs - projectedProgressMs;
+        progressMs = Math.abs(correctionMs) <= 450
+          ? projectedProgressMs + correctionMs * LOGO_GLOW_TIMING_SMOOTHING
+          : sampledProgressMs;
+      }
+
+      playerTimingCache.at = ts;
+      playerTimingCache.progressMs = durationMs > 0 ? clamp(progressMs, 0, durationMs) : progressMs;
+      playerTimingCache.durationMs = durationMs;
+      playerTimingCache.playing = playing;
+    }
+
     return {
-      progressMs: duration > 0 ? clamp(playerTimingCache.progressMs + elapsed, 0, duration) : playerTimingCache.progressMs + elapsed,
-      durationMs: duration,
+      progressMs: projectedPlayerProgressMs(ts),
+      durationMs: playerTimingCache.durationMs,
       playing: playerTimingCache.playing,
     };
   }
@@ -731,6 +1014,9 @@
     const target = clamp(ms || 0, 0, duration > 0 ? duration : Number.MAX_SAFE_INTEGER);
     scrubPreviewMs = target;
     scrubPreviewUntil = performance.now() + 700;
+    playerTimingCache.at = -Infinity;
+    lastLogoGlowTrackSec = NaN;
+    logoBeatIdx = 0;
     safe(() => Spicetify.Player.seek(target));
   }
 
@@ -856,15 +1142,15 @@
     bindProgressScrubber($("[data-pvfd='trackbar']"));
     bindNowPlayingShortcut($(".pvfd-meta-track"));
 
-    bind($("[data-pvfd='navcenter']"), () => Spicetify.Player.togglePlay());
+    bind($("[data-pvfd='navcenter']"), () => invokePlayerAction(() => Spicetify.Player.togglePlay()));
     bind($("[data-pvfd='navup']"),    () => safe(() => Spicetify.Player.toggleHeart()));
     bind($("[data-pvfd='navdn']"),    () => safe(() => {
       if (Spicetify.addToQueue && Spicetify.Player.data && Spicetify.Player.data.item) {
         Spicetify.addToQueue([Spicetify.Player.data.item.uri]);
       }
     }));
-    bind($("[data-pvfd='navleft']"),  () => Spicetify.Player.back());
-    bind($("[data-pvfd='navright']"), () => Spicetify.Player.next());
+    bind($("[data-pvfd='navleft']"),  () => invokePlayerAction(() => Spicetify.Player.back(), 300));
+    bind($("[data-pvfd='navright']"), () => invokePlayerAction(() => Spicetify.Player.next(), 300));
 
     bind($("[data-pvfd='scan']"), cycleSource);
     bind($("[data-pvfd='lyrics']"), openLyrics);
@@ -889,11 +1175,11 @@
       openDevicePicker();
     });
 
-    bind($("[data-pvfd='shuffle']"), () => safe(() => Spicetify.Player.toggleShuffle()));
-    bind($("[data-pvfd='prev']"),    () => Spicetify.Player.back());
-    bind($("[data-pvfd='play']"),    () => Spicetify.Player.togglePlay());
-    bind($("[data-pvfd='next']"),    () => Spicetify.Player.next());
-    bind($("[data-pvfd='repeat']"),  () => safe(() => Spicetify.Player.toggleRepeat()));
+    bind($("[data-pvfd='shuffle']"), () => invokePlayerAction(() => Spicetify.Player.toggleShuffle()));
+    bind($("[data-pvfd='prev']"),    () => invokePlayerAction(() => Spicetify.Player.back(), 300));
+    bind($("[data-pvfd='play']"),    () => invokePlayerAction(() => Spicetify.Player.togglePlay()));
+    bind($("[data-pvfd='next']"),    () => invokePlayerAction(() => Spicetify.Player.next(), 300));
+    bind($("[data-pvfd='repeat']"),  () => invokePlayerAction(() => Spicetify.Player.toggleRepeat()));
     bind($("[data-pvfd='love']"),    () => safe(() => Spicetify.Player.toggleHeart()));
     bind($("[data-pvfd='queue']"),   () => {
       const q = document.querySelector("[data-testid='control-button-queue']");
@@ -904,20 +1190,71 @@
     });
   }
 
-  async function loadAnalysis(uri) {
+  async function loadAudioFeaturesTempo(id) {
+    const cosmos = getCosmosAsync();
+    if (!cosmos) return 0;
+    try {
+      const data = await cosmos.get(`https://api.spotify.com/v1/audio-features/${id}`);
+      return readTempoFromObject(data);
+    } catch (err) {
+      console.warn("[PVFD] audio-features fetch failed:", err);
+      return 0;
+    }
+  }
+
+  async function loadAnalysis(uri, item = null) {
     if (!uri) return;
     const id = uri.split(":").pop();
+    const cosmos = getCosmosAsync();
+    const itemTempo = readTempoFromObject(item);
+    analysis = null; segments = []; beats = []; logoBeatTargets = [];
+    lastSegmentIdx = 0;
+    logoBeatIdx = 0;
+    tempoBpm = itemTempo;
+    if (!cosmos) {
+      tempoBpm = itemTempo || 120;
+      return;
+    }
     try {
-      const data = await Spicetify.CosmosAsync.get(`https://api.spotify.com/v1/audio-analysis/${id}`);
+      const data = await cosmos.get(`https://api.spotify.com/v1/audio-analysis/${id}`);
       analysis = data;
       segments = (data && data.segments) || [];
       beats    = (data && data.beats)    || [];
-      beatIdx = 0; lastSegmentIdx = 0;
-      console.log("[PVFD] analysis:", segments.length, "segments,", beats.length, "beats");
+      tempoBpm = validTempo(data && data.track && data.track.tempo) || estimateTempoFromBeats(beats) || itemTempo;
+      if (!tempoBpm) {
+        tempoBpm = await loadAudioFeaturesTempo(id) || itemTempo || 120;
+      }
+      logoBeatTargets = buildLogoBeatTargets(beats);
+      lastSegmentIdx = 0;
+      logoBeatIdx = 0;
+      console.log("[PVFD] analysis:", segments.length, "segments,", beats.length, "beats,", logoBeatTargets.length, "logo beats");
     } catch (err) {
       console.warn("[PVFD] audio-analysis fetch failed:", err);
-      analysis = null; segments = []; beats = [];
+      analysis = null; segments = []; beats = []; logoBeatTargets = [];
+      tempoBpm = await loadAudioFeaturesTempo(id) || itemTempo || 120;
     }
+  }
+
+  function buildLogoBeatTargets(beatList) {
+    const targets = [];
+    for (let i = 0; i < beatList.length; i++) {
+      const start = Number(beatList[i].start);
+      if (Number.isFinite(start)) targets.push(start);
+    }
+    return targets;
+  }
+
+  function estimateTempoFromBeats(beatList) {
+    if (!beatList || beatList.length < 4) return 0;
+    const spans = [];
+    for (let i = 1; i < Math.min(beatList.length, 32); i++) {
+      const span = Number(beatList[i].start) - Number(beatList[i - 1].start);
+      if (span > 0.22 && span < 2.2) spans.push(span);
+    }
+    if (!spans.length) return 0;
+    spans.sort((a, b) => a - b);
+    const median = spans[Math.floor(spans.length / 2)];
+    return median > 0 ? clamp(60 / median, 45, 210) : 0;
   }
 
   function findCurrentSegment(tSec) {
@@ -929,12 +1266,77 @@
     return segments[lastSegmentIdx];
   }
 
-  function beatPulse(tSec) {
-    if (!beats.length) return 0;
-    while (beatIdx < beats.length && beats[beatIdx].start < tSec - 0.05) beatIdx++;
-    if (beatIdx === 0) return 0;
-    const last = beats[beatIdx - 1];
-    return Math.exp(-(tSec - last.start) * 5);
+  function findFallbackLogoBeatCrossing(fromSec, toSec) {
+    if (!tempoBpm) return null;
+    const period = 60 / clamp(tempoBpm, 45, 210);
+    const start = Math.max(0, fromSec - 0.02);
+    const end = toSec + 0.055;
+    const firstBeat = Math.max(0, Math.floor(start / period) * period);
+
+    for (let beatStart = firstBeat; beatStart <= end + period; beatStart += period) {
+      if (beatStart >= start && beatStart <= end) return beatStart;
+    }
+    return null;
+  }
+
+  function findLogoBeatCrossing(prevSec, tSec) {
+    if (!Number.isFinite(prevSec) || !Number.isFinite(tSec)) return null;
+    if (tSec < prevSec - 0.25 || tSec - prevSec > 1.4) {
+      logoBeatIdx = 0;
+      return null;
+    }
+
+    const start = Math.max(0, prevSec - 0.02);
+    const end = tSec + 0.055;
+    if (logoBeatTargets.length) {
+      while (logoBeatIdx < logoBeatTargets.length && logoBeatTargets[logoBeatIdx] < start) logoBeatIdx++;
+      const target = logoBeatTargets[logoBeatIdx];
+      return target <= end ? target : null;
+    }
+    return findFallbackLogoBeatCrossing(prevSec, tSec);
+  }
+
+  function triggerLogoGlowBurst(targetSec) {
+    if (!chassis) return;
+    const key = Number.isFinite(targetSec) ? targetSec.toFixed(3) : String(performance.now());
+    if (key === lastLogoGlowBeatKey) return;
+    lastLogoGlowBeatKey = key;
+    if (logoGlowBurstTimer) window.clearTimeout(logoGlowBurstTimer);
+    chassis.classList.remove("pvfd-logo-burst");
+    void chassis.offsetWidth;
+    chassis.classList.add("pvfd-logo-burst");
+    logoGlowBurstTimer = window.setTimeout(() => {
+      if (chassis) chassis.classList.remove("pvfd-logo-burst");
+      logoGlowBurstTimer = 0;
+    }, 520);
+  }
+
+  function startLogoGlowScheduler() {
+    if (logoGlowSchedulerTimer) return;
+    logoGlowSchedulerTimer = window.setInterval(() => {
+      const ts = performance.now();
+      const timing = getSampledPlaybackTiming(ts);
+      const tSec = getDisplayProgressMs(ts, timing) / 1000;
+      updateLogoBeatGlow(tSec, timing.playing, ts);
+    }, LOGO_GLOW_SCHEDULER_MS);
+  }
+
+  function stopLogoGlowScheduler() {
+    if (!logoGlowSchedulerTimer) return;
+    window.clearInterval(logoGlowSchedulerTimer);
+    logoGlowSchedulerTimer = 0;
+  }
+
+  function updateLogoBeatGlow(tSec, isPlaying, ts = performance.now()) {
+    if (!chassis) return;
+    if (!logoGlowEnabled || !isPlaying) {
+      chassis.classList.remove("pvfd-logo-burst");
+      lastLogoGlowTrackSec = Number.isFinite(tSec) ? tSec : NaN;
+      return;
+    }
+    const target = findLogoBeatCrossing(lastLogoGlowTrackSec, tSec);
+    lastLogoGlowTrackSec = tSec;
+    if (target !== null) triggerLogoGlowBurst(target);
   }
 
   function updateBars(tSec, isPlaying) {
@@ -999,6 +1401,7 @@
   function applyLcdFilter() {
     if (!chassis) return;
     const tintName = TINT_LABELS[tintIdx].toLowerCase();
+    const perf = activePerformanceConfig();
     chassis.setAttribute("data-pvfd-tint", tintName);
 
     const lcdParts = [];
@@ -1006,7 +1409,9 @@
     if (deg !== 0) lcdParts.push(`hue-rotate(${deg}deg)`);
     // v0.7: the real OEL clips are the centerpiece, so the glass gets a
     // brighter, cleaner phosphor treatment instead of the older dim video look.
-    if (lcdDimmed) lcdParts.push("brightness(0.58) contrast(1.00) saturate(1.20)");
+    if (perf.reducedEffects) {
+      if (lcdDimmed) lcdParts.push("brightness(0.70)");
+    } else if (lcdDimmed) lcdParts.push("brightness(0.58) contrast(1.00) saturate(1.20)");
     else lcdParts.push("brightness(1.04) contrast(0.98) saturate(1.34)");
     chassis.querySelectorAll(".pvfd-lcd").forEach((lcd) => {
       lcd.style.filter = lcdParts.join(" ");
@@ -1061,13 +1466,44 @@
     }
   }
 
-  function setActiveClip(idx) {
+  function clearClipRenderCache(clip, clearPrevious = true) {
+    if (!clip) return;
+    if (clip.renderCache) {
+      clip.renderCache.frames = [];
+      clip.renderCache.recentFrames = [];
+      clip.renderCache = null;
+    }
+    if (clearPrevious && clip.lastReadyRenderCache) {
+      clip.lastReadyRenderCache.frames = [];
+      clip.lastReadyRenderCache = null;
+    }
+  }
+
+  function clearAllClipRenderCaches(clearPrevious = true, exceptClip = null) {
+    CLIPS.forEach((clip) => {
+      if (clip !== exceptClip) clearClipRenderCache(clip, clearPrevious);
+    });
+  }
+
+  function releaseInactiveClipBytes(activeClip) {
+    CLIPS.forEach((clip) => {
+      if (clip !== activeClip) clip.bytes = null;
+    });
+  }
+
+  function setActiveClip(idx, persist = false) {
     if (!CLIPS.length) return;
     clipIdx = ((idx % CLIPS.length) + CLIPS.length) % CLIPS.length;
     clipStartMs = performance.now();
     lastCanvasFrameKey = "";
-    decodePackedClip(CLIPS[clipIdx]);
-    console.log(`[PVFD] OEL animation: ${CLIPS[clipIdx].name}`);
+    const activeClip = CLIPS[clipIdx];
+    const perf = activePerformanceConfig();
+    if (!perf.keepPreviousClipCache) clearAllClipRenderCaches(true, activeClip);
+    if (perf.releaseInactiveClipBytes) releaseInactiveClipBytes(activeClip);
+    decodePackedClip(activeClip);
+    console.log(`[PVFD] OEL animation: ${activeClip.name}`);
+    if (persist) safe(() => window.localStorage.setItem(CLIP_STORAGE_KEY, clipStorageId(activeClip, clipIdx)));
+    markStaticReadoutsDirty();
     updateMenuPanel();
   }
 
@@ -1124,20 +1560,24 @@
   }
 
   function getClipCacheMeta(clip, w, h) {
-    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const perf = activePerformanceConfig();
+    const dpr = Math.max(1, Math.min(perf.maxDpr || 2, window.devicePixelRatio || 1));
     const pixelW = Math.max(1, Math.floor(w * dpr));
     const pixelH = Math.max(1, Math.floor(h * dpr));
     const renderW = pixelW / dpr;
     const renderH = pixelH / dpr;
     const frameCount = clip.frames || 1;
-    const cacheKey = `${clip.source || clip.name}:${pixelW}x${pixelH}:${dpr}`;
+    const cacheKey = `${perf.label}:${clip.source || clip.name}:${pixelW}x${pixelH}:${dpr}`;
     return { cacheKey, dpr, pixelW, pixelH, frameCount, w: renderW, h: renderH };
   }
 
   function ensureClipRenderCache(clip, meta) {
+    const perf = activePerformanceConfig();
     if (!clip.renderCache || clip.renderCache.key !== meta.cacheKey) {
-      if (clip.renderCache && clip.renderCache.ready) {
+      if (perf.keepPreviousClipCache && clip.renderCache && clip.renderCache.ready) {
         clip.lastReadyRenderCache = clip.renderCache;
+      } else if (!perf.keepPreviousClipCache) {
+        clip.lastReadyRenderCache = null;
       }
       clip.renderCache = {
         key: meta.cacheKey,
@@ -1148,6 +1588,7 @@
         h: meta.h,
         frameCount: meta.frameCount,
         frames: new Array(meta.frameCount),
+        recentFrames: [],
         warmed: 0,
         nextWarmFrame: 0,
         ready: false,
@@ -1186,14 +1627,29 @@
     if (!hadReadyCache && clip === (CLIPS[clipIdx] || CLIPS[0])) clipStartMs = performance.now();
   }
 
+  function touchCachedClipFrame(cache, frame) {
+    if (!cache.recentFrames) cache.recentFrames = [];
+    const existingIdx = cache.recentFrames.indexOf(frame);
+    if (existingIdx >= 0) cache.recentFrames.splice(existingIdx, 1);
+    cache.recentFrames.push(frame);
+    const maxFrames = activePerformanceConfig().maxCachedClipFrames;
+    if (!Number.isFinite(maxFrames)) return;
+    while (cache.recentFrames.length > maxFrames) {
+      const evictFrame = cache.recentFrames.shift();
+      if (evictFrame !== frame) cache.frames[evictFrame] = null;
+    }
+  }
+
   function warmClipCacheSlice(clip, meta) {
     const cache = ensureClipRenderCache(clip, meta);
     const startedAt = performance.now();
     let rendered = 0;
-    while (rendered < 1 || (performance.now() - startedAt < CLIP_CACHE_BATCH_MS && rendered < 3)) {
+    const perf = activePerformanceConfig();
+    while (rendered < 1 || (performance.now() - startedAt < perf.cacheBatchMs && rendered < perf.cacheFramesPerSlice)) {
       const frame = nextMissingClipFrame(cache);
       if (frame < 0) break;
       cache.frames[frame] = renderClipFrameCanvas(clip, frame, meta);
+      touchCachedClipFrame(cache, frame);
       cache.warmed++;
       cache.nextWarmFrame = (frame + 1) % cache.frameCount;
       rendered++;
@@ -1202,6 +1658,7 @@
   }
 
   function scheduleClipCacheWarmup(clip, meta) {
+    if (!activePerformanceConfig().preloadFullClipCache) return;
     const cache = ensureClipRenderCache(clip, meta);
     if (cache.ready || cache.warming) return;
     cache.warming = true;
@@ -1218,14 +1675,27 @@
   function getCachedClipFrame(clip, frame, w, h) {
     const meta = getClipCacheMeta(clip, w, h);
     const cache = ensureClipRenderCache(clip, meta);
+    const perf = activePerformanceConfig();
+    if (!perf.preloadFullClipCache || perf.allowPartialClipCache) {
+      if (!cache.frames[frame]) {
+        cache.frames[frame] = renderClipFrameCanvas(clip, frame, meta);
+        cache.warmed = Math.min(cache.frameCount, cache.warmed + 1);
+      }
+      touchCachedClipFrame(cache, frame);
+      if (perf.preloadFullClipCache) scheduleClipCacheWarmup(clip, meta);
+      return cache.frames[frame];
+    }
     scheduleClipCacheWarmup(clip, meta);
-    if (cache.ready) return cache.frames[frame];
+    if (cache.ready) {
+      touchCachedClipFrame(cache, frame);
+      return cache.frames[frame];
+    }
     const fallback = clip.lastReadyRenderCache;
     if (!fallback || !fallback.ready || !fallback.frames) return null;
     return fallback.frames[frame % fallback.frameCount] || null;
   }
 
-  function drawClipLoadingStatus(clip, w, h, t, pulse) {
+  function drawClipLoadingStatus(clip, w, h, t) {
     const cache = clip && clip.renderCache;
     const total = Math.max(1, cache ? cache.frameCount : (clip && clip.frames) || 1);
     const ready = Math.max(0, cache ? cache.warmed : 0);
@@ -1233,13 +1703,15 @@
     lcdBackground(w, h);
 
     ctx.save();
-    const scanX = Math.round((t * 36) % Math.max(1, w + 60)) - 60;
-    const sweep = ctx.createLinearGradient(scanX, 0, scanX + 60, 0);
-    sweep.addColorStop(0, "rgba(126,212,240,0)");
-    sweep.addColorStop(0.5, "rgba(126,212,240,0.11)");
-    sweep.addColorStop(1, "rgba(126,212,240,0)");
-    ctx.fillStyle = sweep;
-    ctx.fillRect(Math.max(0, scanX), 0, 60, h);
+    if (!activePerformanceConfig().reducedEffects) {
+      const scanX = Math.round((t * 36) % Math.max(1, w + 60)) - 60;
+      const sweep = ctx.createLinearGradient(scanX, 0, scanX + 60, 0);
+      sweep.addColorStop(0, "rgba(126,212,240,0)");
+      sweep.addColorStop(0.5, "rgba(126,212,240,0.11)");
+      sweep.addColorStop(1, "rgba(126,212,240,0)");
+      ctx.fillStyle = sweep;
+      ctx.fillRect(Math.max(0, scanX), 0, 60, h);
+    }
 
     drawLCDStatus(ready ? `LOADING ${pct}%` : "LOADING...", w, h);
     const barW = Math.max(48, Math.round(w * 0.36));
@@ -1250,7 +1722,7 @@
     ctx.fillStyle = "rgba(126,212,240,0.74)";
     ctx.fillRect(barX, barY, Math.max(2, Math.round(barW * ready / total)), 3);
     ctx.restore();
-    drawOelGlassGlow(w, h, t, pulse);
+    drawOelGlassGlow(w, h, t, 0);
   }
 
   function drawOelGlassGlow(w, h, t, pulse) {
@@ -1285,7 +1757,7 @@
     ctx.restore();
   }
 
-  function drawClip(w, h, t, pulse, tsMs = t * 1000) {
+  function drawClip(w, h, t, tsMs = t * 1000) {
     const clip = ensureClipRunning();
     if (!clip || !clip.bytes || !clip.bytes.length) {
       lastCanvasFrameKey = "";
@@ -1295,25 +1767,26 @@
     }
 
     const frameCount = clip.frames || 1;
-    const fps = clip.fps || 12;
+    const perf = activePerformanceConfig();
+    const fps = Math.min(clip.fps || 12, perf.maxClipFps || 60);
     const elapsed = Math.max(0, (tsMs - clipStartMs) / 1000);
     const frame = Math.floor(elapsed * fps) % frameCount;
     if (!CLIP_RENDER_CACHE_ENABLED) {
       renderPackedClipFrame(ctx, clip, frame, w, h);
-      drawOelGlassGlow(w, h, t, pulse);
+      drawOelGlassGlow(w, h, t, 0);
       return;
     }
     const cachedFrame = getCachedClipFrame(clip, frame, w, h);
     if (!cachedFrame) {
       lastCanvasFrameKey = "";
-      drawClipLoadingStatus(clip, w, h, t, pulse);
+      drawClipLoadingStatus(clip, w, h, t);
       return;
     }
     const cacheKey = clip.renderCache && clip.renderCache.key ? clip.renderCache.key : `${w}x${h}`;
     const frameKey = `${clipIdx}:${cacheKey}:${frame}`;
     if (!OEL_GLASS_OVERLAY_ENABLED && frameKey === lastCanvasFrameKey) return;
     ctx.drawImage(cachedFrame, 0, 0, w, h);
-    drawOelGlassGlow(w, h, t, pulse);
+    drawOelGlassGlow(w, h, t, 0);
     lastCanvasFrameKey = frameKey;
   }
 
@@ -1597,7 +2070,10 @@
       lastTrackUri = uri;
       trackTitle = (item.name || "").toUpperCase();
       trackArtist = ((item.artists && item.artists.map(a => a.name).join(", ")) || "").toUpperCase();
-      loadAnalysis(item.uri);
+      lastLogoGlowTrackSec = NaN;
+      lastLogoGlowBeatKey = "";
+      markPlayerStateDirty();
+      loadAnalysis(item.uri, item);
     }
 
     if (!trackTitle && item.name) {
@@ -1673,40 +2149,104 @@
     updateRoleButtonStates();
   }
 
-  function updateSideReadouts(modeName, progressMs, durationMs, playerState = getSampledPlayerState()) {
+  function disableSideVuReadout(opacity = "0.18") {
+    const vu = getPvfdDom().sideVu || [];
+    vu.forEach((seg) => {
+      if (seg.classList.contains("on")) seg.classList.remove("on");
+      setStyleIfChanged(seg, "opacity", opacity);
+    });
+  }
+
+  function updateSideVuReadout() {
+    if (!activePerformanceConfig().sideVu) {
+      disableSideVuReadout("0.18");
+      return;
+    }
+    const vu = getPvfdDom().sideVu || [];
+    if (!vu.length) return;
+    const energy = clamp(barHeights.reduce((a, b) => a + b, 0) / Math.max(1, barHeights.length), 0, 1);
+    vu.forEach((seg, idx) => {
+      const threshold = 1 - (idx + 1) / vu.length;
+      const on = energy > threshold * 0.92;
+      seg.classList.toggle("on", on);
+      setStyleIfChanged(seg, "opacity", on ? (0.35 + energy * 0.65).toFixed(2) : "0.22");
+    });
+  }
+
+  function updateSideProgressReadouts(progressMs, durationMs) {
+    const side = getPvfdDom().side || {};
+    if (!activePerformanceConfig().sideReadouts) {
+      setTextIfChanged(side.prog, "--");
+      setTextIfChanged(side.left, "--:--");
+      return;
+    }
+    const pct = durationMs ? clamp(progressMs / durationMs, 0, 1) : 0;
+    setTextIfChanged(side.prog, durationMs ? Math.round(pct * 100) + "%" : "--%");
+    setTextIfChanged(side.left, durationMs ? "-" + fmtTime(durationMs - progressMs) : "--:--");
+  }
+
+  function updateSideStaticReadouts(modeName, playerState = getSampledPlayerState()) {
     const dom = getPvfdDom();
     const side = dom.side || {};
-    const pct = durationMs ? clamp(progressMs / durationMs, 0, 1) : 0;
+    const perf = activePerformanceConfig();
+    if (!perf.sideReadouts) {
+      setTextIfChanged(side.vol, Math.round(getPlayerVolume() * 100) + "%");
+      setTextIfChanged(side.mode, "OEL");
+      setTextIfChanged(side.tint, TINT_LABELS[tintIdx]);
+      setTextIfChanged(side.dim, lcdDimmed ? "DIM" : "FULL");
+      setTextIfChanged(side.prog, "--");
+      setTextIfChanged(side.left, "--:--");
+      setTextIfChanged(side.repeat, playerState.repeat);
+      setTextIfChanged(side.shuffle, playerState.shuffle ? "ON" : "OFF");
+      setTextIfChanged(side.status, "ECO");
+      setTextIfChanged(side.playbadge, "OEL");
+      if (side.ecoModel) side.ecoModel.hidden = false;
+      disableSideVuReadout("0.14");
+      return;
+    }
     const activeClip = modeName === "CLIP" ? ensureClipRunning() : null;
     const activeClipName = activeClip ? String(activeClip.name || "OEL").replace(/^OEL\s*/i, "").slice(0, 8).toUpperCase() : "";
     const source = SOURCE_TARGETS[sourceIdx] || SOURCE_TARGETS[0];
     const sourceFlash = performance.now() < sourceFlashUntil;
+    if (side.ecoModel) side.ecoModel.hidden = true;
     setTextIfChanged(side.vol, Math.round(getPlayerVolume() * 100) + "%");
     setTextIfChanged(side.mode, demoAutoMode ? "DEMO" : (activeClip ? "OEL" : (modeName || "----")));
     setTextIfChanged(side.tint, TINT_LABELS[tintIdx]);
-    setTextIfChanged(side.dim, lcdDimmed ? "DIM" : "FULL");
-    setTextIfChanged(side.prog, durationMs ? Math.round(pct * 100) + "%" : "--%");
-    setTextIfChanged(side.left, durationMs ? "-" + fmtTime(durationMs - progressMs) : "--:--");
+    setTextIfChanged(side.dim, perf.label === "ECO" ? (lcdDimmed ? "ECO DIM" : "ECO") : (lcdDimmed ? "DIM" : "FULL"));
     setTextIfChanged(side.repeat, playerState.repeat);
     setTextIfChanged(side.shuffle, playerState.shuffle ? "ON" : "OFF");
     setTextIfChanged(side.status, sourceFlash ? ("SRC " + source.label) : (demoAutoMode ? "DEMO" : (activeClip ? activeClipName : (playerState.playing ? "PLAY" : "PAUSE"))));
     setTextIfChanged(side.playbadge, demoAutoMode ? "AUTO" : (activeClip ? "LKD" : (playerState.playing ? "RUN" : "IDLE")));
-    const vu = dom.sideVu || [];
-    if (vu.length) {
-      const energy = clamp(barHeights.reduce((a, b) => a + b, 0) / Math.max(1, barHeights.length), 0, 1);
-      vu.forEach((seg, idx) => {
-        const threshold = 1 - (idx + 1) / vu.length;
-        seg.classList.toggle("on", energy > threshold * 0.92);
-        setStyleIfChanged(seg, "opacity", energy > threshold * 0.92 ? (0.35 + energy * 0.65).toFixed(2) : "0.22");
-      });
-    }
+  }
+
+  function activeProgressReadoutIntervalMs() {
+    return PROGRESS_READOUT_INTERVAL_MS;
+  }
+
+  function activeStaticReadoutIntervalMs() {
+    return activePerformanceConfig().label === "ECO" ? ECO_STATIC_READOUT_INTERVAL_MS : STATIC_READOUT_INTERVAL_MS;
+  }
+
+  function staticOverlaysDue(ts) {
+    return staticReadoutsDirty || ts - lastStaticReadoutAt >= activeStaticReadoutIntervalMs();
+  }
+
+  function runStaticOverlayUpdate(modeName, playerState, ts) {
+    lastStaticReadoutAt = ts;
+    staticReadoutsDirty = false;
+    updateButtonStates(playerState);
+    updateSideStaticReadouts(modeName, playerState);
   }
 
   function updateOverlays(progressMs, modeName, timing, ts = performance.now()) {
-    if (ts - lastControlReadoutAt < CONTROL_READOUT_INTERVAL_MS) return;
-    lastControlReadoutAt = ts;
+    const staticDue = staticOverlaysDue(ts);
+    if (ts - lastProgressReadoutAt < activeProgressReadoutIntervalMs()) {
+      if (staticDue) runStaticOverlayUpdate(modeName, getSampledPlayerState(ts), ts);
+      return;
+    }
+    lastProgressReadoutAt = ts;
     const dom = getPvfdDom();
-    const playerState = getSampledPlayerState();
+    const playerState = getSampledPlayerState(ts);
     const metaEl = dom.meta;
     const timeEl = dom.time;
     const progressEl = dom.progress;
@@ -1734,11 +2274,12 @@
       setAttrIfChanged(progressEl, "aria-label", "Scrub progress " + progressLabel);
     }
     setTextIfChanged(progressText, "");
-    updateButtonStates(playerState);
-    updateSideReadouts(modeName, progressMs, durationMs, playerState);
+    if (activePerformanceConfig().sideReadouts) updateSideProgressReadouts(progressMs, durationMs);
+    if (staticDue) runStaticOverlayUpdate(modeName, playerState, ts);
   }
 
   function updateLknobLED() {
+    knobLedDirty = false;
     const dom = getPvfdDom();
     const arc = dom.knobArc;
     const ind = dom.knobIndicator;
@@ -1750,31 +2291,37 @@
     setStyleIfChanged(ind, "--pvfd-rot", sweepDeg);
   }
 
-  function updateNavLED(tSec) {
+  function updateNavLED() {
+    navLedDirty = false;
+    if (!activePerformanceConfig().navLed) return;
     const dom = getPvfdDom();
     const ring = dom.navRing;
     if (!ring) return;
-    const bucket = Math.round(beatPulse(tSec) * 32);
-    if (ring.dataset.pvfdLedBucket === String(bucket)) return;
-    ring.dataset.pvfdLedBucket = String(bucket);
-    const p = bucket / 32;
-    ring.style.boxShadow = `0 0 ${14 + p * 18}px rgba(78, 180, 216, ${0.95 - p * 0.1}),
-      inset 0 0 ${10 + p * 10}px rgba(140, 220, 250, ${0.6 + p * 0.3})`;
+    const tintName = TINT_LABELS[tintIdx] || "CYAN";
+    if (ring.dataset.pvfdLedTint === tintName && ring.style.boxShadow === "") return;
+    ring.dataset.pvfdLedTint = tintName;
+    delete ring.dataset.pvfdLedBucket;
+    ring.style.boxShadow = "";
   }
 
   let lastFrame = 0;
-  let lastControlReadoutAt = -Infinity;
+  let lastProgressReadoutAt = -Infinity;
+  let lastStaticReadoutAt = -Infinity;
   let lastTrackSyncAt = -Infinity;
   let lastBarUpdateAt = -Infinity;
   let lastKnobLedAt = -Infinity;
-  let lastNavLedAt = -Infinity;
   let lastModeName = "";
+  function activeBarUpdateIntervalMs() {
+    return activePerformanceConfig().barUpdateMs;
+  }
+
   function activeFrameIntervalMs() {
+    const perf = activePerformanceConfig();
     const modeName = MODES[modeIdx];
-    if (modeName !== "CLIP" || OEL_GLASS_OVERLAY_ENABLED) return FRAME_INTERVAL_MS;
+    if (modeName !== "CLIP" || OEL_GLASS_OVERLAY_ENABLED) return perf.frameMs;
     const clip = CLIPS[clipIdx] || CLIPS[0];
-    const fps = clip && clip.fps ? clip.fps : 12;
-    return Math.max(FRAME_INTERVAL_MS, 1000 / Math.max(1, fps));
+    const fps = Math.min(clip && clip.fps ? clip.fps : 12, perf.maxClipFps || 60);
+    return Math.max(perf.frameMs, 1000 / Math.max(1, fps));
   }
 
   function loop(ts) {
@@ -1808,32 +2355,37 @@
     const timing = getSampledPlaybackTiming(ts);
     const progressMs = getDisplayProgressMs(ts, timing);
     const tSec = progressMs / 1000;
-    if (ts - lastBarUpdateAt >= BAR_UPDATE_INTERVAL_MS) {
+    const perf = activePerformanceConfig();
+    if (perf.sideVu && ts - lastBarUpdateAt >= activeBarUpdateIntervalMs()) {
       lastBarUpdateAt = ts;
       updateBars(tSec, timing.playing);
+      updateSideVuReadout();
     }
     const tWall = ts / 1000;
-    const pulse = beatPulse(tSec) + SINE_BASE * Math.sin(tWall * 2);
 
-    if (modeName === "GALAXY")        { lastCanvasFrameKey = ""; drawGalaxyScene(w, h, tWall, pulse); }
-    else if (modeName === "SPECTRUM") { lastCanvasFrameKey = ""; drawSpectrum(w, h, tWall); }
-    else if (modeName === "DOLPHIN")  { lastCanvasFrameKey = ""; drawDolphinScene(w, h, tWall, pulse); }
-    else if (modeName === "DEMO")     { lastCanvasFrameKey = ""; drawDemo(w, h, tWall, pulse); }
-    else if (modeName === "CLIP")     drawClip(w, h, tWall, pulse + (demoAutoMode ? 0.28 : 0), ts);
+    if (modeName === "CLIP") {
+      drawClip(w, h, tWall, ts);
+    } else {
+      if (modeName === "GALAXY")        { lastCanvasFrameKey = ""; drawGalaxyScene(w, h, tWall, 0); }
+      else if (modeName === "SPECTRUM") { lastCanvasFrameKey = ""; drawSpectrum(w, h, tWall); }
+      else if (modeName === "DOLPHIN")  { lastCanvasFrameKey = ""; drawDolphinScene(w, h, tWall, 0); }
+      else if (modeName === "DEMO")     { lastCanvasFrameKey = ""; drawDemo(w, h, tWall, 0); }
+    }
 
     updateOverlays(progressMs, modeName, timing, ts);
-    if (pendingVolume !== null || ts - lastKnobLedAt >= CONTROL_READOUT_INTERVAL_MS) {
+    if (pendingVolume !== null || knobLedDirty || ts - lastKnobLedAt >= EXTERNAL_VOLUME_LED_SAMPLE_MS) {
       lastKnobLedAt = ts;
+      knobLedDirty = false;
       updateLknobLED();
     }
-    if (ts - lastNavLedAt >= NAV_LED_INTERVAL_MS) {
-      lastNavLedAt = ts;
-      updateNavLED(tSec);
+    if (navLedDirty) {
+      navLedDirty = false;
+      updateNavLED();
     }
   }
 
   function onTrackChange() {
-    playerStateCache.at = -Infinity;
+    markPlayerStateDirty();
     playerTimingCache.at = -Infinity;
     lastTrackSyncAt = -Infinity;
     syncCurrentTrackFromPlayer(true);
@@ -1959,6 +2511,24 @@
       || !!(el.querySelector && el.querySelector(".x-filterBox-filterInputContainer, .x-filterBox-filterInput"));
   }
 
+  function containsBrowseFontTarget(el) {
+    if (!el || !el.matches) return false;
+    const selector = ".Root__main-view, .main-view-container, .main-view-container__scroll-node";
+    return el.matches(selector) || !!(el.querySelector && el.querySelector(selector));
+  }
+
+  function mutationsContainBrowseFontTarget(records) {
+    for (const record of records) {
+      const target = elementFromMutationNode(record.target);
+      if (containsBrowseFontTarget(target)) return true;
+      for (const node of record.addedNodes || []) {
+        const el = elementFromMutationNode(node);
+        if (containsBrowseFontTarget(el)) return true;
+      }
+    }
+    return false;
+  }
+
   function getLibrarySearchRootFromMutations(records) {
     for (const record of records) {
       const target = elementFromMutationNode(record.target);
@@ -2042,7 +2612,7 @@
     if (!records.length) return;
 
     scheduleChassisRecheck();
-    applyBrowseFontPreset(false);
+    if (mutationsContainBrowseFontTarget(records)) applyBrowseFontPreset(false);
     const searchRoot = getLibrarySearchRootFromMutations(records);
     if (searchRoot) scheduleLibrarySearchReconcile(searchRoot, 80);
     if (hasLyricsView()) {
@@ -2063,24 +2633,69 @@
     pvfdMutationFlushTimer = window.setTimeout(flushMutationRecords, MUTATION_FLUSH_DELAY_MS);
   }
 
+  function recoverNativePlayerAfterFatal() {
+    try {
+      stopLogoGlowScheduler();
+      if (chassis && chassis.parentNode) chassis.parentNode.removeChild(chassis);
+      const bar = findPlayerBar();
+      if (bar) {
+        bar.classList.remove("pvfd-mounted");
+        Array.from(bar.children).forEach((child) => {
+          child.classList.remove("pvfd-native-player-hidden");
+          if (child.getAttribute("aria-hidden") === "true") child.removeAttribute("aria-hidden");
+        });
+      }
+      chassis = null;
+      pvfdDom = null;
+      canvas = null;
+      ctx = null;
+    } catch (recoverErr) {
+      console.warn("[PVFD] Native player recovery failed:", recoverErr);
+    }
+  }
+
   function attach() {
+    try {
+      attachUnsafe();
+    } catch (err) {
+      console.error("[PVFD] Init failed; restored Spotify player and will retry.", err);
+      recoverNativePlayerAfterFatal();
+      window.__PVFD_EXTENSION_RUNNING__ = false;
+      setTimeout(PioneerVFD, 1000);
+    }
+  }
+
+  function attachUnsafe() {
     if (!injectChassis()) {
       setTimeout(attach, 500);
       return;
     }
     ensureLibrarySearchFixStyle();
     fontPresetIdx = readFontPresetIdx();
+    tintIdx = readTintIdx();
+    lcdDimmed = readDimEnabled();
+    clipIdx = readClipIdx();
+    performanceModeIdx = readPerformanceModeIdx();
+    logoGlowEnabled = readLogoGlowEnabled();
     applyBrowseFontPreset(false);
+    applyPerformanceMode(false);
+    applyTintMode(false);
+    applyDimMode(false);
+    applyLogoGlowMode(false);
     reconcileLibrarySearchBoxes();
     reconcileLyricsSyncButtons();
     onTrackChange();
-    Spicetify.Player.addEventListener("songchange", onTrackChange);
-    Spicetify.Player.addEventListener("onplaypause", () => {
-      playerStateCache.at = -Infinity;
-      playerTimingCache.at = -Infinity;
-      const playBtn = chassis && chassis.querySelector("[data-pvfd='play']");
-      if (playBtn) playBtn.textContent = Spicetify.Player.isPlaying() ? "⏸" : "▶";
-    });
+    if (typeof Spicetify.Player.addEventListener === "function") {
+      Spicetify.Player.addEventListener("songchange", onTrackChange);
+      Spicetify.Player.addEventListener("onplaypause", () => {
+        markPlayerStateDirty();
+        playerTimingCache.at = -Infinity;
+        const playBtn = chassis && chassis.querySelector("[data-pvfd='play']");
+        if (playBtn) playBtn.textContent = Spicetify.Player.isPlaying() ? "⏸" : "▶";
+      });
+    } else {
+      console.warn("[PVFD] Spicetify Player events unavailable; using polling-only sync.");
+    }
     requestAnimationFrame(loop);
 
     const obs = new MutationObserver(queueMutationRecords);
