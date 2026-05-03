@@ -159,7 +159,7 @@
           <span class="pvfd-silk-label">MOSFET 50W&times;4</span>
           <button class="pvfd-silk-lyrics" type="button" data-pvfd="lyrics" aria-label="Open song lyrics" title="Open lyrics">Lyrics</button>
         </div>
-        <span class="pvfd-silk-pioneer">Pioneer</span>
+        <span class="pvfd-silk-pioneer">pioneer</span>
         <div style="display:flex;align-items:center;gap:12px;justify-content:flex-end;">
           <span class="pvfd-silk-label">WMA / MP3</span>
           <span class="pvfd-silk-dab">DAB CONTROL</span>
