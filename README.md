@@ -25,15 +25,15 @@ This is a Spicetify theme and extension that turns Spotify desktop into a 2000s 
 
 The Pioneer `MENU` button exposes the core runtime controls:
 
-- `SRC` opens the current source target, such as the now playing view, queue, or lyrics.
+- `SRC` cycles home, now playing, search, and library.
 - `OEL` cycles the center LCD/OEL animation.
 - `DEMO` cycles OEL animations automatically without changing the saved startup animation.
 - `TINT` switches the display treatment between cyan, amber, and violet.
 - `TYPE` switches the Spotify content font preset.
-- `PERF` switches between `FULL` and `ECO`.
+- `PERF` switches between `FULL` and `ECO`, which are your performance settings.
 - `PULSE` toggles the beat-synced Pioneer logo glow.
 
-`ECO` is a low-end-system mode that prioritizes smooth center LCD/OEL animation over the surrounding chrome. It caps OEL canvas cost, reduces display pixel density on high-DPI screens, releases inactive clip frame memory, throttles nonessential side-panel updates, disables the side VU meter, and strips decorative LCD/glow treatment from the side panels. Steady state readouts such as volume, repeat, shuffle, tint, and an `ECO` indicator remain visible so the player still explains what it is doing.
+`ECO` is a low-end-system mode that prioritizes smooth center LCD/OEL animation over visual elements. It caps OEL canvas cost, reduces display pixel density on high-DPI screens, releases inactive clip frame memory, throttles nonessential side-panel updates, disables the side VU meter, and strips decorative LCD/glow treatment from the side panels. Steady state readouts such as volume, repeat, shuffle, tint, and an `ECO` indicator remain visible so the player still explains what it is doing.
 
 The extension saves the preferences users are likely to expect across Spotify launches: `PERF`, `PULSE`, `TINT`, `DIM`, `TYPE`, and the selected `OEL` animation.
 
