@@ -139,3 +139,7 @@ spicetify apply
 ## Disclaimer
 
 This project is for educational and personal use only. It is not affiliated with, endorsed by, or associated with Pioneer Corporation.
+
+## License
+
+MIT
