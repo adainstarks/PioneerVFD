@@ -24,8 +24,27 @@ New-Item -ItemType Directory -Force -Path $themeDestRoot, $extensionDestRoot | O
 Copy-Item -Recurse -Force $themeSource $themeDestRoot
 Copy-Item -Force $extensionSource $extensionDestRoot
 
-spicetify config current_theme PioneerVFD color_scheme "Pioneer DEH-P7600MP"
+if (-not (Test-Path (Join-Path $extensionDestRoot "pioneerVFD.js"))) {
+    Write-Error "Extension copy failed: $(Join-Path $extensionDestRoot "pioneerVFD.js")"
+}
+
+if (-not (Test-Path (Join-Path $themeDestRoot "PioneerVFD\user.css"))) {
+    Write-Error "Theme copy failed: $(Join-Path $themeDestRoot "PioneerVFD\user.css")"
+}
+
+try {
+    spicetify backup | Out-Null
+} catch {
+    Write-Warning "spicetify backup did not complete; continuing with apply."
+}
+
+spicetify config current_theme PioneerVFD color_scheme "Pioneer DEH-P7600MP" inject_css 1 inject_theme_js 1 replace_colors 1 overwrite_assets 1 expose_apis 1
 spicetify config extensions pioneerVFD.js
 spicetify apply
+
+$configuredExtensions = spicetify config extensions 2>$null
+if ($configuredExtensions -notmatch "pioneerVFD\.js") {
+    Write-Warning "pioneerVFD.js was not reported in Spicetify extensions config."
+}
 
 Write-Host "PioneerVFD installed and applied."
