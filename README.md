@@ -100,17 +100,17 @@ spicetify apply
 
 ```text
 PioneerVFD/
-|-- Extensions/
-|   `-- pioneerVFD.js
-|-- Themes/
-|   `-- PioneerVFD/
-|       |-- fonts/
-|       |-- color.ini
-|       `-- user.css
-|-- install-windows.ps1
-|-- install-linux.sh
-|-- install-macos.sh
-`-- README.md
+├── Extensions/
+│   └── pioneerVFD.js
+├── Themes/
+│   └── PioneerVFD/
+│       ├── fonts/
+│       ├── color.ini
+│       └── user.css
+├── install-windows.ps1
+├── install-linux.sh
+├── install-macos.sh
+└── README.md
 ```
 
 ## Notes
