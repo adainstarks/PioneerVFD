@@ -6,13 +6,9 @@ This is a Spicetify theme and extension that turns Spotify desktop into a 2000s 
 
 ## Preview
 
-Fullscreen:
+<img width="1600" height="800" alt="Screenshot 2026-05-03 010912" src="https://github.com/user-attachments/assets/abc092f2-59ab-4b71-bcbd-7d3099be92f5" />
 
-<img width="1600" height="800" alt="Screenshot 2026-05-02 164740" src="https://github.com/user-attachments/assets/bb71bdc4-bb60-441d-a48a-9a90173bde45" />
-
-Shrunken window:
-
-<img width="1000" height="925" alt="Screenshot 2026-05-02 164145" src="https://github.com/user-attachments/assets/520d3df1-6c0a-462c-a8cb-4dd6ac2ed3e4" />
+<img width="1600" height="800" alt="Screenshot 2026-05-03 010732" src="https://github.com/user-attachments/assets/7d4b5fa7-dd82-494b-a4be-ffb7cf1874f8" />
 
 
 ## What It Does
