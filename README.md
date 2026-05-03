@@ -45,9 +45,12 @@ The extension saves the preferences users are likely to expect across Spotify la
 
 ## Install
 
-### One-command Windows install
+### Windows quick install
 
-Run this from the project root:
+1. Download the latest release ZIP.
+2. Extract it.
+3. Open PowerShell inside the extracted `PioneerVFD` folder.
+4. Run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-windows.ps1
