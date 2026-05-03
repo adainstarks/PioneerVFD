@@ -1,4 +1,5 @@
-# PioneerVFD
+# <img width="2000" height="668" alt="b3df3279-12e4-486c-bf3d-d48a01d7d1d0-Photoroom (1)" src="https://github.com/user-attachments/assets/d84f1508-fee8-4ebd-b3b5-8600e1bec88e" />
+
 
 Miss the old 2000s Pioneer head units? Wish you could still have those dolphins swimming while you bump tunes? Maybe you never got to experience it and want to? Well, now you can!
 
