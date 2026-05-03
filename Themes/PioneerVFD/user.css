@@ -328,7 +328,41 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
 .pvfd-chassis[data-pvfd-logo-glow="on"].pvfd-logo-burst .pvfd-silk-pioneer::after {
   animation: pvfd-logo-glow-burst 520ms cubic-bezier(0.13, 0.66, 0.19, 1) both !important;
 }
+.pvfd-chassis[data-pvfd-logo-glow="on"].pvfd-logo-burst-a .pvfd-silk-pioneer::after {
+  animation: pvfd-logo-glow-burst-a 520ms cubic-bezier(0.13, 0.66, 0.19, 1) both !important;
+}
+.pvfd-chassis[data-pvfd-logo-glow="on"].pvfd-logo-burst-b .pvfd-silk-pioneer::after {
+  animation: pvfd-logo-glow-burst-b 520ms cubic-bezier(0.13, 0.66, 0.19, 1) both !important;
+}
 @keyframes pvfd-logo-glow-burst {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  36% {
+    opacity: 0.62;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes pvfd-logo-glow-burst-a {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  36% {
+    opacity: 0.62;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes pvfd-logo-glow-burst-b {
   0% {
     opacity: 0;
   }
@@ -2854,1045 +2888,146 @@ nav[aria-label="Main"] button[aria-label*="Recents" i] {
     0 0 4px rgba(0,0,0,0.30) !important;
 }
 
-/* v2.9: library search is an icon button, not a gray tile. */
-.Root__nav-bar button[aria-label*="Search" i],
-.Root__nav-bar [data-testid*="search" i] button,
-nav[aria-label="Main"] button[aria-label*="Search" i],
-nav[aria-label="Main"] [data-testid*="search" i] button {
-  width: 28px !important;
-  min-width: 28px !important;
-  height: 28px !important;
-  min-height: 28px !important;
-  padding: 0 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: var(--pvfd-cyan-glow) !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
 
-.Root__nav-bar button[aria-label*="Search" i]:hover,
-.Root__nav-bar button[aria-label*="Search" i]:focus-visible,
-.Root__nav-bar [data-testid*="search" i] button:hover,
-.Root__nav-bar [data-testid*="search" i] button:focus-visible,
-nav[aria-label="Main"] button[aria-label*="Search" i]:hover,
-nav[aria-label="Main"] button[aria-label*="Search" i]:focus-visible,
-nav[aria-label="Main"] [data-testid*="search" i] button:hover,
-nav[aria-label="Main"] [data-testid*="search" i] button:focus-visible {
-  background: rgba(var(--pvfd-light-deep-rgb),0.10) !important;
-  box-shadow: inset 0 0 6px rgba(var(--pvfd-light-rgb),0.10) !important;
-}
 
-.Root__nav-bar button[aria-label*="Search" i] svg,
-.Root__nav-bar [data-testid*="search" i] button svg,
-nav[aria-label="Main"] button[aria-label*="Search" i] svg,
-nav[aria-label="Main"] [data-testid*="search" i] button svg {
-  color: var(--pvfd-cyan-glow) !important;
-  fill: none !important;
-  stroke: currentColor !important;
-  opacity: 1 !important;
-  filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-deep-rgb),0.46)) !important;
-}
-
-/* v2.10: Spotify puts the library-search tile styling on wrappers too. */
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([aria-label*="Search" i], [title*="Search" i], [data-testid*="search" i], [class*="search" i], [class*="Search" i], [class*="filter" i])
-  :is(button, [role="button"], [class*="button" i], [class*="icon" i], [class*="Icon" i]),
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is(button, [role="button"]):is([aria-label*="Search" i], [title*="Search" i], [data-testid*="search" i], [class*="search" i], [class*="Search" i], [class*="filter" i]),
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="searchInputSearchIcon" i], [class*="searchInputIcon" i], [class*="searchIcon" i], [class*="SearchIcon" i], [class*="filterInput" i]) {
-  background: transparent !important;
-  background-color: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  outline: 0 !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is(button, [role="button"]):is([aria-label*="Search" i], [title*="Search" i], [data-testid*="search" i], [class*="search" i], [class*="Search" i], [class*="filter" i]) {
-  width: 28px !important;
-  min-width: 28px !important;
-  height: 28px !important;
-  min-height: 28px !important;
-  padding: 0 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: var(--pvfd-cyan-glow) !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([aria-label*="Search" i], [title*="Search" i], [data-testid*="search" i], [class*="search" i], [class*="Search" i], [class*="filter" i])
-  :is(svg, path) {
-  color: var(--pvfd-cyan-glow) !important;
-  fill: none !important;
-  stroke: currentColor !important;
-  opacity: 1 !important;
-  filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-deep-rgb),0.46)) !important;
-}
-
-/* v2.11: keep the library search collapsed to one clean icon. */
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is(button, [role="button"]):is([aria-label*="Search" i], [title*="Search" i], [data-testid*="search" i], [class*="search" i], [class*="Search" i], [class*="filter" i]),
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="searchInputSearchIcon" i], [class*="searchInputIcon" i], [class*="searchIcon" i], [class*="SearchIcon" i]) {
-  overflow: hidden !important;
-  white-space: nowrap !important;
-  text-indent: 0 !important;
-  font-size: 0 !important;
-  line-height: 0 !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is(button, [role="button"]):is([aria-label*="Search" i], [title*="Search" i], [data-testid*="search" i], [class*="search" i], [class*="Search" i], [class*="filter" i])
-  :is(span, div):not(:has(svg)) {
-  font-size: 0 !important;
-  line-height: 0 !important;
-  opacity: 0 !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([aria-label*="Search" i], [title*="Search" i], [data-testid*="search" i], [class*="search" i], [class*="Search" i], [class*="filter" i])
-  svg {
-  display: block !important;
-  width: 16px !important;
-  height: 16px !important;
-  min-width: 16px !important;
-  min-height: 16px !important;
-  margin: 0 !important;
-  flex: 0 0 16px !important;
-}
-
-/* v2.12-r3: compact library search that expands without icon/text collision. */
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i]) {
+/* v2.53: class-scoped library search field. */
+.pvfd-library-search-box {
   position: relative !important;
-  display: inline-flex !important;
+  display: flex !important;
   align-items: center !important;
-  width: 28px !important;
-  min-width: 28px !important;
-  max-width: min(156px, calc(100% - 12px)) !important;
-  height: 28px !important;
-  min-height: 28px !important;
-  overflow: hidden !important;
-  background: transparent !important;
-  border: 1px solid transparent !important;
-  box-shadow: none !important;
-  transition:
-    width 150ms ease,
-    background-color 150ms ease,
-    border-color 150ms ease,
-    box-shadow 150ms ease !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i]):is(:hover, :focus-within) {
-  width: min(156px, calc(100% - 12px)) !important;
-  min-width: 124px !important;
-  background: rgba(1, 6, 12, 0.70) !important;
-  border-color: rgba(var(--pvfd-light-mid-rgb),0.26) !important;
-  box-shadow:
-    inset 0 0 6px rgba(var(--pvfd-light-deep-rgb),0.12),
-    0 0 5px rgba(0,0,0,0.22) !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i], [class*="x-filterBox" i], [class*="filterBox" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]) {
-  position: relative !important;
-  z-index: 1 !important;
-  display: block !important;
-  box-sizing: border-box !important;
-  width: 100% !important;
+  width: auto !important;
   min-width: 0 !important;
-  max-width: 100% !important;
-  height: 26px !important;
-  min-height: 26px !important;
-  padding: 0 8px 0 28px !important;
-  margin: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--pvfd-cyan) !important;
-  caret-color: var(--pvfd-cyan-glow) !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-  letter-spacing: 0.7px !important;
-  font-family: var(--pvfd-font-pixel) !important;
-  font-size: 12px !important;
-  line-height: 26px !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i]):not(:hover):not(:focus-within)
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]) {
-  color: transparent !important;
-  caret-color: transparent !important;
-  text-shadow: none !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i], [class*="x-filterBox" i], [class*="filterBox" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i])::placeholder {
-  color: transparent !important;
-  opacity: 0 !important;
-  text-shadow: none !important;
-}
-
-/* v2.12-r7: final library search geometry and active state. */
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i]) {
-  position: relative !important;
-  display: block !important;
-  width: 240px !important;
-  min-width: 0 !important;
-  max-width: calc(100% - 12px) !important;
-  height: 26px !important;
-  min-height: 26px !important;
-  padding: 0 !important;
-  overflow: visible !important;
-  background:
-    linear-gradient(180deg, rgba(0, 13, 21, 0.96), rgba(0, 4, 9, 0.99)) !important;
-  border: 1px solid rgba(var(--pvfd-light-mid-rgb),0.22) !important;
-  box-shadow:
-    inset 0 1px 2px rgba(0,0,0,0.82),
-    inset 0 0 7px rgba(var(--pvfd-light-deep-rgb),0.09),
-    0 0 0 1px rgba(0,0,0,0.42) !important;
-  transition:
-    border-color 120ms ease,
-    box-shadow 120ms ease,
-    background-color 120ms ease !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i]):focus-within {
-  border-color: rgba(var(--pvfd-light-rgb),0.58) !important;
-  background:
-    linear-gradient(180deg, rgba(0, 18, 29, 0.98), rgba(0, 5, 11, 0.99)) !important;
-  box-shadow:
-    inset 0 1px 2px rgba(0,0,0,0.78),
-    inset 0 0 9px rgba(var(--pvfd-light-deep-rgb),0.18),
-    0 0 0 1px rgba(var(--pvfd-light-mid-rgb),0.18),
-    0 0 6px rgba(var(--pvfd-light-deep-rgb),0.22) !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i])::after {
-  content: "" !important;
-  position: absolute !important;
-  top: 5px !important;
-  right: 5px !important;
-  bottom: 5px !important;
-  width: 2px !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  pointer-events: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i]):focus-within::after {
-  background: rgba(var(--pvfd-light-rgb),0.72) !important;
-  box-shadow: 0 0 5px rgba(var(--pvfd-light-deep-rgb),0.45) !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(button, [role="button"], [class*="searchInputSearchIcon" i], [class*="searchInputIcon" i], [class*="searchIcon" i], [class*="SearchIcon" i]) {
-  position: absolute !important;
-  z-index: 3 !important;
-  left: 8px !important;
-  top: 50% !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 16px !important;
-  min-width: 16px !important;
-  height: 16px !important;
-  min-height: 16px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: visible !important;
-  transform: translateY(-50%) !important;
-  color: var(--pvfd-cyan-glow) !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  font-size: 16px !important;
-  line-height: 16px !important;
-  opacity: 1 !important;
-  pointer-events: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(svg, path) {
-  display: block !important;
-  width: 16px !important;
-  height: 16px !important;
-  min-width: 16px !important;
-  min-height: 16px !important;
-  color: var(--pvfd-cyan-glow) !important;
-  fill: currentColor !important;
-  stroke: none !important;
-  opacity: 1 !important;
-  overflow: visible !important;
-  filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-deep-rgb),0.45)) !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]) {
-  position: absolute !important;
-  z-index: 2 !important;
-  left: 33px !important;
-  top: 1px !important;
-  right: 8px !important;
-  display: block !important;
-  box-sizing: border-box !important;
-  width: calc(100% - 43px) !important;
-  min-width: 0 !important;
-  max-width: calc(100% - 43px) !important;
-  height: 24px !important;
-  min-height: 24px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  border: 0 !important;
-  transform: none !important;
-  text-indent: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--pvfd-cyan) !important;
-  caret-color: var(--pvfd-cyan-glow) !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-  letter-spacing: 0.35px !important;
-  font-family: var(--pvfd-font-pixel) !important;
-  font-size: 12px !important;
-  line-height: 24px !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i])::placeholder {
-  color: transparent !important;
-  opacity: 0 !important;
-  text-shadow: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]):placeholder-shown {
-  color: transparent !important;
-  caret-color: var(--pvfd-cyan-glow) !important;
-  text-shadow: none !important;
-}
-
-/* v2.13-r1: readable Pioneer-style library empty-search state. */
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="empty" i], [class*="noResult" i], [class*="no-result" i], [class*="notFound" i], [class*="not-found" i], [data-testid*="empty" i], [data-testid*="no-result" i], [data-testid*="not-found" i]) {
-  width: calc(100% - 18px) !important;
-  margin: 14px auto 0 !important;
-  padding: 12px 10px !important;
-  box-sizing: border-box !important;
-  text-align: center !important;
-  background:
-    linear-gradient(180deg, rgba(0, 12, 20, 0.82), rgba(0, 4, 9, 0.94)) !important;
-  border: 1px solid rgba(var(--pvfd-light-mid-rgb),0.18) !important;
-  box-shadow:
-    inset 0 1px 2px rgba(0,0,0,0.72),
-    inset 0 0 9px rgba(var(--pvfd-light-deep-rgb),0.08) !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="empty" i], [class*="noResult" i], [class*="no-result" i], [class*="notFound" i], [class*="not-found" i], [data-testid*="empty" i], [data-testid*="no-result" i], [data-testid*="not-found" i])
-  :is([data-encore-id="text"], p, span, div) {
-  color: rgba(var(--pvfd-light-rgb),0.88) !important;
-  opacity: 1 !important;
-  font-family: var(--pvfd-font-pixel) !important;
-  font-size: 11px !important;
-  line-height: 1.25 !important;
-  letter-spacing: 0.75px !important;
-  text-transform: uppercase !important;
-  text-align: center !important;
-  text-shadow:
-    0 0 3px rgba(var(--pvfd-light-rgb),0.52),
-    0 0 7px rgba(var(--pvfd-light-deep-rgb),0.28) !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="empty" i], [class*="noResult" i], [class*="no-result" i], [class*="notFound" i], [class*="not-found" i], [data-testid*="empty" i], [data-testid*="no-result" i], [data-testid*="not-found" i])
-  :is([data-encore-text-variant*="title" i], h1, h2, h3, strong) {
-  display: block !important;
-  margin: 0 0 7px !important;
-  color: var(--pvfd-cyan) !important;
-  font-size: 13px !important;
-  line-height: 1.05 !important;
-  letter-spacing: 0.95px !important;
-  text-shadow:
-    0 0 3px rgba(var(--pvfd-light-rgb),0.68),
-    0 0 9px rgba(var(--pvfd-light-deep-rgb),0.36) !important;
-}
-
-/* v2.12-r10: last-rule focus marker for the library search LCD. */
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input:is(:focus, :focus-visible)) {
-  border-color: rgba(var(--pvfd-light-rgb),0.72) !important;
-  background: linear-gradient(180deg, rgba(0, 20, 32, 0.98), rgba(0, 6, 13, 0.99)) !important;
-  box-shadow:
-    inset 0 1px 2px rgba(0,0,0,0.76),
-    inset 0 0 10px rgba(var(--pvfd-light-deep-rgb),0.20),
-    0 0 0 1px rgba(var(--pvfd-light-mid-rgb),0.24),
-    0 0 8px rgba(var(--pvfd-light-deep-rgb),0.30) !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input:is(:focus, :focus-visible))::before {
-  content: "" !important;
-  position: absolute !important;
-  left: 3px !important;
-  top: 3px !important;
-  bottom: 3px !important;
-  width: 2px !important;
-  background: rgba(var(--pvfd-light-rgb),0.82) !important;
-  box-shadow: 0 0 5px rgba(var(--pvfd-light-deep-rgb),0.58) !important;
-  pointer-events: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input:is(:focus, :focus-visible))::after {
-  content: "" !important;
-  position: absolute !important;
-  right: 5px !important;
-  top: 5px !important;
-  bottom: 5px !important;
-  width: 2px !important;
-  transform: none !important;
-  background: rgba(var(--pvfd-light-rgb),0.72) !important;
-  box-shadow: 0 0 5px rgba(var(--pvfd-light-deep-rgb),0.45) !important;
-  pointer-events: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input:is(:focus, :focus-visible))::after {
-  content: "SRCH" !important;
-  position: absolute !important;
-  right: 5px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  color: rgba(var(--pvfd-light-rgb),0.70) !important;
-  font-family: var(--pvfd-font-pixel) !important;
-  font-size: 9px !important;
-  line-height: 1 !important;
-  letter-spacing: 0.45px !important;
-  text-shadow: 0 0 4px rgba(var(--pvfd-light-deep-rgb),0.40) !important;
-  pointer-events: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input:is(:focus, :focus-visible))
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]) {
-  left: 36px !important;
-  right: 34px !important;
-  width: calc(100% - 70px) !important;
-  max-width: calc(100% - 70px) !important;
-  padding: 0 !important;
-  text-indent: 0 !important;
-  caret-color: var(--pvfd-cyan-glow) !important;
-}
-
-/* v2.12-r9: active library search indication follows input focus, not hover. */
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input:is(:focus, :focus-visible, :focus-within)) {
-  border-color: rgba(var(--pvfd-light-rgb),0.72) !important;
-  background:
-    linear-gradient(180deg, rgba(0, 20, 32, 0.98), rgba(0, 6, 13, 0.99)) !important;
-  box-shadow:
-    inset 0 1px 2px rgba(0,0,0,0.76),
-    inset 0 0 10px rgba(var(--pvfd-light-deep-rgb),0.20),
-    0 0 0 1px rgba(var(--pvfd-light-mid-rgb),0.24),
-    0 0 8px rgba(var(--pvfd-light-deep-rgb),0.30) !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input:is(:focus, :focus-visible, :focus-within))::before {
-  content: "" !important;
-  position: absolute !important;
-  left: 3px !important;
-  top: 3px !important;
-  bottom: 3px !important;
-  width: 2px !important;
-  background: rgba(var(--pvfd-light-rgb),0.82) !important;
-  box-shadow: 0 0 5px rgba(var(--pvfd-light-deep-rgb),0.58) !important;
-  pointer-events: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input:is(:focus, :focus-visible, :focus-within))::after {
-  content: "SRCH" !important;
-  position: absolute !important;
-  right: 5px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  color: rgba(var(--pvfd-light-rgb),0.70) !important;
-  font-family: var(--pvfd-font-pixel) !important;
-  font-size: 9px !important;
-  line-height: 1 !important;
-  letter-spacing: 0.45px !important;
-  text-shadow: 0 0 4px rgba(var(--pvfd-light-deep-rgb),0.40) !important;
-  pointer-events: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input:is(:focus, :focus-visible, :focus-within))
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]) {
-  right: 34px !important;
-  width: calc(100% - 70px) !important;
-  max-width: calc(100% - 70px) !important;
-  caret-color: var(--pvfd-cyan-glow) !important;
-}
-
-/* v2.12-r5: Pioneer-style library search inset, no Spotify placeholder clutter. */
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i]) {
-  position: relative !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  width: 118px !important;
-  min-width: 118px !important;
-  max-width: calc(100% - 12px) !important;
-  height: 24px !important;
-  min-height: 24px !important;
-  padding: 0 !important;
-  overflow: visible !important;
-  background:
-    linear-gradient(180deg, rgba(0, 13, 21, 0.94), rgba(0, 5, 10, 0.98)) !important;
-  border: 1px solid rgba(var(--pvfd-light-mid-rgb),0.20) !important;
-  box-shadow:
-    inset 0 1px 2px rgba(0,0,0,0.78),
-    inset 0 0 7px rgba(var(--pvfd-light-deep-rgb),0.08),
-    0 0 0 1px rgba(0,0,0,0.42) !important;
-  transition: none !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i]):is(:hover, :focus-within) {
-  width: 118px !important;
-  min-width: 118px !important;
-  background:
-    linear-gradient(180deg, rgba(0, 16, 25, 0.96), rgba(0, 5, 10, 0.98)) !important;
-  border-color: rgba(var(--pvfd-light-mid-rgb),0.34) !important;
-  box-shadow:
-    inset 0 1px 2px rgba(0,0,0,0.78),
-    inset 0 0 8px rgba(var(--pvfd-light-deep-rgb),0.13),
-    0 0 4px rgba(var(--pvfd-light-deep-rgb),0.12) !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(button, [role="button"], [class*="searchInputSearchIcon" i], [class*="searchInputIcon" i], [class*="searchIcon" i], [class*="SearchIcon" i]) {
-  position: absolute !important;
-  z-index: 2 !important;
-  left: 7px !important;
-  top: 50% !important;
-  width: 14px !important;
-  min-width: 14px !important;
-  height: 14px !important;
-  min-height: 14px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: visible !important;
-  transform: translateY(-50%) !important;
-  color: var(--pvfd-cyan-glow) !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  font-size: 14px !important;
-  line-height: 14px !important;
-  opacity: 1 !important;
-  pointer-events: none !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(svg, path) {
-  width: 14px !important;
-  height: 14px !important;
-  min-width: 14px !important;
-  min-height: 14px !important;
-  fill: currentColor !important;
-  stroke: none !important;
-  color: var(--pvfd-cyan-glow) !important;
-  opacity: 1 !important;
-  overflow: visible !important;
-  filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-deep-rgb),0.45)) !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]) {
-  position: relative !important;
-  z-index: 1 !important;
-  display: block !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  height: 22px !important;
-  min-height: 22px !important;
-  padding: 0 6px 0 25px !important;
-  margin: 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--pvfd-cyan) !important;
-  caret-color: var(--pvfd-cyan-glow) !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-  letter-spacing: 0.45px !important;
-  font-family: var(--pvfd-font-pixel) !important;
-  font-size: 12px !important;
-  line-height: 22px !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]):placeholder-shown {
-  color: transparent !important;
-  text-shadow: none !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i])::placeholder,
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i]):is(:hover, :focus-within)
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i])::placeholder {
-  color: transparent !important;
-  opacity: 0 !important;
-  text-shadow: none !important;
-}
-
-/* v2.12-r6: put the caret/input beside the icon, never on top of it. */
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[placeholder*="Search" i]) {
-  position: relative !important;
-  display: grid !important;
-  grid-template-columns: 24px minmax(0, 1fr) !important;
-  column-gap: 0 !important;
-  align-items: center !important;
-  width: 122px !important;
-  min-width: 122px !important;
-  max-width: calc(100% - 12px) !important;
-  height: 24px !important;
-  min-height: 24px !important;
+  max-width: none !important;
+  flex: 1 1 0 !important;
+  height: 30px !important;
+  min-height: 30px !important;
   padding: 0 !important;
   overflow: hidden !important;
-  background:
-    linear-gradient(180deg, rgba(0, 13, 21, 0.94), rgba(0, 5, 10, 0.98)) !important;
-  border: 1px solid rgba(var(--pvfd-light-mid-rgb),0.20) !important;
-  box-shadow:
-    inset 0 1px 2px rgba(0,0,0,0.78),
-    inset 0 0 7px rgba(var(--pvfd-light-deep-rgb),0.08),
-    0 0 0 1px rgba(0,0,0,0.42) !important;
-  transition: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[placeholder*="Search" i])
-  :is(button, [role="button"], [class*="searchInputSearchIcon" i], [class*="searchInputIcon" i], [class*="searchIcon" i], [class*="SearchIcon" i]) {
-  position: static !important;
-  grid-column: 1 !important;
-  grid-row: 1 !important;
-  justify-self: center !important;
-  align-self: center !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 14px !important;
-  min-width: 14px !important;
-  height: 14px !important;
-  min-height: 14px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: visible !important;
-  transform: none !important;
-  color: var(--pvfd-cyan-glow) !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  font-size: 14px !important;
-  line-height: 14px !important;
-  opacity: 1 !important;
-  pointer-events: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[placeholder*="Search" i])
-  :is(svg, path) {
-  display: block !important;
-  width: 14px !important;
-  height: 14px !important;
-  min-width: 14px !important;
-  min-height: 14px !important;
-  color: var(--pvfd-cyan-glow) !important;
-  fill: currentColor !important;
-  stroke: none !important;
-  opacity: 1 !important;
-  overflow: visible !important;
-  filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-deep-rgb),0.45)) !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]) {
-  position: static !important;
-  grid-column: 2 !important;
-  grid-row: 1 !important;
-  display: block !important;
   box-sizing: border-box !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: 100% !important;
-  height: 22px !important;
-  min-height: 22px !important;
-  padding: 0 6px 0 0 !important;
-  margin: 0 !important;
-  border: 0 !important;
-  transform: none !important;
-  text-indent: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--pvfd-cyan) !important;
-  caret-color: var(--pvfd-cyan-glow) !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-  letter-spacing: 0.45px !important;
-  font-family: var(--pvfd-font-pixel) !important;
-  font-size: 12px !important;
-  line-height: 22px !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i])::placeholder {
-  color: transparent !important;
-  opacity: 0 !important;
-  text-shadow: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]):placeholder-shown {
-  color: transparent !important;
-  caret-color: transparent !important;
-  text-shadow: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]):not(:placeholder-shown) {
-  color: var(--pvfd-cyan) !important;
-  caret-color: var(--pvfd-cyan-glow) !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[placeholder*="Search" i])
-  :is(span[data-encore-id="text"], span[class*="text" i], span[class*="Text" i]) {
-  color: transparent !important;
-  font-size: 0 !important;
-  line-height: 0 !important;
-  opacity: 0 !important;
-  text-shadow: none !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i]):is(:hover, :focus-within)
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i])::placeholder {
-  color: rgba(var(--pvfd-light-rgb),0.58) !important;
-  opacity: 1 !important;
-  text-shadow: 0 0 4px rgba(var(--pvfd-light-deep-rgb),0.22) !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(button, [role="button"], [class*="searchInputSearchIcon" i], [class*="searchInputIcon" i], [class*="searchIcon" i], [class*="SearchIcon" i]) {
-  position: absolute !important;
-  z-index: 2 !important;
-  left: 7px !important;
-  top: 50% !important;
-  width: 16px !important;
-  min-width: 16px !important;
-  height: 16px !important;
-  min-height: 16px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  transform: translateY(-50%) !important;
-  color: var(--pvfd-cyan-glow) !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  pointer-events: none !important;
-}
-
-/* v2.12-r4: stable library search slot; restore Spotify's filled icon glyph. */
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i]) {
-  position: relative !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  width: min(132px, calc(100% - 12px)) !important;
-  min-width: 112px !important;
-  max-width: min(132px, calc(100% - 12px)) !important;
-  height: 28px !important;
-  min-height: 28px !important;
-  overflow: visible !important;
-  background: rgba(1, 6, 12, 0.52) !important;
-  border: 1px solid rgba(var(--pvfd-light-mid-rgb),0.18) !important;
-  box-shadow:
-    inset 0 0 5px rgba(var(--pvfd-light-deep-rgb),0.09),
-    0 0 4px rgba(0,0,0,0.16) !important;
-  transition: none !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(button, [role="button"], [class*="searchInputSearchIcon" i], [class*="searchInputIcon" i], [class*="searchIcon" i], [class*="SearchIcon" i]) {
-  position: absolute !important;
-  z-index: 2 !important;
-  left: 8px !important;
-  top: 50% !important;
-  width: 16px !important;
-  min-width: 16px !important;
-  height: 16px !important;
-  min-height: 16px !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: visible !important;
-  transform: translateY(-50%) !important;
-  color: var(--pvfd-cyan-glow) !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  font-size: 16px !important;
-  line-height: 16px !important;
-  opacity: 1 !important;
-  pointer-events: none !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(svg, path) {
-  display: block !important;
-  width: 16px !important;
-  height: 16px !important;
-  min-width: 16px !important;
-  min-height: 16px !important;
-  margin: 0 !important;
-  color: var(--pvfd-cyan-glow) !important;
-  fill: currentColor !important;
-  stroke: none !important;
-  opacity: 1 !important;
-  overflow: visible !important;
-  filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-deep-rgb),0.42)) !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i], [class*="x-filterBox" i], [class*="filterBox" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]) {
-  width: 100% !important;
-  min-width: 0 !important;
-  height: 26px !important;
-  min-height: 26px !important;
-  padding: 0 7px 0 29px !important;
-  color: var(--pvfd-cyan) !important;
-  caret-color: var(--pvfd-cyan-glow) !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-  font-size: 12px !important;
-  line-height: 26px !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-}
-
-:is(.Root__nav-bar, nav[aria-label="Main"], [class*="main-yourLibrary" i], [class*="x-filterBox" i], [class*="filterBox" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i])::placeholder {
-  color: transparent !important;
-  opacity: 0 !important;
-  text-shadow: none !important;
-}
-
-/* v2.12-r8: final winning library-search override. */
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i]) {
-  position: relative !important;
-  display: block !important;
-  width: 240px !important;
-  min-width: 0 !important;
-  max-width: calc(100% - 12px) !important;
-  height: 26px !important;
-  min-height: 26px !important;
-  padding: 0 !important;
-  overflow: visible !important;
   background: linear-gradient(180deg, rgba(0, 13, 21, 0.96), rgba(0, 4, 9, 0.99)) !important;
   border: 1px solid rgba(var(--pvfd-light-mid-rgb),0.22) !important;
   box-shadow:
     inset 0 1px 2px rgba(0,0,0,0.82),
     inset 0 0 7px rgba(var(--pvfd-light-deep-rgb),0.09),
     0 0 0 1px rgba(0,0,0,0.42) !important;
-  transition: border-color 120ms ease, box-shadow 120ms ease !important;
+  transition: none !important;
+  contain: layout paint style !important;
 }
 
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input:is(:focus, :focus-visible)) {
-  border-color: rgba(var(--pvfd-light-rgb),0.72) !important;
-  background: linear-gradient(180deg, rgba(0, 20, 32, 0.98), rgba(0, 6, 13, 0.99)) !important;
-  box-shadow:
-    inset 0 1px 2px rgba(0,0,0,0.76),
-    inset 0 0 10px rgba(var(--pvfd-light-deep-rgb),0.20),
-    0 0 0 1px rgba(var(--pvfd-light-mid-rgb),0.24),
-    0 0 8px rgba(var(--pvfd-light-deep-rgb),0.30) !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input:is(:focus, :focus-visible))::before {
-  content: "" !important;
-  position: absolute !important;
-  left: 3px !important;
-  top: 3px !important;
-  bottom: 3px !important;
-  width: 2px !important;
-  background: rgba(var(--pvfd-light-rgb),0.82) !important;
-  box-shadow: 0 0 5px rgba(var(--pvfd-light-deep-rgb),0.58) !important;
-  pointer-events: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i]):focus-within {
+.pvfd-library-search-box:focus-within {
   border-color: rgba(var(--pvfd-light-rgb),0.62) !important;
-  box-shadow:
-    inset 0 1px 2px rgba(0,0,0,0.78),
-    inset 0 0 9px rgba(var(--pvfd-light-deep-rgb),0.18),
-    0 0 0 1px rgba(var(--pvfd-light-mid-rgb),0.18),
-    0 0 6px rgba(var(--pvfd-light-deep-rgb),0.24) !important;
+  background: linear-gradient(180deg, rgba(0, 18, 29, 0.98), rgba(0, 5, 11, 0.99)) !important;
 }
 
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i])::after {
-  content: "" !important;
-  position: absolute !important;
-  top: 5px !important;
-  right: 5px !important;
-  bottom: 5px !important;
-  width: 2px !important;
+.pvfd-library-toolbar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+.pvfd-library-toolbar .pvfd-library-search-box {
+  flex: 1 1 0 !important;
+  min-width: 132px !important;
+  max-width: 220px !important;
+}
+
+.pvfd-library-recents-control {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+  min-width: 86px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 8px !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+}
+
+.pvfd-library-search-box .x-filterBox-filterInput {
+  position: relative !important;
+  z-index: 2 !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 8px 0 34px !important;
+  padding-left: 34px !important;
+  padding-inline-start: 34px !important;
+  -webkit-padding-start: 34px !important;
+  padding-right: 8px !important;
+  padding-inline-end: 8px !important;
+  -webkit-padding-end: 8px !important;
+  text-indent: 0 !important;
+  box-sizing: border-box !important;
   background: transparent !important;
-  pointer-events: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--pvfd-cyan) !important;
+  caret-color: var(--pvfd-cyan-glow) !important;
+  text-shadow: none !important;
+  font-family: var(--pvfd-font-pixel) !important;
+  font-size: 12px !important;
+  line-height: 28px !important;
 }
 
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i]):focus-within::after {
-  background: rgba(var(--pvfd-light-rgb),0.72) !important;
-  box-shadow: 0 0 5px rgba(var(--pvfd-light-deep-rgb),0.45) !important;
+.pvfd-library-search-box .x-filterBox-filterInput::placeholder {
+  color: transparent !important;
+  opacity: 0 !important;
+  text-shadow: none !important;
 }
 
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(button, [role="button"], [class*="searchInputSearchIcon" i], [class*="searchInputIcon" i], [class*="searchIcon" i], [class*="SearchIcon" i]) {
+.pvfd-library-search-box .x-filterBox-overlay,
+.pvfd-library-search-box .x-filterBox-searchIconContainer,
+.pvfd-library-search-box :is(button, [role="button"]) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+.pvfd-library-search-box .x-filterBox-searchIconContainer {
   position: absolute !important;
   z-index: 3 !important;
   left: 8px !important;
   top: 50% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 16px !important;
   width: 16px !important;
   min-width: 16px !important;
   height: 16px !important;
   min-height: 16px !important;
   padding: 0 !important;
   margin: 0 !important;
-  overflow: visible !important;
   transform: translateY(-50%) !important;
   color: var(--pvfd-cyan-glow) !important;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  font-size: 16px !important;
-  line-height: 16px !important;
-  opacity: 1 !important;
   pointer-events: none !important;
 }
 
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(svg, path) {
-  width: 16px !important;
-  height: 16px !important;
-  min-width: 16px !important;
-  min-height: 16px !important;
+.pvfd-library-search-box :is(svg, path) {
   color: var(--pvfd-cyan-glow) !important;
   fill: currentColor !important;
   stroke: none !important;
-  opacity: 1 !important;
-  overflow: visible !important;
-  filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-deep-rgb),0.45)) !important;
+  filter: none !important;
 }
 
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]) {
+.pvfd-library-search-box .x-filterBox-overlay {
   position: absolute !important;
-  z-index: 2 !important;
-  left: 0 !important;
-  top: 1px !important;
-  right: 0 !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: 100% !important;
-  height: 24px !important;
-  min-height: 24px !important;
-  padding: 0 8px 0 46px !important;
-  box-sizing: border-box !important;
-  margin: 0 !important;
-  border: 0 !important;
-  transform: none !important;
-  text-indent: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--pvfd-cyan) !important;
-  caret-color: var(--pvfd-cyan-glow) !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-  letter-spacing: 0.35px !important;
-  font-family: var(--pvfd-font-pixel) !important;
-  font-size: 12px !important;
-  line-height: 24px !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
+  inset: 0 !important;
+  pointer-events: none !important;
 }
 
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i])::placeholder {
-  color: transparent !important;
+.pvfd-library-search-box.pvfd-filter-has-text .x-filterBox-searchIconContainer {
   opacity: 0 !important;
-  text-shadow: none !important;
+  visibility: hidden !important;
 }
 
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(input[type="search"], input[placeholder*="Search" i])
-  :is(input[type="search"], input[placeholder*="Search" i], [class*="searchInputInput" i]):placeholder-shown {
-  color: transparent !important;
-  caret-color: var(--pvfd-cyan-glow) !important;
-  text-shadow: none !important;
-}
-
-/* v2.13-r2-final: readable Pioneer-style library no-search-results state. */
-.Root__nav-bar :is([data-testid="no-search-results-view"], .H7KAcVLvUy8Jo9v3),
-:is(.main-yourLibraryX-library, [class*="main-yourLibrary" i], [class*="yourLibrary" i]) :is([data-testid="no-search-results-view"], .H7KAcVLvUy8Jo9v3) {
+.Root__nav-bar [data-testid="no-search-results-view"],
+.main-yourLibraryX-library [data-testid="no-search-results-view"] {
   width: calc(100% - 28px) !important;
   max-width: 340px !important;
   min-height: 96px !important;
@@ -3904,148 +3039,26 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
   justify-content: center !important;
   gap: 10px !important;
   text-align: center !important;
-  background:
-    linear-gradient(90deg, rgba(var(--pvfd-light-deep-rgb),0.08), transparent 15%, transparent 85%, rgba(var(--pvfd-light-deep-rgb),0.08)),
-    linear-gradient(180deg, rgba(0, 15, 24, 0.70), rgba(0, 5, 10, 0.88)) !important;
+  background: linear-gradient(180deg, rgba(0, 15, 24, 0.70), rgba(0, 5, 10, 0.88)) !important;
   border: 1px solid rgba(var(--pvfd-light-mid-rgb),0.16) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(0,0,0,0.55),
-    inset 0 0 12px rgba(var(--pvfd-light-deep-rgb),0.10),
-    0 0 8px rgba(0,0,0,0.38) !important;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.55) !important;
 }
 
-.Root__nav-bar :is([data-testid="no-search-results-view"], .H7KAcVLvUy8Jo9v3) :is([data-encore-id="text"], h1, h2, p, span),
-:is(.main-yourLibraryX-library, [class*="main-yourLibrary" i], [class*="yourLibrary" i]) :is([data-testid="no-search-results-view"], .H7KAcVLvUy8Jo9v3) :is([data-encore-id="text"], h1, h2, p, span) {
-  color: rgba(var(--pvfd-light-rgb),0.92) !important;
+.Root__nav-bar [data-testid="no-search-results-view"] :is([data-encore-id="text"], h1, h2, p, span),
+.main-yourLibraryX-library [data-testid="no-search-results-view"] :is([data-encore-id="text"], h1, h2, p, span) {
+  color: rgba(var(--pvfd-light-rgb),0.9) !important;
   opacity: 1 !important;
   font-family: var(--pvfd-font-pixel) !important;
   font-weight: 500 !important;
   letter-spacing: 0.65px !important;
   text-transform: uppercase !important;
   text-align: center !important;
-  text-shadow:
-    0 0 3px rgba(var(--pvfd-light-rgb),0.48),
-    0 0 7px rgba(var(--pvfd-light-deep-rgb),0.30) !important;
+  text-shadow: none !important;
 }
 
-.Root__nav-bar :is([data-testid="no-search-results-view"], .H7KAcVLvUy8Jo9v3) :is(h1, .KJPbZ6dESCkUdUJr),
-:is(.main-yourLibraryX-library, [class*="main-yourLibrary" i], [class*="yourLibrary" i]) :is([data-testid="no-search-results-view"], .H7KAcVLvUy8Jo9v3) :is(h1, .KJPbZ6dESCkUdUJr) {
-  color: var(--pvfd-cyan) !important;
-  font-size: 15px !important;
-  line-height: 1.18 !important;
-  letter-spacing: 0.75px !important;
-}
-
-.Root__nav-bar :is([data-testid="no-search-results-view"], .H7KAcVLvUy8Jo9v3) h2,
-:is(.main-yourLibraryX-library, [class*="main-yourLibrary" i], [class*="yourLibrary" i]) :is([data-testid="no-search-results-view"], .H7KAcVLvUy8Jo9v3) h2 {
-  color: rgba(var(--pvfd-light-rgb),0.78) !important;
-  font-size: 12px !important;
-  line-height: 1.32 !important;
-  letter-spacing: 0.5px !important;
-}
-
-.Root__nav-bar :is([data-testid="no-search-results-view"], .H7KAcVLvUy8Jo9v3) :is(.LRUiTJgSv74ZET0c, .VPbDod8rXL_XP_tK),
-:is(.main-yourLibraryX-library, [class*="main-yourLibrary" i], [class*="yourLibrary" i]) :is([data-testid="no-search-results-view"], .H7KAcVLvUy8Jo9v3) :is(.LRUiTJgSv74ZET0c, .VPbDod8rXL_XP_tK) {
-  color: rgba(234, 252, 255, 0.98) !important;
-  font-size: inherit !important;
-  text-shadow:
-    0 0 4px rgba(var(--pvfd-light-rgb),0.68),
-    0 0 10px rgba(var(--pvfd-light-deep-rgb),0.42) !important;
-}
-
-/* v2.12-r9: hard final text inset for the Your Library search field. */
-.Root__nav-bar :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(:is(input, [role="searchbox"], [contenteditable="true"]))
-  :is(input, [role="searchbox"], [contenteditable="true"], .x-searchInput-searchInputInput, [class*="searchInputInput" i]),
-:is(.main-yourLibraryX-library, [class*="main-yourLibrary" i], [class*="yourLibrary" i])
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i], [aria-label*="Search" i]):has(:is(input, [role="searchbox"], [contenteditable="true"]))
-  :is(input, [role="searchbox"], [contenteditable="true"], .x-searchInput-searchInputInput, [class*="searchInputInput" i]) {
-  left: 0 !important;
-  right: 0 !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  padding-left: 40px !important;
-  padding-inline-start: 40px !important;
-  -webkit-padding-start: 40px !important;
-  padding-right: 8px !important;
-  padding-inline-end: 8px !important;
-  -webkit-padding-end: 8px !important;
-  text-indent: 0 !important;
-  box-sizing: border-box !important;
-}
-
-/* v2.12-r10: exact Spotify x-filterBox input; keep typed text clear of the search lens. */
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  .x-filterBox-filterInputContainer {
-  position: relative !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  .x-filterBox-filterInput {
-  left: 0 !important;
-  right: 0 !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  padding: 0 8px 0 40px !important;
-  padding-left: 40px !important;
-  padding-inline-start: 40px !important;
-  -webkit-padding-start: 40px !important;
-  text-indent: 0 !important;
-  box-sizing: border-box !important;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  .x-filterBox-overlay {
-  z-index: 3 !important;
-  pointer-events: none !important;
-}
-
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  .x-filterBox-searchIconContainer {
-  flex: 0 0 28px !important;
-  width: 28px !important;
-  padding: 5px 0 5px 8px !important;
-}
-
-/* v2.12-r11: unconditional Spotify filter input geometry. */
-.x-filterBox-filterInputContainer {
-  position: relative !important;
-  width: 240px !important;
-  min-width: 0 !important;
-  max-width: calc(100% - 12px) !important;
-  flex: 0 1 240px !important;
-}
-
-.x-filterBox-expandedOrHasFilter .x-filterBox-filterInput,
-.x-filterBox-filterInput {
-  left: 0 !important;
-  right: 0 !important;
-  width: 100% !important;
-  min-width: 100% !important;
-  max-width: 100% !important;
-  height: 26px !important;
-  min-height: 26px !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  padding-left: 40px !important;
-  padding-inline-start: 40px !important;
-  -webkit-padding-start: 40px !important;
-  padding-right: 8px !important;
-  padding-inline-end: 8px !important;
-  -webkit-padding-end: 8px !important;
-  line-height: 26px !important;
-  text-indent: 0 !important;
-  box-sizing: border-box !important;
-}
-
-.x-filterBox-expandedOrHasFilter:has(.x-filterBox-filterInput:not(:placeholder-shown)) .x-filterBox-searchIconContainer {
-  opacity: 0 !important;
-  visibility: hidden !important;
-}
-
-.x-filterBox-expandedOrHasFilter:has(.x-filterBox-filterInput:not(:placeholder-shown)) .x-filterBox-overlay {
-  pointer-events: none !important;
+html[data-pvfd-performance="eco"] .pvfd-library-search-box {
+  background: #06121e !important;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.82) !important;
 }
 
 /* v2.13: Pioneer hardware-role buttons and compact LCD menu overlay. */
@@ -6110,57 +5123,7 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
   box-shadow: 0 0 0 1px rgba(var(--pvfd-light-mid-rgb), 0.18) !important;
 }
 
-/* v2.34: correct global-nav tile cleanup; preserve outline icons instead of filling them. */
-:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
-  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i]) {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-}
 
-:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
-  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
-  :is(div, span, figure) {
-  background: transparent !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-}
-
-:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
-  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
-  :is(svg, path, circle, rect, line, polyline, polygon) {
-  color: var(--pvfd-cyan) !important;
-  fill: none !important;
-  stroke: currentColor !important;
-  filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-rgb), 0.45)) !important;
-}
-
-:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
-  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
-  :is(img, picture) {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
-  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
-  :is(:hover, :focus-visible) {
-  background: rgba(var(--pvfd-light-rgb), 0.06) !important;
-  outline: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.20) !important;
-  outline-offset: -1px !important;
-}
-
-.Root__top-bar button[aria-label*="Play" i] :is(svg, path, polygon),
-.Root__top-bar button[aria-label*="Pause" i] :is(svg, path, polygon),
-.main-topBar-container button[aria-label*="Play" i] :is(svg, path, polygon),
-.main-topBar-container button[aria-label*="Pause" i] :is(svg, path, polygon) {
-  fill: currentColor !important;
-  stroke: none !important;
-}
 
 /* v2.37-temp: LCD test skin for the left library and right now-playing side panels. */
 :is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar) {
@@ -6470,46 +5433,51 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
   }
 }
 
-/* v2.35: restore global-nav icon strength and add a non-tile hover state. */
+
+
+/* v2.56: low-cost global-nav button cleanup without ancestor :has(). */
 :is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
-  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i]) {
+  :is(button, [role="button"], a[aria-label]):not([aria-label*="Search" i]):not([data-testid*="search" i]) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
   color: var(--pvfd-cyan) !important;
   opacity: 1 !important;
 }
 
 :is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
-  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
+  :is(button, [role="button"], a[aria-label]):not([aria-label*="Search" i]):not([data-testid*="search" i])
+  :is(div, span, figure, img, picture) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
+  :is(button, [role="button"], a[aria-label]):not([aria-label*="Search" i]):not([data-testid*="search" i])
   :is(svg, path, circle, rect, line, polyline, polygon) {
   color: var(--pvfd-cyan) !important;
-  opacity: 1 !important;
+  fill: none !important;
   stroke: currentColor !important;
   stroke-width: 1.8px !important;
-  fill: none !important;
-  filter: drop-shadow(0 0 4px rgba(var(--pvfd-light-rgb), 0.62)) !important;
+  filter: none !important;
 }
 
 :is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
-  :is(button, [role="button"], a[aria-label]):is([disabled], [aria-disabled="true"]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i]) {
+  :is(button, [role="button"], a[aria-label]):is([disabled], [aria-disabled="true"]):not([aria-label*="Search" i]):not([data-testid*="search" i]) {
   opacity: 0.58 !important;
 }
 
 :is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
-  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
-  :is(:hover, :focus-visible) {
-  background:
-    linear-gradient(180deg, rgba(var(--pvfd-light-rgb), 0.16), rgba(var(--pvfd-light-deep-rgb), 0.08)) !important;
-  outline: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.48) !important;
+  :is(button, [role="button"], a[aria-label]):not([aria-label*="Search" i]):not([data-testid*="search" i]):is(:hover, :focus-visible) {
+  background: rgba(var(--pvfd-light-rgb), 0.08) !important;
+  outline: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.24) !important;
   outline-offset: -1px !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.34),
-    0 0 8px rgba(var(--pvfd-light-rgb), 0.20) !important;
-}
-
-:is(.Root__top-bar, .main-topBar-container, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i])
-  :is(button, [role="button"], a[aria-label]):not(:has(input)):not([aria-label*="Search" i]):not([data-testid*="search" i])
-  :is(:hover, :focus-visible) :is(svg, path, circle, rect, line, polyline, polygon) {
-  color: #d8f8ff !important;
-  filter: drop-shadow(0 0 6px rgba(var(--pvfd-light-rgb), 0.78)) !important;
+  box-shadow: none !important;
 }
 
 .Root__top-bar button[aria-label*="Play" i] :is(svg, path, polygon),
@@ -6545,9 +5513,9 @@ nav[aria-label="Main"] [data-testid*="search" i] button svg {
   z-index: 60 !important;
 }
 
-/* v2.48-r2: let active global search suggestions clear the sticky album chrome. */
-.Root:has(:is(.Root__top-bar, .Root__globalNav, [data-testid*="global-nav" i], [class*="globalNav" i]) input:focus)
-  .main-topBar-container {
+
+
+html.pvfd-global-search-focused .main-topBar-container {
   z-index: 6 !important;
 }
 
@@ -6754,7 +5722,7 @@ html[data-pvfd-performance="eco"] :is(.Root__nav-bar, nav[aria-label="Main"], .R
 }
 
 html[data-pvfd-performance="eco"] :is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar)
-  :is(button, [role="button"], a, [role="row"], [role="listitem"], [class*="listItem" i], [class*="ListItem" i], [class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], .main-card-card, [data-encore-id="card"]) {
+  :is(button, [role="button"], a, [role="row"], [role="listitem"], [class*="listItem" i], [class*="ListItem" i], .main-card-card, [data-encore-id="card"]):not(.pvfd-library-recents-control) {
   background-image: none !important;
   box-shadow: none !important;
   filter: none !important;
@@ -6769,108 +5737,45 @@ html[data-pvfd-performance="eco"] :is(.Root__nav-bar, nav[aria-label="Main"], .R
   box-shadow: none !important;
 }
 
-html[data-pvfd-performance="eco"] :is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar)
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i])::before,
-html[data-pvfd-performance="eco"] :is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar)
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i])::after,
-html[data-pvfd-performance="eco"] :is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar)
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]) *::before,
-html[data-pvfd-performance="eco"] :is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar)
-  :is([class*="x-filterBox" i], [class*="filterBox" i], [class*="searchInput" i], [data-testid*="search" i]) *::after {
-  content: none !important;
-  display: none !important;
-  background: transparent !important;
+/* v2.54: Full mode side panels keep the LCD color, but avoid repaint-heavy row glows. */
+html:not([data-pvfd-performance="eco"]) :is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar) {
+  contain: paint !important;
+}
+
+html:not([data-pvfd-performance="eco"]) :is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar)
+  :is([data-encore-id="text"], h1, h2, h3, h4, p, span, a, button) {
+  text-shadow: none !important;
+}
+
+html:not([data-pvfd-performance="eco"]) :is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar)
+  :is(svg, path, circle, rect, line, polyline, polygon) {
+  filter: none !important;
+}
+
+html:not([data-pvfd-performance="eco"]) :is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar)
+  :is(button, [role="button"], a):is(:hover, :focus-visible) {
+  background: rgba(var(--pvfd-light-rgb), 0.07) !important;
+  outline: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.24) !important;
+  outline-offset: -1px !important;
   box-shadow: none !important;
 }
 
-/* v2.51: remove stray edge bars from the focused Your Library search LCD. */
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is(.x-filterBox-filterInputContainer, [class*="filterBox" i]):has(.x-filterBox-filterInput)::before,
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is(.x-filterBox-filterInputContainer, [class*="filterBox" i]):has(.x-filterBox-filterInput)::after,
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is(.x-filterBox-filterInputContainer, [class*="filterBox" i]):has(.x-filterBox-filterInput):focus-within::before,
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  :is(.x-filterBox-filterInputContainer, [class*="filterBox" i]):has(.x-filterBox-filterInput):focus-within::after {
-  content: none !important;
-  display: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
+html:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card, [data-encore-id="card"]) {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.56) !important;
 }
 
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  .x-filterBox-filterInput {
-  background: transparent !important;
-  background-image: none !important;
-  border: 0 !important;
-  outline: 0 !important;
-  box-shadow: none !important;
-}
 
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  .x-filterBox-filterInputContainer :is(.x-filterBox-overlay, .x-filterBox-searchIconContainer, button, [role="button"]),
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  .x-filterBox-filterInputContainer :is(.x-filterBox-overlay, .x-filterBox-searchIconContainer, button, [role="button"]):is(:hover, :focus, :focus-visible) {
-  background: transparent !important;
-  background-image: none !important;
-  border: 0 !important;
-  outline: 0 !important;
-  box-shadow: none !important;
-}
 
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  .x-filterBox-filterInputContainer :is(.x-filterBox-overlay, .x-filterBox-searchIconContainer)::before,
-:is(.Root__nav-bar, nav, aside, [aria-label*="Library" i], [data-testid*="library" i], [class*="yourLibrary" i], [class*="YourLibrary" i], [class*="main-yourLibrary" i])
-  .x-filterBox-filterInputContainer :is(.x-filterBox-overlay, .x-filterBox-searchIconContainer)::after {
-  content: none !important;
-  display: none !important;
-}
 
-/* v2.50-temp: keep library playing indicators as clean outline glyphs. */
-.Root__nav-bar :is(
-  [class*="playing" i],
-  [class*="nowPlaying" i],
-  [class*="speaker" i],
-  [class*="equalizer" i],
-  [data-testid*="playing" i],
-  [data-testid*="now-playing" i],
-  [data-testid*="speaker" i],
-  [data-testid*="equalizer" i],
-  [aria-label*="Playing" i],
-  [aria-label*="Now playing" i],
-  [aria-label*="Speaker" i]
-) :is(svg, path, circle, rect, line, polyline, polygon) {
+
+/* v2.55: cheap library row icon cleanup, no ancestor-state selector matching. */
+.Root__nav-bar :is(.main-yourLibraryX-listItem, [role="listitem"], [role="row"])
+  :is(svg, path, circle, rect, line, polyline, polygon) {
   background: transparent !important;
   box-shadow: none !important;
   color: var(--pvfd-cyan) !important;
   fill: none !important;
   stroke: currentColor !important;
-  filter: none !important;
-}
-
-.Root__nav-bar :is(
-  .main-yourLibraryX-listItem,
-  [class*="yourLibrary" i] [class*="listItem" i],
-  [class*="YourLibrary" i] [class*="ListItem" i],
-  [role="listitem"],
-  [role="row"]
-) :is(svg, path, circle, rect, line, polyline, polygon) {
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--pvfd-cyan) !important;
-  fill: none !important;
-  stroke: currentColor !important;
-  filter: none !important;
-}
-
-.Root__nav-bar :is(
-  .main-yourLibraryX-listItem,
-  [class*="yourLibrary" i] [class*="listItem" i],
-  [class*="YourLibrary" i] [class*="ListItem" i],
-  [role="listitem"],
-  [role="row"]
-):has(svg) :is(div, span) {
-  box-shadow: none !important;
   filter: none !important;
 }
 

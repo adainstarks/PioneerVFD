@@ -96,6 +96,7 @@
   let logoBeatIdx = 0;
   let lastLogoGlowTrackSec = NaN;
   let lastLogoGlowBeatKey = "";
+  let logoGlowBurstAlt = false;
   let logoGlowBurstTimer = 0;
   let logoGlowSchedulerTimer = 0;
   let barHeights = new Array(NUM_BARS).fill(0);
@@ -125,7 +126,7 @@
   const PLAYER_TIMING_SAMPLE_MS = 1000;
   const LOGO_GLOW_TIMING_SAMPLE_MS = 160;
   const LOGO_GLOW_TIMING_SMOOTHING = 0.35;
-  const LOGO_GLOW_SCHEDULER_MS = 24;
+  const LOGO_GLOW_SCHEDULER_MS = 48;
   const TRACK_SYNC_INTERVAL_MS = 600;
   const BAR_UPDATE_INTERVAL_MS = 140;
   const PROGRESS_READOUT_INTERVAL_MS = 220;
@@ -858,7 +859,7 @@
   function applyLogoGlowMode(persist = false) {
     if (chassis) {
       chassis.setAttribute("data-pvfd-logo-glow", logoGlowEnabled ? "on" : "off");
-      chassis.classList.remove("pvfd-logo-burst");
+      chassis.classList.remove("pvfd-logo-burst", "pvfd-logo-burst-a", "pvfd-logo-burst-b");
     }
     if (logoGlowBurstTimer) window.clearTimeout(logoGlowBurstTimer);
     logoGlowBurstTimer = 0;
@@ -1302,11 +1303,12 @@
     if (key === lastLogoGlowBeatKey) return;
     lastLogoGlowBeatKey = key;
     if (logoGlowBurstTimer) window.clearTimeout(logoGlowBurstTimer);
-    chassis.classList.remove("pvfd-logo-burst");
-    void chassis.offsetWidth;
-    chassis.classList.add("pvfd-logo-burst");
+    logoGlowBurstAlt = !logoGlowBurstAlt;
+    const burstClass = logoGlowBurstAlt ? "pvfd-logo-burst-a" : "pvfd-logo-burst-b";
+    chassis.classList.remove("pvfd-logo-burst", "pvfd-logo-burst-a", "pvfd-logo-burst-b");
+    chassis.classList.add(burstClass);
     logoGlowBurstTimer = window.setTimeout(() => {
-      if (chassis) chassis.classList.remove("pvfd-logo-burst");
+      if (chassis) chassis.classList.remove("pvfd-logo-burst", "pvfd-logo-burst-a", "pvfd-logo-burst-b");
       logoGlowBurstTimer = 0;
     }, 520);
   }
@@ -1330,7 +1332,7 @@
   function updateLogoBeatGlow(tSec, isPlaying, ts = performance.now()) {
     if (!chassis) return;
     if (!logoGlowEnabled || !isPlaying) {
-      chassis.classList.remove("pvfd-logo-burst");
+      chassis.classList.remove("pvfd-logo-burst", "pvfd-logo-burst-a", "pvfd-logo-burst-b");
       lastLogoGlowTrackSec = Number.isFinite(tSec) ? tSec : NaN;
       return;
     }
@@ -2394,6 +2396,16 @@
   }
 
   const LIBRARY_SEARCH_FIX_STYLE_ID = "pvfd-library-search-fix";
+  const LIBRARY_SEARCH_LAYOUT_VERSION = "3";
+  const LIBRARY_RECENTS_SELECTOR = [
+    "button[aria-label*='Recents' i]",
+    "[role='button'][aria-label*='Recents' i]",
+    "button[title*='Recents' i]",
+    "[role='button'][title*='Recents' i]",
+    "[data-testid*='recents' i]",
+    "[class*='recents' i]",
+    "[class*='Recents']"
+  ].join(",");
   let librarySearchFixTimer = 0;
   let pvfdMutationTimer = 0;
   let pvfdMutationFlushTimer = 0;
@@ -2405,35 +2417,153 @@
   let lyricsViewCache = false;
 
   function ensureLibrarySearchFixStyle() {
-    if (document.getElementById(LIBRARY_SEARCH_FIX_STYLE_ID)) return;
-    const style = document.createElement("style");
-    style.id = LIBRARY_SEARCH_FIX_STYLE_ID;
-    style.textContent = `
-.x-filterBox-filterInputContainer {
-  width: 240px !important;
+    let style = document.getElementById(LIBRARY_SEARCH_FIX_STYLE_ID);
+    if (!style) {
+      style = document.createElement("style");
+      style.id = LIBRARY_SEARCH_FIX_STYLE_ID;
+      document.head.appendChild(style);
+    }
+    const css = `
+.pvfd-library-search-box {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: auto !important;
   min-width: 0 !important;
-  max-width: calc(100% - 12px) !important;
-  flex: 0 1 240px !important;
+  max-width: none !important;
+  flex: 1 1 0 !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  background: linear-gradient(180deg, rgba(0, 13, 21, 0.96), rgba(0, 4, 9, 0.99)) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.22) !important;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.82),
+    inset 0 0 7px rgba(var(--pvfd-light-deep-rgb), 0.09),
+    0 0 0 1px rgba(0, 0, 0, 0.42) !important;
+  transition: none !important;
+  contain: layout paint style !important;
 }
-.x-filterBox-filterInputContainer .x-filterBox-filterInput {
+
+.pvfd-library-search-box:focus-within {
+  border-color: rgba(var(--pvfd-light-rgb), 0.62) !important;
+  background: linear-gradient(180deg, rgba(0, 18, 29, 0.98), rgba(0, 5, 11, 0.99)) !important;
+}
+
+.pvfd-library-toolbar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+.pvfd-library-toolbar .pvfd-library-search-box {
+  flex: 1 1 0 !important;
+  min-width: 132px !important;
+  max-width: 220px !important;
+}
+
+.pvfd-library-recents-control {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+  min-width: 86px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 8px !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+}
+
+.pvfd-library-search-box .x-filterBox-filterInput {
+  position: relative !important;
+  z-index: 2 !important;
   width: 100% !important;
   min-width: 100% !important;
   max-width: 100% !important;
-  padding-left: 40px !important;
-  padding-inline-start: 40px !important;
-  -webkit-padding-start: 40px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding-left: 34px !important;
+  padding-inline-start: 34px !important;
+  -webkit-padding-start: 34px !important;
   padding-right: 8px !important;
   padding-inline-end: 8px !important;
   -webkit-padding-end: 8px !important;
   text-indent: 0 !important;
   box-sizing: border-box !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--pvfd-cyan) !important;
+  caret-color: var(--pvfd-cyan-glow) !important;
+  text-shadow: none !important;
+  font-family: var(--pvfd-font-pixel) !important;
+  font-size: 12px !important;
+  line-height: 28px !important;
 }
-.x-filterBox-filterInputContainer.pvfd-filter-has-text .x-filterBox-searchIconContainer {
+
+.pvfd-library-search-box .x-filterBox-filterInput::placeholder {
+  color: transparent !important;
+  opacity: 0 !important;
+  text-shadow: none !important;
+}
+
+.pvfd-library-search-box .x-filterBox-overlay,
+.pvfd-library-search-box .x-filterBox-searchIconContainer,
+.pvfd-library-search-box :is(button, [role="button"]) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+.pvfd-library-search-box .x-filterBox-searchIconContainer {
+  position: absolute !important;
+  z-index: 3 !important;
+  left: 8px !important;
+  top: 50% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 16px !important;
+  width: 16px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  min-height: 16px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  transform: translateY(-50%) !important;
+  color: var(--pvfd-cyan-glow) !important;
+  pointer-events: none !important;
+}
+
+.pvfd-library-search-box :is(svg, path) {
+  color: var(--pvfd-cyan-glow) !important;
+  fill: currentColor !important;
+  stroke: none !important;
+  filter: none !important;
+}
+
+.pvfd-library-search-box .x-filterBox-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+}
+
+.pvfd-library-search-box.pvfd-filter-has-text .x-filterBox-searchIconContainer {
   opacity: 0 !important;
   visibility: hidden !important;
 }
+
+html[data-pvfd-performance="eco"] .pvfd-library-search-box {
+  background: #06121e !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.82) !important;
+}
 `;
-    document.head.appendChild(style);
+    if (style.textContent !== css) style.textContent = css;
   }
 
   function syncLibrarySearchState(container, input) {
@@ -2441,23 +2571,57 @@
     container.classList.toggle("pvfd-filter-has-text", hasText);
   }
 
+  function isGlobalSearchFocusTarget(target) {
+    if (!target || !target.matches) return false;
+    if (!target.matches("input, [role='searchbox'], [contenteditable='true']")) return false;
+    return !!(target.closest && target.closest(
+      ".Root__top-bar, .Root__globalNav, [data-testid*='global-nav' i], [class*='globalNav' i]"
+    ));
+  }
+
+  function syncGlobalSearchFocus(target = document.activeElement) {
+    document.documentElement.classList.toggle("pvfd-global-search-focused", isGlobalSearchFocusTarget(target));
+  }
+
+  function findLibraryToolbarParts(container) {
+    let node = container && container.parentElement;
+    for (let depth = 0; node && depth < 6; depth++, node = node.parentElement) {
+      if (node.matches && node.matches(".Root__nav-bar, nav[aria-label='Main'], aside, [role='navigation']")) break;
+      const recents = Array.from(node.querySelectorAll(LIBRARY_RECENTS_SELECTOR))
+        .find((el) => el !== container && !container.contains(el) && !el.contains(container));
+      if (recents) {
+        return {
+          toolbar: node,
+          recents: (recents.closest && recents.closest("button, [role='button']")) || recents,
+        };
+      }
+    }
+    return { toolbar: null, recents: null };
+  }
+
+  function reconcileLibraryToolbar(container) {
+    const { toolbar, recents } = findLibraryToolbarParts(container);
+    if (toolbar) toolbar.classList.add("pvfd-library-toolbar");
+    if (recents) recents.classList.add("pvfd-library-recents-control");
+  }
+
   function applySearchBoxGeometry(container, input) {
-    if (!container.dataset.pvfdSearchLayoutFixed) {
-      container.dataset.pvfdSearchLayoutFixed = "1";
-      container.style.setProperty("width", "240px", "important");
+    if (container.dataset.pvfdSearchLayoutFixed !== LIBRARY_SEARCH_LAYOUT_VERSION) {
+      container.dataset.pvfdSearchLayoutFixed = LIBRARY_SEARCH_LAYOUT_VERSION;
+      container.style.setProperty("width", "auto", "important");
       container.style.setProperty("min-width", "0", "important");
-      container.style.setProperty("max-width", "calc(100% - 12px)", "important");
-      container.style.setProperty("flex", "0 1 240px", "important");
+      container.style.setProperty("max-width", "none", "important");
+      container.style.setProperty("flex", "1 1 0", "important");
     }
 
-    if (!input.dataset.pvfdSearchLayoutFixed) {
-      input.dataset.pvfdSearchLayoutFixed = "1";
+    if (input.dataset.pvfdSearchLayoutFixed !== LIBRARY_SEARCH_LAYOUT_VERSION) {
+      input.dataset.pvfdSearchLayoutFixed = LIBRARY_SEARCH_LAYOUT_VERSION;
       input.style.setProperty("width", "100%", "important");
       input.style.setProperty("min-width", "100%", "important");
       input.style.setProperty("max-width", "100%", "important");
-      input.style.setProperty("padding-left", "40px", "important");
-      input.style.setProperty("padding-inline-start", "40px", "important");
-      input.style.setProperty("-webkit-padding-start", "40px", "important");
+      input.style.setProperty("padding-left", "34px", "important");
+      input.style.setProperty("padding-inline-start", "34px", "important");
+      input.style.setProperty("-webkit-padding-start", "34px", "important");
       input.style.setProperty("padding-right", "8px", "important");
       input.style.setProperty("padding-inline-end", "8px", "important");
       input.style.setProperty("-webkit-padding-end", "8px", "important");
@@ -2476,6 +2640,8 @@
       const input = container.querySelector(".x-filterBox-filterInput");
       if (!input) return;
 
+      container.classList.add("pvfd-library-search-box");
+      reconcileLibraryToolbar(container);
       applySearchBoxGeometry(container, input);
 
       if (!input.dataset.pvfdSearchFixed) {
@@ -2505,13 +2671,22 @@
     return node && node.nodeType === 1 ? node : null;
   }
 
-  function containsLibrarySearchBox(el) {
-    if (!el || !el.matches) return false;
-    return el.matches(".x-filterBox-filterInputContainer, .x-filterBox-filterInput")
-      || !!(el.querySelector && el.querySelector(".x-filterBox-filterInputContainer, .x-filterBox-filterInput"));
+  function findLibrarySearchBox(el, includeDescendants = false) {
+    if (!el || !el.matches) return null;
+    if (el.matches(".x-filterBox-filterInputContainer")) return el;
+    const closestBox = el.closest && el.closest(".x-filterBox-filterInputContainer");
+    if (closestBox) return closestBox;
+    if (includeDescendants && el.querySelector) return el.querySelector(".x-filterBox-filterInputContainer");
+    return null;
   }
 
   function containsBrowseFontTarget(el) {
+    if (!el || !el.matches) return false;
+    const selector = ".Root__main-view, .main-view-container, .main-view-container__scroll-node";
+    return el.matches(selector) || !!(el.closest && el.closest(selector));
+  }
+
+  function addedNodeContainsBrowseFontTarget(el) {
     if (!el || !el.matches) return false;
     const selector = ".Root__main-view, .main-view-container, .main-view-container__scroll-node";
     return el.matches(selector) || !!(el.querySelector && el.querySelector(selector));
@@ -2523,7 +2698,7 @@
       if (containsBrowseFontTarget(target)) return true;
       for (const node of record.addedNodes || []) {
         const el = elementFromMutationNode(node);
-        if (containsBrowseFontTarget(el)) return true;
+        if (addedNodeContainsBrowseFontTarget(el)) return true;
       }
     }
     return false;
@@ -2532,10 +2707,12 @@
   function getLibrarySearchRootFromMutations(records) {
     for (const record of records) {
       const target = elementFromMutationNode(record.target);
-      if (containsLibrarySearchBox(target)) return target;
+      const targetBox = findLibrarySearchBox(target, false);
+      if (targetBox) return targetBox;
       for (const node of record.addedNodes || []) {
         const el = elementFromMutationNode(node);
-        if (containsLibrarySearchBox(el)) return el;
+        const addedBox = findLibrarySearchBox(el, true);
+        if (addedBox) return addedBox;
       }
     }
     return null;
@@ -2684,6 +2861,7 @@
     applyLogoGlowMode(false);
     reconcileLibrarySearchBoxes();
     reconcileLyricsSyncButtons();
+    syncGlobalSearchFocus();
     onTrackChange();
     if (typeof Spicetify.Player.addEventListener === "function") {
       Spicetify.Player.addEventListener("songchange", onTrackChange);
@@ -2704,6 +2882,11 @@
     document.addEventListener("focusin", (e) => {
       const box = e.target && e.target.closest && e.target.closest(".x-filterBox-filterInputContainer");
       if (box) scheduleLibrarySearchReconcile(box, 0);
+      syncGlobalSearchFocus(e.target);
+    }, true);
+
+    document.addEventListener("focusout", (e) => {
+      if (isGlobalSearchFocusTarget(e.target)) window.setTimeout(() => syncGlobalSearchFocus(), 0);
     }, true);
 
     console.log("[PVFD] PioneerVFD online - LCD glow and responsive layout fixes loaded.");
