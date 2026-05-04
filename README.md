@@ -52,11 +52,11 @@ The extension saves the preferences users are likely to expect across Spotify la
 3. Open PowerShell inside the extracted `PioneerVFD` folder.
   You are in the correct folder if you can see:
 
-   ```text
-   install-windows.ps1
-   Themes
-   Extensions
-   ```
+```text
+install-windows.ps1
+Themes
+Extensions
+```
 4. Run:
 
 ```powershell
