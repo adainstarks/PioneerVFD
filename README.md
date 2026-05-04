@@ -85,10 +85,6 @@ You are in the right folder if you see `install-macos.sh`, `Themes`, and `Extens
 
 The macOS installer enables Spicetify DevTools by default because some Mac installs do not load exposed APIs or extensions reliably until Spicetify reapplies with developer tooling enabled. To skip that step:
 
-    PVFD_ENABLE_DEVTOOLS=0 ./install-macos.sh
-
-The macOS installer enables Spicetify DevTools by default because some Mac installs do not load exposed APIs or extensions reliably until Spicetify reapplies with developer tooling enabled. To skip that step:
-
 ```bash
 PVFD_ENABLE_DEVTOOLS=0 ./install-macos.sh
 ```
