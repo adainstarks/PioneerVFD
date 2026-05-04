@@ -63,19 +63,29 @@ The extension saves the preferences users are likely to expect across Spotify la
 powershell -ExecutionPolicy Bypass -File .\install-windows.ps1
 ```
 
-### Linux install
+## Linux install
+
+Download the latest release ZIP, extract it, then open Terminal inside the extracted `PioneerVFD` folder.
+
+You are in the right folder if you see `install-linux.sh`, `Themes`, and `Extensions`.
 
 ```bash
 chmod +x ./install-linux.sh
 ./install-linux.sh
 ```
 
-### macOS install
+## macOS install
 
-```bash
-chmod +x ./install-macos.sh
-./install-macos.sh
-```
+Download the latest release ZIP, extract it, then open Terminal inside the extracted `PioneerVFD` folder.
+
+You are in the right folder if you see `install-macos.sh`, `Themes`, and `Extensions`.
+
+    chmod +x ./install-macos.sh
+    ./install-macos.sh
+
+The macOS installer enables Spicetify DevTools by default because some Mac installs do not load exposed APIs or extensions reliably until Spicetify reapplies with developer tooling enabled. To skip that step:
+
+    PVFD_ENABLE_DEVTOOLS=0 ./install-macos.sh
 
 The macOS installer enables Spicetify DevTools by default because some Mac installs do not load exposed APIs or extensions reliably until Spicetify reapplies with developer tooling enabled. To skip that step:
 
