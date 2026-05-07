@@ -1356,11 +1356,18 @@ nav[aria-label="Main"] button[aria-label*="Recents" i] {
   }
 }
 
-/* Single-column OEL; side LCDs hidden; flanks re-appear at inner compact positions */
+/* Single-column OEL; side LCDs hidden; flanks re-appear at inner compact positions.
+   IMPORTANT: grid-template-columns MUST be `minmax(0, 1fr)`, NOT `minmax(0, auto)`.
+   The OEL bay child has `width: 100%` (set by later rules at lines ~2000 and ~2082).
+   With `auto`, the column sizes to its content, but the content's width is `100%`
+   of the column, creating a circular dependency that resolves to ~0. Result: OEL
+   bay collapses to ~9x2px (verified live at 889px window, May 7, 2026). Using
+   `1fr` makes the column fill the stage's available inline space (~582px at the
+   tested width), and the 100%-wide LCD child follows correctly. */
 @media (max-width: 1160px) {
   .pvfd-compact-stage {
     width: min(100%, 680px) !important;
-    grid-template-columns: minmax(0, auto) !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: minmax(0, 1fr) !important;
     height: 118px !important;
     min-height: 108px !important;
@@ -4102,15 +4109,20 @@ html.pvfd-global-search-focused .main-topBar-container {
   z-index: 6 !important;
 }
 
-/* v2.47-temp: cheaper Home/card hover paint so fast cursor sweeps do not stall the LCD. */
+/*  per-tile hover-pipeline cost fix.
+   `contain: paint` was originally added to help, but it makes each tile its own
+   paint container, and on every :hover bit flip the browser re-rasterizes that
+   tile's entire contained surface — including the artwork image rendered inside
+   it. Measured 806 pointerenter events at ~87ms each (processing=0, so it is
+   pure render-pipeline work, not JS) during fast quick-link sweeps.
+   Without paint containment, the browser dirty-rects only the actually-changed
+   border/fill pixels. Layout/style/transition isolation are kept. */
 .Root__main-view :is(.main-card-card, [data-encore-id="card"]) {
-  contain: paint !important;
+  contain: layout style !important;
   transition: none !important;
 }
-
-/* v2.61-perf: isolate Home quick-link tile paints without changing the visible hover skin. */
 .Root__main-view .view-homeShortcutsGrid-shortcut {
-  contain: paint !important;
+  contain: layout style !important;
   transition: none !important;
 }
 
@@ -4123,7 +4135,14 @@ html.pvfd-global-search-focused .main-topBar-container {
   transition: none !important;
 }
 
-.Root__main-view :is(.main-card-card, [data-encore-id="card"]):is(:hover, :focus-within)
+/*  invalidation-cost fix.
+   Was scoped to :hover/:focus-within, which forced the style engine to walk every
+   SVG primitive inside the hovered card and re-match this rule on every cursor
+   crossing — measured at ~160-180ms per hover during fast quick-link sweeps.
+   The visual result is identical (these elements have no filter to clear in the
+   non-hover state either), but moving it out of :hover removes the per-hover
+   descendant invalidation. */
+.Root__main-view :is(.main-card-card, [data-encore-id="card"])
   :is(svg, path, circle, rect, line, polyline, polygon) {
   filter: none !important;
 }
@@ -4283,7 +4302,7 @@ html.pvfd-global-search-focused .main-topBar-container {
     0 8px 18px rgba(0, 0, 0, 0.34) !important;
 }
 
-/* v2.52: ECO reaches the app side panels, which live outside the playbar chassis. */
+/*ECO reaches the app side panels, which live outside the playbar chassis. */
 html[data-pvfd-performance="eco"] :is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar) {
   background: #06121e !important;
   background-image: none !important;
@@ -4328,7 +4347,7 @@ html[data-pvfd-performance="eco"] :is(.Root__nav-bar, nav[aria-label="Main"], .R
   box-shadow: none !important;
 }
 
-/* v2.54: Full mode side panels keep the LCD color, but avoid repaint-heavy row glows. */
+/*Full mode side panels keep the LCD color, but avoid repaint-heavy row glows. */
 html:not([data-pvfd-performance="eco"]) :is(.Root__nav-bar, nav[aria-label="Main"], .Root__right-sidebar) {
   contain: paint !important;
 }
@@ -4355,11 +4374,45 @@ html:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.56) !important;
 }
 
+/* Collapsed sidebar: "Open Your Library" icon-only control — no dark hover slab.
+   Generic nav rules (3762–3770 + 4365–4370) stack a gradient and/or tint on the
+   whole button; Encore also paints inner wrappers. On a tiny square that reads as
+   a solid black box behind the glyph. Force transparent fills on the control and
+   direct children; hover is outline-only so the icon floats on the panel texture. */
+.Root__nav-bar .main-yourLibraryX-headerIsCollapsed .main-yourLibraryX-collapseButton :is(button, [role="button"]),
+.Root__nav-bar .main-yourLibraryX-headerIsCollapsed .main-yourLibraryX-collapseButton :is(button, [role="button"]) > :is(span, div) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+:is(.Root__nav-bar, nav[aria-label="Main"])
+  .main-yourLibraryX-headerIsCollapsed
+  .main-yourLibraryX-collapseButton
+  :is(button, [role="button"]):is(:hover, :focus-visible),
+html:not([data-pvfd-performance="eco"])
+  .Root__nav-bar
+  .main-yourLibraryX-headerIsCollapsed
+  .main-yourLibraryX-collapseButton
+  :is(button, [role="button"]):is(:hover, :focus-visible),
+html[data-pvfd-performance="eco"]
+  .Root__nav-bar
+  .main-yourLibraryX-headerIsCollapsed
+  .main-yourLibraryX-collapseButton
+  :is(button, [role="button"]):is(:hover, :focus-visible) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  outline: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.38) !important;
+  outline-offset: -1px !important;
+  box-shadow: none !important;
+}
 
 
 
 
-/* v2.55: cheap library row icon cleanup, no ancestor-state selector matching. */
+/*Cheap library row icon cleanup, no ancestor-state selector matching. */
 .Root__nav-bar :is(.main-yourLibraryX-listItem, [role="listitem"], [role="row"])
   :is(svg, path, circle, rect, line, polyline, polygon) {
   background: transparent !important;
@@ -4417,7 +4470,7 @@ html:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
 }
 
 
-/* v2.59: Home LCD refinement.
+/* Home LCD refinement.
    Goal: keep the Home/page LCD background, but remove chunky boxed sections
    and avoid over-targeting nested Spotify elements.
    Strategy:
@@ -4655,18 +4708,28 @@ html:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
 /* Shortcut tile hover — cyan tint instead of the dark navy used for cards.
    Tiles keep their #06121e base, so the tint is clearly visible. The real class
    (.view-homeShortcutsGrid-shortcut) is used directly; [class*="shortcuts"] would
-   also match the grid container and other ancestors. */
+   also match the grid container and other ancestors.
+
+    was a translucent rgba(78,180,216,0.18) fill, which forced the
+   compositor to alpha-blend the new color over the artwork beneath it on every
+   paint. Pre-blended #132f40 is the same color over the #06121e base and lets
+   the browser write a flat fill straight into the framebuffer. */
 .Root__main-view .view-homeShortcutsGrid-shortcut:is(:hover, :focus-within) {
-  background: rgba(78, 180, 216, 0.18) !important;
+  background: #132f40 !important;
   border-color: var(--pvfd-cyan-deep) !important;
   box-shadow: inset 0 0 0 1px rgba(78, 180, 216, 0.55) !important;
   transition: none !important;
 }
 
-/* Kill Spotify's encore gray overlay on card/shortcut hover.
-   Spotify's encore system uses .e-10451-box--interactive:hover::after { background-color:
-   var(--background-highlight) } to apply a gray tint over interactive elements.
-   [class*="box--interactive"] catches that class regardless of the version prefix (e-10451, e-10310, etc.). */
+/*  invalidation-cost fix.
+   Was scoped to :hover::after / :focus-within::after on a deep tree of cards,
+   shortcuts, and box--interactive descendants. That forced the engine to
+   regenerate / re-resolve the ::after pseudo-element on every descendant
+   every time a tile's hover bit flipped — measured at ~160-180ms per hover
+   during fast quick-link sweeps.
+   Encore's gray overlay is only painted via its OWN :hover::after rule, so
+   suppressing our ::after at all times has the same visible effect (Encore's
+   hover background simply has nowhere to land) without per-hover invalidation. */
 .Root__main-view :is(
   .main-card-card,
   [data-encore-id="card"],
@@ -4674,9 +4737,8 @@ html:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
   [class*="Quick" i],
   [data-testid*="shortcut" i],
   .view-homeShortcutsGrid-shortcut
-):hover::after,
-.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"], .view-homeShortcutsGrid-shortcut) [class*="box--interactive" i]:hover::after,
-.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"], .view-homeShortcutsGrid-shortcut) [class*="box--interactive" i]:focus-within::after {
+)::after,
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"], .view-homeShortcutsGrid-shortcut) [class*="box--interactive" i]::after {
   background: transparent !important;
   background-color: transparent !important;
   box-shadow: none !important;
@@ -4692,18 +4754,22 @@ html:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
   transition: none !important;
 }
 
-/* Suppress hover highlight boxes on all non-button descendants inside cards.
-   Spotify's encore wraps interactive text (title, artist name) in hash-named divs that
-   receive background-color: var(--background-tinted-highlight) on hover — showing as
-   visible boxes over the card background. :not(button) catches those divs even when
-   Spotify marks them role="button". Only real <button> tags are excluded so the
-   chrome play button below can override its own background correctly. */
-.Root__main-view .main-card-card :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]):hover,
-.Root__main-view .main-card-card :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]):hover::after,
-.Root__main-view .main-card-card :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]):hover::before,
-.Root__main-view [data-encore-id="card"] :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]):hover,
-.Root__main-view [data-encore-id="card"] :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]):hover::after,
-.Root__main-view [data-encore-id="card"] :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]):hover::before {
+/*  invalidation-cost fix.
+   Was scoped to :hover, :hover::after, :hover::before with a 5-level :not()
+   chain on every non-button descendant. Each cursor crossing forced a full
+   descendant walk, selector re-match, and pseudo-element re-resolve on every
+   matching node — the dominant cost in the ~160-180ms-per-hover longtasks
+   measured on quick-link sweeps.
+   Spotify's runtime only sets background-color on these descendants via its
+   own :hover rule, so a static suppression with !important has the identical
+   visible result (the runtime hover background never wins) without forcing
+   the style engine to walk descendants on every hover transition. */
+.Root__main-view .main-card-card :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]),
+.Root__main-view .main-card-card :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"])::after,
+.Root__main-view .main-card-card :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"])::before,
+.Root__main-view [data-encore-id="card"] :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]),
+.Root__main-view [data-encore-id="card"] :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"])::after,
+.Root__main-view [data-encore-id="card"] :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"])::before {
   background: transparent !important;
   background-color: transparent !important;
   box-shadow: none !important;
@@ -4716,7 +4782,7 @@ html:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
 
 /* Container-based Home cards keep their chrome shell on the outer wrapper.
    Clear the direct-button skin inside that wrapper so the two paths don't stack. */
-.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer :is([class*="button-primary__inner" i], .encore-bright-accent-set)[class*="button-icon-only" i] {
+:is(.Root__main-view, .Root__nav-bar) :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer :is([class*="button-primary__inner" i], .encore-bright-accent-set)[class*="button-icon-only" i] {
   --background-base: transparent !important;
   --background-highlight: transparent !important;
   --background-press: transparent !important;
@@ -4728,17 +4794,23 @@ html:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
 }
 
 /* ── Chrome play button ──────────────────────────────────────────────────────
-   Replaces Spotify's default floating gray circle (.main-card-PlayButtonContainer +
+   Replaces Spotify's default floating green circle (.main-card-PlayButtonContainer +
    inner .e-10310-button--floating-background) with a shiny chrome capsule.
    Structure: the outer div (.main-card-PlayButtonContainer) carries the chrome gradient;
    the inner <button> is set transparent so chrome shows through. This avoids the bug
    where hovering the button changed its own background while leaving the container
    visually inconsistent ("gray backdrop disappears, leaving only the icon").
    These rules come after the broad descendant suppression above, and have higher
-   specificity (4 class selectors vs 3+type), so they correctly re-apply box-shadow. */
+   specificity (4 class selectors vs 3+type), so they correctly re-apply box-shadow.
+
+   Scope: `:is(.Root__main-view, .Root__nav-bar)` so the same chrome treatment
+   applies in the home/search/album/playlist surfaces AND the expanded Your Library
+   sidebar grid (where Spotify's default green button used to leak through). The
+   right sidebar is intentionally excluded — its cards have their own deliberately
+   flat treatment earlier in this file. */
 
 /* Container: chrome gradient + bevel edge */
-.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer {
+:is(.Root__main-view, .Root__nav-bar) :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer {
   background: linear-gradient(145deg,
     #c8cdd8 0%, #8a9099 28%, #4a5260 60%, #787e8a 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.28) !important;
@@ -4751,7 +4823,7 @@ html:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
 }
 
 /* Inner button/background layers: transparent so chrome from container shows through */
-.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer :is(button, [class*="button--floating-background" i], [class*="button-primary__inner" i]) {
+:is(.Root__main-view, .Root__nav-bar) :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer :is(button, [class*="button--floating-background" i], [class*="button-primary__inner" i]) {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
@@ -4761,15 +4833,15 @@ html:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
 }
 
 /* Play icon: cyan + phosphor glow */
-.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer svg,
-.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer path,
-.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer [data-encore-id="icon"] {
+:is(.Root__main-view, .Root__nav-bar) :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer svg,
+:is(.Root__main-view, .Root__nav-bar) :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer path,
+:is(.Root__main-view, .Root__nav-bar) :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer [data-encore-id="icon"] {
   color: var(--pvfd-cyan) !important;
   fill: var(--pvfd-cyan) !important;
 }
 
 /* Hover: brighter chrome, but without the scale / persistent compositor hint. */
-.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer:is(:hover, :focus-within) {
+:is(.Root__main-view, .Root__nav-bar) :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer:is(:hover, :focus-within) {
   background: linear-gradient(145deg,
     #dde3ed 0%, #aab0be 28%, #6a7585 60%, #9ba3b0 100%) !important;
   transition: none !important;
@@ -4780,7 +4852,229 @@ html:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
     inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
 }
 
-/* ── End chrome play button ──────────────────────────────────────────────── */
+/* ── End chrome play button (cards) ──────────────────────────────────────── */
+
+
+/* ── Page-header big play button - chrome capsule ───────────────────────────
+   Targets the visible inner span that Spotify Encore styles as the green
+   primary-button fill on album/playlist/artist page action bars. Replaces
+   that flat green with the same chrome chassis aesthetic as card play buttons.
+
+   DOM structure (verified live, May 7, 2026):
+     ALBUM/PLAYLIST page (target):
+       div.main-actionBar-ActionBarRow                ← required ancestor
+         div.main-actionBar-ActionBarPlayButtonContainer
+           div.main-topBar-playButtonWrapper
+             div.main-playButton-PlayButton
+               button.e-10310-legacy-button-primary
+                 span.e-10310-button-primary__inner.encore-bright-accent-set  ← visible fill
+
+     HOME QUICKLINKS (must NOT match):
+       div.view-homeShortcutsGrid-shortcut
+         ...
+           div.view-homeShortcutsGrid-PlayButtonContainer
+             div.main-playButton-PlayButton           ← same class!
+               button.e-10310-legacy-button-primary
+                 span.e-10310-button-primary__inner.encore-bright-accent-set  ← same span!
+
+   The lesson: `.main-playButton-PlayButton` is shared between page headers
+   and quicklinks. Earlier rules scoped only by `.main-playButton-PlayButton`
+   leaked chrome into quicklinks. A first attempt to fix it added a
+   `[class*="topBar" i]` ancestor scope — but that ALSO leaked, because
+   modern Spotify embeds the top bar inside `.Root__main-view` via classes
+   like `.main-topBar-content` that wrap home-page content (including
+   quicklinks). The `[class*="topBar" i]` match propagated through that
+   wrapper.
+
+   A second attempt used `[class*="actionBar" i]`. That ALSO leaked,
+   because Spotify puts `main-actionBar-ActionBarContainer` directly on the
+   `.main-view-container__scroll-node` — the high-level scroll wrapper
+   that contains every page rendered in the main view, including the home
+   shortcuts grid. So the chrome cascaded into quicklinks again
+   (verified live, May 7, 2026, via __pvfdInspect ancestor chain — culprit
+   ancestor `div.main-view-container__scroll-node main-actionBar-ActionBarContainer`
+   sits 16 levels above the quicklink play span).
+
+   Final scope: ActionBarRow / ActionBarPlayButton / entityHeader.
+   These three substrings appear ONLY on the actual page-header action row
+   and its play-button container on album/playlist/artist pages, NEVER on
+   the scroll-node wrapper. Specifically:
+     - main-actionBar-ActionBarRow                     ← page header row
+     - main-actionBar-ActionBarPlayButtonContainer     ← page header play btn
+     - main-actionBar-ActionBarContainer               ← scroll wrapper (excluded)
+   Quicklinks have none of these in any ancestor.
+
+   Important: the button element itself has no green color — Spotify renders
+   the colored fill on the inner span. Earlier attempts to chrome the button
+   or .main-playButton-PlayButton wrapper had no visible effect for that reason.
+   Targeting the inner span hits the actual colored surface. */
+.Root__main-view :is(
+  [class*="ActionBarRow" i],
+  [class*="ActionBarPlayButton" i],
+  [class*="entityHeader" i]
+) .main-playButton-PlayButton :is(
+  .e-10310-button-primary__inner,
+  .encore-bright-accent-set
+) {
+  background:
+    linear-gradient(145deg, #c8cdd8 0%, #8a9099 28%, #4a5260 60%, #787e8a 100%) !important;
+  background-image:
+    linear-gradient(145deg, #c8cdd8 0%, #8a9099 28%, #4a5260 60%, #787e8a 100%) !important;
+  background-color: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 4px 10px rgba(0, 0, 0, 0.56),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+  transition: none !important;
+}
+
+.Root__main-view :is(
+  [class*="ActionBarRow" i],
+  [class*="ActionBarPlayButton" i],
+  [class*="entityHeader" i]
+) .main-playButton-PlayButton button:is(:hover, :focus-within) :is(
+  .e-10310-button-primary__inner,
+  .encore-bright-accent-set
+),
+.Root__main-view :is(
+  [class*="ActionBarRow" i],
+  [class*="ActionBarPlayButton" i],
+  [class*="entityHeader" i]
+) .main-playButton-PlayButton:is(:hover, :focus-within) :is(
+  .e-10310-button-primary__inner,
+  .encore-bright-accent-set
+) {
+  background:
+    linear-gradient(145deg, #dde3ed 0%, #aab0be 28%, #6a7585 60%, #9ba3b0 100%) !important;
+  background-image:
+    linear-gradient(145deg, #dde3ed 0%, #aab0be 28%, #6a7585 60%, #9ba3b0 100%) !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.30),
+    0 0 7px rgba(78, 180, 216, 0.28),
+    0 3px 9px rgba(0, 0, 0, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+}
+
+.Root__main-view :is(
+  [class*="ActionBarRow" i],
+  [class*="ActionBarPlayButton" i],
+  [class*="entityHeader" i]
+) .main-playButton-PlayButton :is(svg, path, [data-encore-id="icon"]) {
+  color: var(--pvfd-cyan) !important;
+  fill: var(--pvfd-cyan) !important;
+}
+
+
+/* ── Track-row hover: dim the album art so the cyan play SVG stands out ─────
+   Simpler than overlaying a backdrop circle behind the play icon: dim and
+   desaturate the row's album art on row hover, and the existing cyan SVG
+   icon naturally pops against the darker art. The icon already gets cyan
+   fill/color via the icon rule below, so no backdrop is needed.
+
+   Targets the album art image inside the row's start section. Excludes
+   anything that's the play button itself (or its descendants) so the icon
+   stays at full brightness. */
+.Root__main-view
+  .main-trackList-trackListRow:is(:hover, :focus-within)
+  .main-trackList-rowImage,
+.Root__main-view
+  .main-trackList-trackListRow:is(:hover, :focus-within)
+  .main-trackList-rowSectionStart img,
+.Root__main-view
+  .main-trackList-trackListRow:is(:hover, :focus-within)
+  .main-trackList-rowSectionStart [class*="rowImage" i]:not([class*="PlayButton" i]):not([class*="PlayIcon" i]):not(button):not(svg):not(path) {
+  filter: brightness(0.40) saturate(0.65) !important;
+  transition: filter 0.08s linear !important;
+}
+
+/* Ensure the play icon stays cyan and the button doesn't get a backdrop. */
+.Root__main-view
+  .main-trackList-trackListRow
+  .main-trackList-rowImagePlayButton,
+.Root__main-view
+  .main-trackList-trackListRowGrid
+  .main-trackList-rowImagePlayButton {
+  background: transparent !important;
+  background-image: none !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.Root__main-view
+  .main-trackList-trackListRow
+  .main-trackList-rowImagePlayIcon,
+.Root__main-view
+  .main-trackList-trackListRow
+  .main-trackList-rowImagePlayButton :is(svg, path, [data-encore-id="icon"]) {
+  fill: var(--pvfd-cyan) !important;
+  color: var(--pvfd-cyan) !important;
+  stroke: none !important;
+}
+
+
+/* ── Encore tertiary play/pause icon - solid cyan fill ─────────────────────
+   Tertiary play/pause buttons (recent searches, search results, library
+   legacy list rows, etc.) use SVG paths rendered as outline strokes:
+   `path { fill: none; stroke: currentColor; }`. At the small sizes used in
+   list rows, the outlines almost disappear, especially against busy album
+   art. Override to solid cyan fill, no stroke.
+
+   Scope: ONLY buttons whose aria-label contains "Play" or "Pause" so this
+   rule doesn't touch 3-dot menus, heart, share, queue, or other tertiary
+   icons that should keep their outlined look.
+
+   Why class chain (button.e-10310-button-tertiary[...]) instead of the
+   earlier list-row ancestor scope: live inspector showed the recent-search
+   button is `.e-10310-legacy-button-tertiary` and Encore's tertiary
+   primitive applies `fill: none` with specificity (0,1,2) + !important.
+   The earlier list-row-scoped rule (specificity 0,3,2) was matching but
+   losing on origin/order. Direct class chain on the button + attribute
+   selector gives specificity (0,2,3) which beats the primitive cleanly,
+   and !important on both fill and stroke locks it.
+
+   Both fill AND stroke set: Spotify's tertiary path renders the icon as
+   a stroked outline. Setting only fill would still leave the outline
+   visible on top of the new cyan fill — looking thick/dark. Setting
+   stroke: none gives a clean filled glyph.
+
+   Two rule blocks:
+     1. Direct tertiary class match (the strong one).
+     2. Legacy list-row ancestor fallback (keeps any non-tertiary tertiary
+        variants covered, e.g. if Spotify renames classes again). */
+button.e-10310-button-tertiary[aria-label*="Play" i] svg,
+button.e-10310-button-tertiary[aria-label*="Play" i] svg path,
+button.e-10310-button-tertiary[aria-label*="Pause" i] svg,
+button.e-10310-button-tertiary[aria-label*="Pause" i] svg path,
+button.e-10310-legacy-button-tertiary[aria-label*="Play" i] svg,
+button.e-10310-legacy-button-tertiary[aria-label*="Play" i] svg path,
+button.e-10310-legacy-button-tertiary[aria-label*="Pause" i] svg,
+button.e-10310-legacy-button-tertiary[aria-label*="Pause" i] svg path {
+  fill: var(--pvfd-cyan) !important;
+  color: var(--pvfd-cyan) !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+}
+
+:is(.e-10310-legacy-list-row__header-side, .e-10310-legacy-list-row__header-side-flex)
+  :is(button[aria-label*="Play" i], button[aria-label*="Pause" i])
+  :is(svg, svg.e-10310-icon, path, [data-encore-id="icon"]),
+:is(.e-10310-legacy-list-row__header-side, .e-10310-legacy-list-row__header-side-flex)
+  :is(button[aria-label*="Play" i], button[aria-label*="Pause" i])
+  svg.e-10310-icon path,
+:is(.e-10310-legacy-list-row__header-side, .e-10310-legacy-list-row__header-side-flex)
+  :is(button[aria-label*="Play" i], button[aria-label*="Pause" i])
+  svg path,
+:is(.e-10310-legacy-list-row__header-side, .e-10310-legacy-list-row__header-side-flex)
+  :is(button[aria-label*="Play" i], button[aria-label*="Pause" i])
+  span.e-10310-button__icon-wrapper :is(svg, path) {
+  fill: var(--pvfd-cyan) !important;
+  color: var(--pvfd-cyan) !important;
+  stroke: none !important;
+  stroke-width: 0 !important;
+}
+/* ── End play-button visibility/chrome rules ─────────────────────────────── */
 
 /* Typography: crisp but not overcooked. */
 .Root__main-view :is(
