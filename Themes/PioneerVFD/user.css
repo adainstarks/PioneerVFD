@@ -1,4 +1,4 @@
-/* ==============================================================
+﻿/* ==============================================================
    Pioneer VFD - DEH-P7600MP theme for Spotify
    chrome chassis, charcoal app shell, black LCD insets, phosphor cyan
    Skinny metadata LCD with scrub tracker above compact LCD with live hardware readouts.
@@ -142,14 +142,15 @@ h1, h2, h3,
   color: var(--pvfd-cyan-mid) !important;
 }
 
-.main-card-card, .main-entityHeader-container, .main-trackList-trackList {
+.main-card-card, .main-trackList-trackList {
   background: linear-gradient(180deg, var(--pvfd-panel-bg-2), var(--pvfd-panel-bg)) !important;
   border: 1px solid var(--pvfd-panel-edge) !important;
   box-shadow: inset 0 0 8px rgba(0, 80, 130, 0.14) !important;
 }
 .main-card-card:hover {
   background: #101721 !important;
-  box-shadow: 0 0 12px rgba(78, 180, 216, 0.32) !important;
+  outline: 1px solid rgba(78, 180, 216, 0.5) !important;
+  box-shadow: none !important;
   border-color: var(--pvfd-cyan-deep) !important;
 }
 .main-trackList-trackListRow { border-bottom: 1px solid rgba(26, 44, 60, 0.6); }
@@ -225,7 +226,6 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
 .Root__now-playing-bar.pvfd-mounted [data-testid="now-playing-widget"],
 .pvfd-native-player-hidden {
   display: none !important;
-  visibility: hidden !important;
   pointer-events: none !important;
 }
 
@@ -334,47 +334,17 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
 .pvfd-chassis[data-pvfd-logo-glow="on"].pvfd-logo-burst-b .pvfd-silk-pioneer::after {
   animation: pvfd-logo-glow-burst-b 520ms cubic-bezier(0.13, 0.66, 0.19, 1) both !important;
 }
-@keyframes pvfd-logo-glow-burst {
-  0% {
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  36% {
-    opacity: 0.62;
-  }
-  100% {
-    opacity: 0;
-  }
-}
 @keyframes pvfd-logo-glow-burst-a {
-  0% {
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  36% {
-    opacity: 0.62;
-  }
-  100% {
-    opacity: 0;
-  }
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  36% { opacity: 0.62; }
+  100% { opacity: 0; }
 }
 @keyframes pvfd-logo-glow-burst-b {
-  0% {
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  36% {
-    opacity: 0.62;
-  }
-  100% {
-    opacity: 0;
-  }
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  36% { opacity: 0.62; }
+  100% { opacity: 0; }
 }
 .pvfd-silk-dab { color: #c2d8e8; font-weight: 700; font-size: 11px; letter-spacing: 1.3px; }
 .pvfd-open-led {
@@ -513,75 +483,7 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.9), inset 0 0 20px rgba(0, 80, 140, 0.6);
   position: relative; overflow: hidden; height: 100%;
 }
-.pvfd-lcd-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.pvfd-lcd-pixelgrid {
-  position: absolute; inset: 0;
-  background-image:
-    repeating-linear-gradient(0deg, transparent 0, transparent 2px,
-      rgba(0,0,0,0.7) 2px, rgba(0,0,0,0.7) 3px),
-    repeating-linear-gradient(90deg, transparent 0, transparent 2px,
-      rgba(0,0,0,0.55) 2px, rgba(0,0,0,0.55) 3px);
-  pointer-events: none; mix-blend-mode: multiply;
-}
-.pvfd-lcd-phosphor {
-  position: absolute; inset: 0;
-  box-shadow: inset 0 0 18px rgba(126, 212, 240, 0.45),
-              inset 0 0 6px rgba(168, 228, 244, 0.55);
-  pointer-events: none;
-}
-.pvfd-lcd-track {
-  position: absolute; top: 6px; left: 8px; right: 80px;
-  color: var(--pvfd-cyan); font-family: "Share Tech Mono", "VT323", monospace;
-  font-size: 16px; font-weight: 500; letter-spacing: 0.7px;
-  text-shadow: var(--pvfd-glow-cyan);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  text-transform: uppercase;
-  z-index: 4;
-}
-.pvfd-lcd-artist {
-  position: absolute; top: 28px; left: 8px; right: 110px;
-  color: var(--pvfd-cyan-mid); font-family: "Share Tech Mono", "VT323", monospace;
-  font-size: 13px; font-weight: 400; letter-spacing: 0.35px; opacity: 1;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  text-transform: uppercase;
-  z-index: 4;
-}
-.pvfd-lcd-time {
-  position: absolute; top: 7px; right: 8px;
-  color: var(--pvfd-cyan-mid); font-family: var(--pvfd-font-vfd);
-  font-size: 13px; letter-spacing: 1.5px; text-shadow: var(--pvfd-glow-cyan);
-  z-index: 4;
-}
-.pvfd-lcd-info-l { position: absolute; bottom: 4px; left: 8px; display: flex; align-items: center; gap: 8px; z-index: 4; }
-.pvfd-lcd-deh {
-  color: #c2d8e8; font-family: var(--pvfd-font-pixel);
-  font-size: 12px; font-weight: 700; letter-spacing: 1px;
-  text-shadow: 0 0 3px rgba(126,212,240,0.7);
-}
-.pvfd-lcd-daq {
-  background: rgba(184,232,150,0.18);
-  border: 1px solid var(--pvfd-green-deep);
-  color: #c8f088;
-  font-size: 9px; font-weight: 700; padding: 0 4px;
-  letter-spacing: 0.5px; line-height: 12px;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-}
-.pvfd-lcd-info-r { position: absolute; bottom: 4px; right: 8px; display: flex; align-items: center; gap: 8px; z-index: 4; }
-.pvfd-lcd-cdrds { color: #c2d8e8; font-size: 10px; letter-spacing: 1.2px; font-weight: 700; }
-.pvfd-lcd-pioneer-small {
-  font-family: var(--pvfd-font-brand);
-  font-style: italic; font-weight: 700;
-  color: var(--pvfd-red); font-size: 12px;
-  text-shadow: 0 0 3px rgba(255,80,96,0.5);
-}
-.pvfd-lcd-mode {
-  position: absolute; top: 28px; right: 8px;
-  color: var(--pvfd-green); font-size: 9px;
-  letter-spacing: 1px; opacity: 0.7;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  z-index: 4;
-}
-
+.pvfd-lcd-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; will-change: transform; }
 .pvfd-transport {
   display: flex; gap: 6px; height: 26px; min-height: 26px; padding: 7px 4px 0;
   align-items: stretch;
@@ -636,69 +538,15 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
 }
 
 
-/* v0.2.2 readability pass: keep the LCD pixel style, but stop crushing small text. */
-.pvfd-lcd-track {
-  font-family: "Share Tech Mono", "VT323", monospace !important;
-  font-size: clamp(14px, 1.05vw, 17px) !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.65px !important;
-  text-shadow: 0 0 3px rgba(168,228,244,0.85), 0 0 7px rgba(126,212,240,0.38) !important;
-}
-.pvfd-lcd-artist {
-  font-family: "Share Tech Mono", "VT323", monospace !important;
-  font-size: clamp(12px, 0.88vw, 14px) !important;
-  font-weight: 400 !important;
-  letter-spacing: 0.3px !important;
-  right: 120px !important;
-  text-shadow: 0 0 2px rgba(126,212,240,0.8), 0 0 5px rgba(78,180,216,0.34) !important;
-}
+/* ======================================================================
+   S4  Chassis layout
+   Player height token, main row alignment, skinny meta/scrub LCD,
+   OEL animation stage, side readout panels, and all responsive
+   breakpoints for the above. Media queries are grouped by breakpoint
+   at the bottom of this section.
+   ====================================================================== */
 
-
-/* v0.2.4 LCD text visibility guard: keep Spotify/native-player hiding rules from
-   accidentally eating the injected track/artist overlays. */
-.pvfd-chassis .pvfd-lcd-track,
-.pvfd-chassis .pvfd-lcd-artist,
-.pvfd-chassis .pvfd-lcd-time,
-.pvfd-chassis .pvfd-lcd-mode,
-.pvfd-chassis .pvfd-lcd-info-l,
-.pvfd-chassis .pvfd-lcd-info-r {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  z-index: 30 !important;
-  pointer-events: none !important;
-}
-.pvfd-chassis .pvfd-lcd-track {
-  top: 8px !important;
-  left: 10px !important;
-  right: 90px !important;
-}
-.pvfd-chassis .pvfd-lcd-artist {
-  top: 31px !important;
-  left: 10px !important;
-  right: 125px !important;
-}
-
-/* v0.2.9 LCD cleanup: ART is now a thumbnail, so text gets a safe lane. */
-.pvfd-chassis[data-pvfd-mode="art"] .pvfd-lcd-track {
-  left: clamp(88px, 19%, 132px) !important;
-  right: 90px !important;
-}
-.pvfd-chassis[data-pvfd-mode="art"] .pvfd-lcd-artist {
-  left: clamp(88px, 19%, 132px) !important;
-  right: 120px !important;
-}
-.pvfd-chassis .pvfd-lcd-mode {
-  color: var(--pvfd-cyan-mid) !important;
-  opacity: 0.55 !important;
-  text-shadow: 0 0 4px rgba(126,212,240,0.45) !important;
-}
-
-/* ==============================================================
-    version note v0.1: compact animation LCD prototype
-   - Skinny upper LCD owns artist/title/time.
-   - Large lower LCD owns animation only.
-   ============================================================== */
+/* Player height — used by app shell grid and JS to size the chassis bar */
 :root {
   --pvfd-player-height: 246px;
 }
@@ -707,443 +555,109 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   align-items: stretch !important;
 }
 
+/* Skinny meta LCD on top row, OEL stage on bottom row */
 .pvfd-display-stack {
+  --pvfd-stage-side-w: clamp(230px, 17vw, 285px);
+  --pvfd-stage-oel-w: clamp(500px, 31.5vw, 590px);
+  --pvfd-stage-gap-w: clamp(30px, 3.1vw, 56px);
   height: 100%;
   min-height: 0;
   min-width: 0;
   display: grid;
   grid-template-rows: 28px minmax(0, 1fr);
-  gap: 6px;
+  gap: 10px;
+  align-items: stretch;
+  justify-items: center;
 }
 
+/* Pioneer logo sits inside the top band */
+.pvfd-silk-pioneer {
+  transform: none !important;
+  top: -2px !important;
+}
+
+/* Skinny metadata LCD — track title / scrub rail / time */
 .pvfd-meta-lcd {
   position: relative;
   overflow: hidden;
   min-width: 0;
+  display: grid !important;
+  grid-template-columns: minmax(280px, 1fr) clamp(132px, 18vw, 320px) minmax(82px, 94px) !important;
+  align-items: center !important;
+  gap: 7px !important;
+  align-self: stretch !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  box-sizing: border-box !important;
+  width: min(100%, calc(
+    var(--pvfd-stage-side-w) + var(--pvfd-stage-side-w) +
+    var(--pvfd-stage-oel-w) +
+    var(--pvfd-stage-gap-w) + var(--pvfd-stage-gap-w)
+  )) !important;
+  justify-self: center !important;
+  transform: translateY(-3px) !important;
+  padding: 0 8px 0 10px !important;
+  cursor: default;
   background:
-    linear-gradient(180deg, rgba(9, 25, 38, 0.95), rgba(1, 6, 12, 0.98)),
-    var(--pvfd-lcd-void);
-  border: 1px solid var(--pvfd-lcd-rim);
+    linear-gradient(180deg, rgba(9, 25, 38, 0.96), rgba(1, 6, 12, 0.985)),
+    var(--pvfd-lcd-void) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.30) !important;
   box-shadow:
-    inset 0 0 0 1px rgba(0,0,0,0.9),
-    inset 0 0 12px rgba(0, 80, 140, 0.48),
-    0 1px 1px rgba(255,255,255,0.08);
-  padding: 0 118px 0 10px;
-  box-sizing: border-box;
+    0 0 0 1px rgba(0,0,0,0.86),
+    0 2px 4px rgba(0,0,0,0.38),
+    inset 0 0 0 1px rgba(0,0,0,0.74),
+    inset 0 0 10px rgba(var(--pvfd-light-deep-rgb),0.13) !important;
 }
 
+/* Dot-matrix glass texture */
 .pvfd-meta-lcd::before {
   content: "";
   position: absolute;
   inset: 0;
   background-image:
-    repeating-linear-gradient(0deg, transparent 0, transparent 2px,
-      rgba(0,0,0,0.62) 2px, rgba(0,0,0,0.62) 3px),
-    repeating-linear-gradient(90deg, transparent 0, transparent 2px,
-      rgba(0,0,0,0.42) 2px, rgba(0,0,0,0.42) 3px);
+    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-light-rgb), 0.11) 0 0.62px, transparent 0.78px);
+  background-size: 3px 3px;
   pointer-events: none;
-  mix-blend-mode: multiply;
+  mix-blend-mode: normal;
+  opacity: 0.36;
   z-index: 2;
 }
 
+/* Delicate inner cyan glow line */
 .pvfd-meta-lcd::after {
   content: "";
+  display: block;
   position: absolute;
-  top: 0;
-  right: 96px;
-  bottom: 0;
-  width: 36px;
-  background: linear-gradient(90deg, rgba(2,6,12,0), rgba(2,6,12,0.96));
-  pointer-events: none;
+  inset: 3px 4px;
   z-index: 4;
+  pointer-events: none;
+  background: transparent;
+  border: 1px solid rgba(var(--pvfd-light-rgb), 0.115);
+  box-shadow:
+    inset 0 0 5px rgba(var(--pvfd-light-rgb), 0.075),
+    0 0 3px rgba(var(--pvfd-light-rgb), 0.050);
 }
 
 .pvfd-meta-track {
   position: relative;
   z-index: 3;
-  height: 100%;
-  display: flex;
-  align-items: center;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 4px;
   color: var(--pvfd-cyan);
   font-family: "Share Tech Mono", "VT323", monospace;
   font-size: clamp(13px, 0.98vw, 16px);
   font-weight: 500;
   letter-spacing: 0.72px;
   line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   text-transform: uppercase;
   text-shadow: var(--pvfd-glow-cyan);
 }
 
-.pvfd-meta-time {
-  position: absolute;
-  z-index: 5;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--pvfd-cyan-mid);
-  font-family: "Share Tech Mono", "VT323", monospace;
-  font-size: 11px;
-  letter-spacing: 1px;
-  line-height: 1;
-  white-space: nowrap;
-  text-shadow: var(--pvfd-glow-cyan);
-}
-
-.pvfd-display-stack .pvfd-lcd {
-  height: auto !important;
-  min-height: 0;
-}
-
-/* Hard guard: the big animation LCD should not get metadata overlays in this prototype. */
-.pvfd-display-stack .pvfd-lcd-track,
-.pvfd-display-stack .pvfd-lcd-artist,
-.pvfd-display-stack .pvfd-lcd-time,
-.pvfd-display-stack .pvfd-lcd-mode,
-.pvfd-display-stack .pvfd-lcd-info-l,
-.pvfd-display-stack .pvfd-lcd-info-r {
-  display: none !important;
-  visibility: hidden !important;
-}
-
-@media (max-width: 1200px) {
-  :root { --pvfd-player-height: 232px; }
-  .pvfd-display-stack { grid-template-rows: 26px minmax(0, 1fr); gap: 5px; }
-  .pvfd-meta-lcd { padding-right: 104px; }
-  .pvfd-meta-time { font-size: 10px; }
-}
-
-@media (max-width: 900px) {
-  :root { --pvfd-player-height: 214px; }
-  .pvfd-display-stack { grid-template-rows: 24px minmax(0, 1fr); gap: 5px; }
-  .pvfd-meta-lcd { padding-right: 82px; }
-  .pvfd-meta-lcd::after { right: 72px; width: 28px; }
-  .pvfd-meta-track { font-size: 12px; letter-spacing: 0.45px; }
-  .pvfd-meta-time { font-size: 9px; letter-spacing: 0.65px; }
-}
-
-
-/* ==============================================================
-    version note v0.1: compact main LCD experiment
-   - Raise the Pioneer logo a hair so it sits inside the top band.
-   - Compress the animation screen to reference-unit proportions.
-   - Use the freed side space for fake glass/details, not dead gray soup.
-   ============================================================== */
-.pvfd-silk-pioneer {
-  transform: none !important;
-  top: -2px !important;
-}
-
-.pvfd-compact-stage {
-  min-height: 0;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(90px, 1fr) minmax(520px, 64%) minmax(90px, 1fr);
-  gap: 8px;
-  align-items: stretch;
-}
-
-.pvfd-compact-stage .pvfd-lcd {
-  width: 100%;
-  height: 100% !important;
-  min-height: 0;
-  justify-self: center;
-}
-
-.pvfd-lcd-side {
-  position: relative;
-  min-width: 0;
-  overflow: hidden;
-  background:
-    radial-gradient(ellipse at 50% 20%, rgba(126, 212, 240, 0.10), transparent 58%),
-    linear-gradient(180deg, rgba(5, 15, 26, 0.96), rgba(1, 6, 12, 0.98));
-  border: 1px solid rgba(26, 44, 60, 0.95);
-  box-shadow:
-    inset 0 0 0 1px rgba(0,0,0,0.82),
-    inset 0 0 14px rgba(0, 80, 140, 0.38),
-    0 1px 1px rgba(255,255,255,0.06);
-}
-
-.pvfd-lcd-side::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    repeating-linear-gradient(0deg, transparent 0, transparent 2px,
-      rgba(0,0,0,0.54) 2px, rgba(0,0,0,0.54) 3px),
-    repeating-linear-gradient(90deg, transparent 0, transparent 2px,
-      rgba(0,0,0,0.36) 2px, rgba(0,0,0,0.36) 3px);
-  pointer-events: none;
-  mix-blend-mode: multiply;
-  z-index: 5;
-}
-
-.pvfd-lcd-side::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg,
-    rgba(255,255,255,0.06), transparent 18%, transparent 78%, rgba(255,255,255,0.035));
-  pointer-events: none;
-  z-index: 6;
-}
-
-.pvfd-side-label,
-.pvfd-side-softkey,
-.pvfd-side-model,
-.pvfd-side-badges,
-.pvfd-side-vu {
-  position: relative;
-  z-index: 8;
-}
-
-.pvfd-lcd-side-left {
-  padding: 12px 10px 10px;
-  box-sizing: border-box;
-}
-
-.pvfd-side-label {
-  color: var(--pvfd-cyan);
-  font-family: "Share Tech Mono", "VT323", monospace;
-  font-size: 11px;
-  letter-spacing: 1.2px;
-  text-shadow: var(--pvfd-glow-cyan);
-  margin-bottom: 8px;
-}
-
-.pvfd-side-softkey {
-  width: 58px;
-  margin: 0 0 7px;
-  padding: 3px 0;
-  color: #15202b;
-  background: linear-gradient(180deg, #b4c4d0, #5e7a92);
-  border: 1px solid #1f2f3f;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 1px rgba(0,0,0,0.5);
-  text-align: center;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.45px;
-}
-
-.pvfd-side-model {
-  position: absolute;
-  left: 10px;
-  bottom: 10px;
-  color: #c2d8e8;
-  font-family: "Share Tech Mono", "VT323", monospace;
-  font-size: 10px;
-  letter-spacing: 0.8px;
-  text-shadow: 0 0 3px rgba(126,212,240,0.55);
-}
-
-.pvfd-side-badges {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  display: flex;
-  gap: 5px;
-}
-
-.pvfd-side-badges span {
-  color: var(--pvfd-green);
-  border: 1px solid rgba(106, 160, 48, 0.82);
-  background: rgba(184,232,150,0.11);
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 8px;
-  line-height: 11px;
-  padding: 0 4px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  text-shadow: 0 0 4px rgba(184,232,150,0.45);
-}
-
-.pvfd-lcd-side-right {
-  padding: 10px;
-  box-sizing: border-box;
-}
-
-.pvfd-side-vu {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  bottom: 32px;
-  width: 34px;
-  display: grid;
-  grid-template-rows: repeat(12, 1fr);
-  gap: 3px;
-  align-items: stretch;
-}
-
-.pvfd-side-vu span {
-  display: block;
-  background: linear-gradient(90deg, rgba(126,212,240,0.12), rgba(168,228,244,0.82));
-  box-shadow: 0 0 5px rgba(126,212,240,0.42);
-  opacity: 0.28;
-}
-
-.pvfd-side-vu span:nth-child(n+8) { opacity: 0.72; }
-.pvfd-side-vu span:nth-child(n+11) {
-  background: linear-gradient(90deg, rgba(184,232,150,0.18), rgba(184,232,150,0.9));
-  box-shadow: 0 0 5px rgba(184,232,150,0.5);
-  opacity: 0.92;
-}
-
-@media (max-width: 1200px) {
-  .pvfd-compact-stage {
-    grid-template-columns: minmax(64px, 0.8fr) minmax(400px, 70%) minmax(64px, 0.8fr);
-    gap: 6px;
-  }
-  .pvfd-side-softkey { width: 50px; font-size: 7px; }
-  .pvfd-side-model { font-size: 9px; }
-  .pvfd-side-badges span { font-size: 7px; padding: 0 3px; }
-}
-
-@media (max-width: 900px) {
-  .pvfd-compact-stage {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .pvfd-lcd-side {
-    display: none !important;
-  }
-}
-
-/* ==============================================================
-    version note v0.2: useful side readouts + top LCD scrub tracker
-   ============================================================== */
-.pvfd-meta-lcd {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) clamp(128px, 16vw, 230px) 104px !important;
-  align-items: center !important;
-  gap: 9px !important;
-  padding: 0 8px 0 10px !important;
-  cursor: default;
-}
-.pvfd-meta-lcd::after { right: 340px !important; width: 34px !important; }
-.pvfd-meta-track { height: auto !important; min-width: 0 !important; }
-.pvfd-meta-progress {
-  --pvfd-progress: 0%;
-  position: relative;
-  z-index: 5;
-  height: 18px;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  cursor: ew-resize;
-  color: var(--pvfd-green);
-  font-family: "Share Tech Mono", "VT323", monospace;
-  font-size: 11px;
-  letter-spacing: 0.8px;
-  line-height: 1;
-  text-shadow: var(--pvfd-glow-green);
-  border-left: 1px solid rgba(126, 212, 240, 0.20);
-  border-right: 1px solid rgba(126, 212, 240, 0.20);
-  background: rgba(2, 8, 14, 0.48);
-  user-select: none;
-}
-.pvfd-meta-progress::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 2px;
-  bottom: 2px;
-  width: var(--pvfd-progress);
-  background: linear-gradient(90deg, rgba(78, 180, 216, 0.18), rgba(184, 232, 150, 0.38));
-  box-shadow: 0 0 8px rgba(184, 232, 150, 0.28);
-  pointer-events: none;
-}
-.pvfd-meta-progress.scrubbing {
-  color: #ffffff;
-  text-shadow: 0 0 5px rgba(255,255,255,0.95), 0 0 10px rgba(184,232,150,0.8);
-}
-.pvfd-progress-text { position: relative; z-index: 2; white-space: nowrap; }
-.pvfd-meta-time {
-  position: relative !important;
-  right: auto !important;
-  top: auto !important;
-  transform: none !important;
-  justify-self: end !important;
-}
-.pvfd-lcd-side-left, .pvfd-lcd-side-right { padding: 10px !important; }
-.pvfd-side-readout, .pvfd-side-readouts-right .pvfd-side-readout {
-  position: relative;
-  z-index: 8;
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: 5px;
-  align-items: center;
-  min-width: 0;
-  margin: 0 0 5px;
-  color: var(--pvfd-cyan);
-  font-family: "Share Tech Mono", "VT323", monospace;
-  font-size: 10px;
-  letter-spacing: 0.65px;
-  text-shadow: var(--pvfd-glow-cyan);
-}
-.pvfd-side-readout b {
-  color: var(--pvfd-green);
-  font-size: 9px;
-  letter-spacing: 1px;
-  text-shadow: var(--pvfd-glow-green);
-  font-weight: 700;
-}
-.pvfd-side-readout span {
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.pvfd-side-readouts-right { position: relative; z-index: 8; padding-right: 48px; }
-.pvfd-lcd-side-right .pvfd-side-model { color: var(--pvfd-green); }
-.pvfd-side-vu span { opacity: 0.22; transition: opacity 90ms linear, filter 90ms linear; }
-.pvfd-side-vu span.on { filter: brightness(1.25); }
-.pvfd-tab-preset[data-pvfd='shuffle']::after,
-.pvfd-tab-preset[data-pvfd='repeat']::after {
-  content: attr(data-label);
-  position: absolute;
-  right: 6px;
-  bottom: 1px;
-  font-size: 7px;
-  line-height: 1;
-  letter-spacing: 0.5px;
-  color: rgba(6, 16, 24, 0.78);
-  font-family: 'Helvetica Neue', Arial, sans-serif;
-}
-.pvfd-tab-preset[data-pvfd='repeat'].repeat-context {
-  background: linear-gradient(180deg, #91e4ff 0%, #3fa9d8 100%) !important;
-  color: #061018 !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.56), 0 0 8px rgba(78,180,216,0.55) !important;
-}
-.pvfd-tab-preset[data-pvfd='repeat'].repeat-one {
-  background: linear-gradient(180deg, #c8f088 0%, #80b840 100%) !important;
-  color: #061018 !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.56), 0 0 8px rgba(184,232,150,0.58) !important;
-}
-.pvfd-tab-preset[data-pvfd='shuffle'].active {
-  background: linear-gradient(180deg, #6ed4f8 0%, #4eb4d8 100%) !important;
-  color: #061018 !important;
-}
-@media (max-width: 1200px) {
-  .pvfd-meta-lcd { grid-template-columns: minmax(0, 1fr) clamp(92px, 14vw, 170px) 88px !important; gap: 7px !important; }
-  .pvfd-meta-progress { font-size: 10px; letter-spacing: 0.45px; }
-  .pvfd-side-readout { grid-template-columns: 30px minmax(0, 1fr); font-size: 9px; }
-  .pvfd-side-readout b { font-size: 8px; }
-  .pvfd-side-readouts-right { padding-right: 40px; }
-}
-@media (max-width: 900px) {
-  .pvfd-meta-lcd { grid-template-columns: minmax(0, 1fr) 76px !important; }
-  .pvfd-meta-progress { display: none !important; }
-}
-
-
-/* ==============================================================
-    version note v0.3: cleaned scrub meter + tint-aware lighting sweep
-   ============================================================== */
+/* Tint-aware lighting — JS writes data-pvfd-tint; these attrs must not be renamed */
 .pvfd-chassis {
   --pvfd-light-rgb: 168, 228, 244;
   --pvfd-light-mid-rgb: 126, 212, 240;
@@ -1184,381 +698,42 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   --pvfd-accent-dim-rgb: 54, 38, 96;
 }
 
-/* Make the top scrubber a real VFD meter, not keyboard art pretending to be a UI. */
-.pvfd-meta-lcd {
-  grid-template-columns: minmax(0, 1fr) clamp(168px, 19vw, 292px) 104px !important;
-}
+/* Scrub progress rail */
 .pvfd-meta-progress {
-  height: 20px !important;
-  border-left: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.24) !important;
-  border-right: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.24) !important;
-  background:
-    linear-gradient(180deg, rgba(var(--pvfd-light-deep-rgb), 0.12), rgba(2, 8, 14, 0.54)),
-    rgba(2, 8, 14, 0.62) !important;
-  box-shadow:
-    inset 0 0 8px rgba(var(--pvfd-light-deep-rgb), 0.15),
-    inset 0 1px 0 rgba(255,255,255,0.045) !important;
-  color: var(--pvfd-cyan) !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-}
-.pvfd-meta-progress::before {
-  content: "" !important;
-  position: absolute !important;
-  left: 8px !important;
-  right: 8px !important;
-  top: 50% !important;
-  bottom: auto !important;
-  width: auto !important;
-  height: 3px !important;
-  transform: translateY(-50%) !important;
-  background:
-    repeating-linear-gradient(90deg,
-      rgba(var(--pvfd-light-rgb), 0.58) 0 2px,
-      rgba(var(--pvfd-light-rgb), 0.10) 2px 4px,
-      transparent 4px 9px) !important;
-  box-shadow: 0 0 5px rgba(var(--pvfd-light-rgb), 0.30) !important;
-  pointer-events: none !important;
-}
-.pvfd-meta-progress::after {
-  content: "";
-  position: absolute;
-  z-index: 3;
-  left: clamp(8px, var(--pvfd-progress), calc(100% - 8px));
-  top: 50%;
-  width: 8px;
-  height: 14px;
-  transform: translate(-50%, -50%);
-  border-radius: 1px !important;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.88), rgba(var(--pvfd-light-rgb),0.95) 34%, rgba(var(--pvfd-light-deep-rgb),0.88));
-  box-shadow:
-    0 0 4px rgba(var(--pvfd-light-rgb), 0.95),
-    0 0 10px rgba(var(--pvfd-light-deep-rgb), 0.72);
-  pointer-events: none;
-}
-.pvfd-progress-text {
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 2 !important;
-  font-size: 0 !important;
-  color: transparent !important;
-  white-space: nowrap !important;
-  pointer-events: none !important;
-}
-.pvfd-progress-text::before {
-  content: "";
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  width: max(0px, calc(var(--pvfd-progress) - 8px));
-  height: 3px;
-  transform: translateY(-50%);
-  background: linear-gradient(90deg,
-    rgba(var(--pvfd-light-rgb), 0.25),
-    rgba(var(--pvfd-light-rgb), 0.82));
-  box-shadow: 0 0 7px rgba(var(--pvfd-light-rgb), 0.50);
-}
-.pvfd-meta-progress.scrubbing::after {
-  background: #ffffff !important;
-  box-shadow: 0 0 7px rgba(255,255,255,0.95), 0 0 14px rgba(var(--pvfd-light-rgb), 0.90) !important;
-}
-
-/* Side blocks: more legible and less placeholder-looking. */
-.pvfd-side-label {
-  font-size: 12px !important;
-  color: var(--pvfd-cyan) !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-}
-.pvfd-side-readout, .pvfd-side-readouts-right .pvfd-side-readout {
-  grid-template-columns: 42px minmax(0, 1fr) !important;
-  gap: 7px !important;
-  margin-bottom: 6px !important;
-  color: var(--pvfd-cyan) !important;
-  font-size: 11.5px !important;
-  letter-spacing: 0.75px !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-}
-.pvfd-side-readout b {
-  color: var(--pvfd-cyan-mid) !important;
-  font-size: 10px !important;
-  letter-spacing: 1.05px !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-}
-.pvfd-side-model {
-  color: var(--pvfd-cyan-mid) !important;
-  font-size: 11px !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-}
-.pvfd-side-badges span {
-  color: var(--pvfd-cyan) !important;
-  border-color: rgba(var(--pvfd-light-mid-rgb), 0.82) !important;
-  background: rgba(var(--pvfd-light-rgb), 0.11) !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-}
-.pvfd-side-vu span {
-  background: linear-gradient(90deg, rgba(var(--pvfd-light-mid-rgb),0.10), rgba(var(--pvfd-light-rgb),0.82)) !important;
-  box-shadow: 0 0 5px rgba(var(--pvfd-light-rgb),0.42) !important;
-}
-.pvfd-side-vu span:nth-child(n+11) {
-  background: linear-gradient(90deg, rgba(var(--pvfd-light-rgb),0.16), rgba(var(--pvfd-light-rgb),0.96)) !important;
-  box-shadow: 0 0 6px rgba(var(--pvfd-light-rgb),0.55) !important;
-}
-
-/* Tint reaches the obvious lighting hardware now: knob rings, nav arrows, LEDs. */
-.pvfd-knob-glow,
-.pvfd-nav-glow {
-  background: radial-gradient(circle,
-    rgba(var(--pvfd-light-deep-rgb), 0.88) 0%,
-    rgba(var(--pvfd-light-deep-rgb), 0.42) 39%,
-    rgba(var(--pvfd-light-deep-rgb), 0.12) 68%,
-    transparent 82%) !important;
-}
-.pvfd-knob-led-arc {
-  background: conic-gradient(from -8deg,
-    var(--pvfd-cyan-glow) 0deg,
-    var(--pvfd-cyan-deep) var(--pvfd-led-deg, 16deg),
-    rgba(var(--pvfd-accent-dim-rgb), 0.92) var(--pvfd-led-deg, 16deg),
-    rgba(var(--pvfd-accent-dim-rgb), 0.92) 360deg) !important;
-  box-shadow: 0 0 12px rgba(var(--pvfd-light-deep-rgb), 0.95), inset 0 0 6px rgba(var(--pvfd-light-rgb), 0.68) !important;
-}
-.pvfd-nav-led-ring {
-  background: radial-gradient(circle, transparent 0%, transparent 62%,
-    var(--pvfd-cyan-glow) 70%, var(--pvfd-cyan-deep) 80%, rgba(var(--pvfd-light-deep-rgb),0.72) 88%, transparent 95%) !important;
-  box-shadow: 0 0 14px rgba(var(--pvfd-light-deep-rgb), 0.95), inset 0 0 10px rgba(var(--pvfd-light-rgb), 0.60) !important;
-}
-.pvfd-nav-arrow {
-  color: var(--pvfd-cyan-glow) !important;
-  text-shadow: var(--pvfd-glow-cyan) !important;
-}
-.pvfd-open-led {
-  background: radial-gradient(circle at 35% 30%,
-    #ffffff 0%, var(--pvfd-cyan-glow) 22%, var(--pvfd-cyan-deep) 62%, rgba(var(--pvfd-accent-dim-rgb),1) 100%) !important;
-  box-shadow: 0 0 7px rgba(var(--pvfd-light-rgb),0.80), inset 0 1px 0 rgba(255,255,255,0.55) !important;
-}
-
-@media (max-width: 1200px) {
-  .pvfd-meta-lcd { grid-template-columns: minmax(0, 1fr) clamp(124px, 16vw, 210px) 88px !important; }
-  .pvfd-side-readout, .pvfd-side-readouts-right .pvfd-side-readout {
-    grid-template-columns: 34px minmax(0, 1fr) !important;
-    font-size: 10px !important;
-    gap: 5px !important;
-  }
-  .pvfd-side-readout b { font-size: 8.5px !important; }
-}
-
-/* ==============================================================
-    version note v0.4: responsive side LCD cleanup + wider top scrubber
-   - Prevent side-panel readouts from crushing into unreadable soup.
-   - Keep the top meter useful instead of hiding in a tiny rectangle.
-   - Make the volume pointer behave like a clock dial: 0=9, 50=12, 100=3.
-   ============================================================== */
-.pvfd-compact-stage {
-  grid-template-columns: minmax(138px, 18%) minmax(360px, 1fr) minmax(138px, 18%) !important;
-  gap: 8px !important;
-}
-
-.pvfd-lcd-side-left,
-.pvfd-lcd-side-right {
-  padding: 9px 10px 8px !important;
-  contain: layout paint;
-}
-
-.pvfd-side-label {
-  margin-bottom: 6px !important;
-  line-height: 1.05 !important;
-}
-
-.pvfd-side-readout,
-.pvfd-side-readouts-right .pvfd-side-readout {
-  grid-template-columns: 38px minmax(0, 1fr) !important;
-  gap: 6px !important;
-  margin-bottom: 4px !important;
-  line-height: 1.05 !important;
-  min-width: 0 !important;
-}
-
-.pvfd-side-readout span,
-.pvfd-side-readout b {
-  min-width: 0 !important;
-  overflow: hidden !important;
-  white-space: nowrap !important;
-  text-overflow: clip !important;
-}
-
-.pvfd-side-model {
-  max-width: calc(100% - 76px) !important;
-  overflow: hidden !important;
-  white-space: nowrap !important;
-  text-overflow: ellipsis !important;
-  left: 10px !important;
-  bottom: 8px !important;
-}
-
-.pvfd-side-badges {
-  right: 8px !important;
-  bottom: 7px !important;
-}
-
-.pvfd-side-readouts-right {
-  padding-right: 43px !important;
-}
-
-.pvfd-side-vu {
-  right: 10px !important;
-  top: 11px !important;
-  bottom: 31px !important;
-  width: 26px !important;
-  gap: 2px !important;
-}
-
-.pvfd-meta-lcd {
-  grid-template-columns: minmax(160px, 1fr) minmax(300px, 36vw, 560px) 98px !important;
-  gap: 8px !important;
-}
-
-.pvfd-meta-lcd::after {
-  display: none !important;
-}
-
-.pvfd-meta-progress {
-  height: 20px !important;
-  min-width: 180px !important;
-}
-
-.pvfd-meta-time {
-  min-width: 86px !important;
-  text-align: right !important;
-}
-
-.pvfd-knob {
-  cursor: pointer !important;
-}
-
-@media (max-width: 1320px) {
-  .pvfd-compact-stage {
-    grid-template-columns: minmax(124px, 19%) minmax(330px, 1fr) minmax(124px, 19%) !important;
-    gap: 7px !important;
-  }
-  .pvfd-side-readout,
-  .pvfd-side-readouts-right .pvfd-side-readout {
-    grid-template-columns: 34px minmax(0, 1fr) !important;
-    font-size: 10.25px !important;
-    letter-spacing: 0.45px !important;
-    gap: 5px !important;
-  }
-  .pvfd-side-readout b {
-    font-size: 8.75px !important;
-    letter-spacing: 0.75px !important;
-  }
-  .pvfd-side-label,
-  .pvfd-side-model {
-    font-size: 10px !important;
-  }
-  .pvfd-side-vu {
-    width: 21px !important;
-    right: 8px !important;
-  }
-  .pvfd-side-readouts-right {
-    padding-right: 34px !important;
-  }
-  .pvfd-meta-lcd {
-    grid-template-columns: minmax(140px, 1fr) minmax(230px, 34vw, 420px) 88px !important;
-    gap: 7px !important;
-  }
-}
-
-@media (max-width: 1050px) {
-  .pvfd-compact-stage {
-    grid-template-columns: minmax(104px, 18%) minmax(300px, 1fr) minmax(104px, 18%) !important;
-    gap: 6px !important;
-  }
-  .pvfd-lcd-side-left,
-  .pvfd-lcd-side-right {
-    padding: 8px 7px 7px !important;
-  }
-  .pvfd-side-label {
-    font-size: 9px !important;
-    margin-bottom: 5px !important;
-  }
-  .pvfd-side-readout,
-  .pvfd-side-readouts-right .pvfd-side-readout {
-    grid-template-columns: 28px minmax(0, 1fr) !important;
-    font-size: 8.75px !important;
-    letter-spacing: 0.25px !important;
-    margin-bottom: 3px !important;
-    gap: 4px !important;
-  }
-  .pvfd-side-readout b {
-    font-size: 7.5px !important;
-    letter-spacing: 0.45px !important;
-  }
-  .pvfd-side-model {
-    display: none !important;
-  }
-  .pvfd-side-badges {
-    right: 6px !important;
-    bottom: 6px !important;
-  }
-  .pvfd-side-badges span {
-    font-size: 6px !important;
-    line-height: 9px !important;
-    padding: 0 2px !important;
-  }
-  .pvfd-side-vu {
-    display: none !important;
-  }
-  .pvfd-side-readouts-right {
-    padding-right: 0 !important;
-  }
-  .pvfd-meta-lcd {
-    grid-template-columns: minmax(120px, 1fr) minmax(180px, 32vw, 300px) 78px !important;
-    gap: 6px !important;
-  }
-  .pvfd-meta-progress {
-    min-width: 150px !important;
-  }
-}
-
-@media (max-width: 900px) {
-  .pvfd-compact-stage {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-  .pvfd-lcd-side {
-    display: none !important;
-  }
-  .pvfd-meta-lcd {
-    grid-template-columns: minmax(0, 1fr) 74px !important;
-  }
-  .pvfd-meta-progress {
-    display: none !important;
-  }
-}
-
-
-/* ==============================================================
-    version note v0.5-r2: package cleanup pass
-   - organic top scrub rail
-   - restored right-knob directional hover shading
-   - 12 o'clock = 0%, full clockwise sweep = 100% volume model
-   ============================================================== */
-.pvfd-meta-lcd {
-  grid-template-columns: minmax(0, 1fr) clamp(250px, 34vw, 640px) 98px !important;
-  align-items: center !important;
-}
-.pvfd-meta-progress {
-  height: 18px !important;
-  min-width: 220px !important;
+  --pvfd-progress: 0%;
+  position: relative;
+  z-index: 5;
+  height: 16px !important;
+  min-width: 112px !important;
+  opacity: 0.92 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible !important;
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  overflow: visible !important;
+  cursor: ew-resize;
+  user-select: none;
+  color: var(--pvfd-cyan);
+  font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  line-height: 1;
+  text-shadow: var(--pvfd-glow-cyan);
 }
+
+/* Dot rail */
 .pvfd-meta-progress::before {
+  content: "" !important;
+  position: absolute !important;
   left: 6px !important;
   right: 6px !important;
   top: 50% !important;
-  height: 4px !important;
+  bottom: auto !important;
+  width: auto !important;
+  height: 3px !important;
   transform: translateY(-50%) !important;
   border-radius: 999px !important;
   background:
@@ -1570,26 +745,21 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   box-shadow:
     0 0 6px rgba(var(--pvfd-light-rgb),0.38),
     inset 0 0 4px rgba(var(--pvfd-light-rgb),0.30) !important;
+  pointer-events: none !important;
 }
-.pvfd-progress-text::before {
-  left: 6px !important;
-  top: 50% !important;
-  height: 4px !important;
-  width: max(0px, calc(var(--pvfd-progress) - 6px)) !important;
-  transform: translateY(-50%) !important;
-  border-radius: 999px !important;
-  background: linear-gradient(90deg,
-    rgba(var(--pvfd-light-rgb),0.25),
-    rgba(var(--pvfd-light-rgb),0.95)) !important;
-  box-shadow: 0 0 8px rgba(var(--pvfd-light-rgb),0.62) !important;
-}
+
+/* Scrub thumb */
 .pvfd-meta-progress::after {
+  content: "";
+  position: absolute;
+  z-index: 3;
   left: clamp(7px, var(--pvfd-progress), calc(100% - 7px)) !important;
   top: 50% !important;
-  width: 9px !important;
-  height: 17px !important;
-  border-radius: 2px !important;
+  width: 7px !important;
+  height: 14px !important;
+  opacity: 0.92 !important;
   transform: translate(-50%, -50%) !important;
+  border-radius: 2px !important;
   background: linear-gradient(180deg,
     rgba(255,255,255,0.95),
     rgba(var(--pvfd-light-rgb),0.98) 40%,
@@ -1597,16 +767,95 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   box-shadow:
     0 0 5px rgba(var(--pvfd-light-rgb),0.98),
     0 0 13px rgba(var(--pvfd-light-deep-rgb),0.75) !important;
+  pointer-events: none;
 }
-.pvfd-knob { cursor: grab !important; }
-.pvfd-knob.dragging { cursor: grabbing !important; }
+
+/* Hidden label holds the progress CSS var; ::before draws the fill line */
+.pvfd-progress-text {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2 !important;
+  font-size: 0 !important;
+  color: transparent !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+}
+
+.pvfd-progress-text::before {
+  content: "";
+  position: absolute;
+  left: 6px !important;
+  top: 50% !important;
+  width: max(0px, calc(var(--pvfd-progress) - 6px)) !important;
+  height: 3px !important;
+  transform: translateY(-50%) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg,
+    rgba(var(--pvfd-light-rgb),0.25),
+    rgba(var(--pvfd-light-rgb),0.95)) !important;
+  box-shadow: 0 0 8px rgba(var(--pvfd-light-rgb),0.62) !important;
+}
+
+.pvfd-meta-progress.scrubbing::after {
+  background: #ffffff !important;
+  box-shadow: 0 0 7px rgba(255,255,255,0.95), 0 0 14px rgba(var(--pvfd-light-rgb), 0.90) !important;
+}
+
+.pvfd-meta-time {
+  position: relative !important;
+  right: auto !important;
+  top: auto !important;
+  transform: none !important;
+  justify-self: end !important;
+  min-width: 82px !important;
+  text-align: right !important;
+  z-index: 5;
+  color: var(--pvfd-cyan-mid);
+  font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: var(--pvfd-glow-cyan);
+}
+
+/* Knob and nav ring tint-aware lighting */
+.pvfd-knob-glow,
+.pvfd-nav-glow {
+  background: radial-gradient(circle,
+    rgba(var(--pvfd-light-deep-rgb), 0.88) 0%,
+    rgba(var(--pvfd-light-deep-rgb), 0.42) 39%,
+    rgba(var(--pvfd-light-deep-rgb), 0.12) 68%,
+    transparent 82%) !important;
+}
+
 .pvfd-knob-led-arc {
   background: conic-gradient(from 0deg,
     var(--pvfd-cyan-glow) 0deg,
     var(--pvfd-cyan-deep) var(--pvfd-led-deg, 0deg),
     rgba(var(--pvfd-accent-dim-rgb),0.92) var(--pvfd-led-deg, 0deg),
     rgba(var(--pvfd-accent-dim-rgb),0.92) 360deg) !important;
+  box-shadow: 0 0 12px rgba(var(--pvfd-light-deep-rgb), 0.95), inset 0 0 6px rgba(var(--pvfd-light-rgb), 0.68) !important;
 }
+
+.pvfd-nav-led-ring {
+  background: radial-gradient(circle, transparent 0%, transparent 62%,
+    var(--pvfd-cyan-glow) 70%, var(--pvfd-cyan-deep) 80%, rgba(var(--pvfd-light-deep-rgb),0.72) 88%, transparent 95%) !important;
+  box-shadow: 0 0 14px rgba(var(--pvfd-light-deep-rgb), 0.95), inset 0 0 10px rgba(var(--pvfd-light-rgb), 0.60) !important;
+}
+
+.pvfd-nav-arrow {
+  color: var(--pvfd-cyan-glow) !important;
+  text-shadow: var(--pvfd-glow-cyan) !important;
+}
+
+.pvfd-open-led {
+  background: radial-gradient(circle at 35% 30%,
+    #ffffff 0%, var(--pvfd-cyan-glow) 22%, var(--pvfd-cyan-deep) 62%, rgba(var(--pvfd-accent-dim-rgb),1) 100%) !important;
+  box-shadow: 0 0 7px rgba(var(--pvfd-light-rgb),0.80), inset 0 1px 0 rgba(255,255,255,0.55) !important;
+}
+
+/* Directional hover lighting on the nav disc */
 .pvfd-nav:has(.pvfd-nav-arrow.up:hover) .pvfd-nav-button {
   background:
     radial-gradient(circle at 50% 18%, rgba(var(--pvfd-light-rgb),0.62), transparent 32%),
@@ -1634,71 +883,11 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
 .pvfd-nav:has(.pvfd-nav-arrow:hover) .pvfd-nav-inner-ring {
   filter: brightness(1.08) saturate(1.08) !important;
 }
-@media (max-width: 1280px) {
-  .pvfd-meta-lcd {
-    grid-template-columns: minmax(0, 1fr) clamp(180px, 29vw, 390px) 92px !important;
-  }
-  .pvfd-meta-progress { min-width: 160px !important; }
-}
-@media (max-width: 960px) {
-  .pvfd-meta-lcd { grid-template-columns: minmax(0, 1fr) 78px !important; }
-  .pvfd-meta-progress { display: none !important; }
-}
 
+.pvfd-knob { cursor: grab !important; }
+.pvfd-knob.dragging { cursor: grabbing !important; }
 
-
-/* ==============================================================
-    version note v1.9-r1: OEL glass and side box hardfix
-   - The v1.4 canvas used width:auto/height:auto inside an inset frame. For a
-     replaced element like <canvas>, that can feed the intrinsic canvas bitmap
-     size back into layout and make the OEL clip draw only across part of the
-     visible bay. Pin the canvas to explicit calc() dimensions so the renderer
-     and the glass window agree.
-    - Keep only the Pioneer OEL/LKD clips in the cycle.
-   ============================================================== */
-@media (min-width: 1161px) {
-  .pvfd-compact-stage .pvfd-lcd-canvas {
-    top: 6px !important;
-    right: 9px !important;
-    bottom: 6px !important;
-    left: 9px !important;
-    inset: auto !important;
-    width: calc(100% - 18px) !important;
-    height: calc(100% - 12px) !important;
-    max-width: none !important;
-    max-height: none !important;
-    display: block !important;
-  }
-
-  .pvfd-compact-stage .pvfd-lcd {
-    overflow: hidden !important;
-  }
-}
-
-@media (max-width: 1320px) and (min-width: 1161px) {
-  .pvfd-compact-stage .pvfd-lcd-canvas {
-    top: 5px !important;
-    right: 8px !important;
-    bottom: 5px !important;
-    left: 8px !important;
-    inset: auto !important;
-    width: calc(100% - 16px) !important;
-    height: calc(100% - 10px) !important;
-  }
-}
-
-/* ==============================================================
-    version note v1.9-r1: OEL glass and side box hardfix
-   - The last build let the OEL canvas fill whatever rectangle the CSS gave it.
-     That made some clips feel slightly zoomed/cropped/off. Lock the centerpiece
-     back to the native Pioneer OEL 256x64 language: true 4:1 glass, centered,
-     dark surround intact, detached side boxes kept clear of the transport row.
-   ============================================================== */
-.pvfd-display-stack {
-  grid-template-rows: 28px minmax(0, 1fr) !important;
-  gap: 10px !important;
-}
-
+/* OEL animation stage — 3-column: left LCD | OEL bay | right LCD */
 .pvfd-compact-stage {
   width: min(100%, 1120px) !important;
   margin: 0 auto !important;
@@ -1712,7 +901,10 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   overflow: visible !important;
 }
 
+/* OEL glass bay — 4:1 aspect, dark surround, no decorative overlays */
 .pvfd-compact-stage .pvfd-lcd {
+  isolation: isolate !important;
+  overflow: hidden !important;
   width: clamp(500px, 31.5vw, 590px) !important;
   aspect-ratio: 4 / 1 !important;
   height: auto !important;
@@ -1720,389 +912,92 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   max-height: 148px !important;
   align-self: center !important;
   justify-self: center !important;
-  background:
-    radial-gradient(ellipse at 50% 50%, rgba(var(--pvfd-light-rgb),0.08), transparent 62%),
-    linear-gradient(180deg, rgba(8,22,34,0.88), rgba(1,5,10,0.98)) !important;
-  border: 1px solid rgba(var(--pvfd-light-mid-rgb),0.38) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(0,0,0,0.95),
-    inset 0 0 24px rgba(0, 54, 86, 0.82),
-    inset 0 0 48px rgba(0, 0, 0, 0.86),
-    0 0 0 1px rgba(255,255,255,0.055),
-    0 0 14px rgba(var(--pvfd-light-deep-rgb),0.20) !important;
-}
-
-.pvfd-compact-stage .pvfd-lcd-canvas {
-  top: 7px !important;
-  right: 10px !important;
-  bottom: 7px !important;
-  left: 10px !important;
-  inset: auto !important;
-  width: calc(100% - 20px) !important;
-  height: calc(100% - 14px) !important;
-  display: block !important;
-  max-width: none !important;
-  max-height: none !important;
-}
-
-.pvfd-compact-stage .pvfd-lcd-pixelgrid,
-.pvfd-compact-stage .pvfd-lcd-phosphor {
-  inset: 7px 10px !important;
-}
-
-.pvfd-lcd-side-left,
-.pvfd-lcd-side-right {
-  height: 98px !important;
-  min-height: 98px !important;
-  align-self: center !important;
-  padding: 9px 12px 8px !important;
-  border-color: rgba(var(--pvfd-light-mid-rgb),0.26) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(0,0,0,0.90),
-    inset 0 0 15px rgba(0,80,140,0.40),
-    0 0 0 1px rgba(255,255,255,0.035) !important;
-}
-
-.pvfd-side-label {
-  font-size: 12px !important;
-  margin-bottom: 7px !important;
-}
-
-.pvfd-side-readout,
-.pvfd-side-readouts-right .pvfd-side-readout {
-  grid-template-columns: 42px minmax(0, 1fr) !important;
-  font-size: 11.5px !important;
-  line-height: 1.08 !important;
-  margin-bottom: 4px !important;
-  gap: 7px !important;
-}
-
-.pvfd-side-readout b {
-  font-size: 9.5px !important;
-}
-
-.pvfd-side-model {
-  font-size: 10.5px !important;
-  bottom: 7px !important;
-}
-
-.pvfd-side-badges {
-  bottom: 6px !important;
-}
-
-.pvfd-side-vu {
-  top: 10px !important;
-  bottom: 28px !important;
-  right: 11px !important;
-  width: 26px !important;
-}
-
-@media (max-width: 1420px) {
-  .pvfd-compact-stage {
-    width: min(100%, 1000px) !important;
-    height: 120px !important;
-    grid-template-columns: clamp(200px, 18vw, 245px) auto clamp(200px, 18vw, 245px) !important;
-    column-gap: clamp(18px, 2vw, 34px) !important;
-  }
-  .pvfd-compact-stage .pvfd-lcd {
-    width: clamp(440px, 35vw, 530px) !important;
-  }
-  .pvfd-lcd-side-left,
-  .pvfd-lcd-side-right {
-    height: 92px !important;
-    min-height: 92px !important;
-  }
-  .pvfd-side-readout,
-  .pvfd-side-readouts-right .pvfd-side-readout {
-    grid-template-columns: 36px minmax(0, 1fr) !important;
-    font-size: 10.4px !important;
-    gap: 5px !important;
-  }
-}
-
-@media (max-width: 1160px) {
-  .pvfd-compact-stage {
-    width: min(100%, 680px) !important;
-    grid-template-columns: minmax(0, auto) !important;
-    height: 118px !important;
-    min-height: 108px !important;
-    overflow: hidden !important;
-  }
-  .pvfd-lcd-side {
-    display: none !important;
-  }
-  .pvfd-compact-stage .pvfd-lcd {
-    width: min(92vw, 560px) !important;
-    aspect-ratio: 4 / 1 !important;
-  }
-}
-
-@media (max-width: 720px) {
-  .pvfd-display-stack {
-    gap: 7px !important;
-  }
-  .pvfd-compact-stage {
-    height: 92px !important;
-    min-height: 86px !important;
-  }
-  .pvfd-compact-stage .pvfd-lcd {
-    width: min(88vw, 420px) !important;
-  }
-  .pvfd-compact-stage .pvfd-lcd-canvas,
-  .pvfd-compact-stage .pvfd-lcd-pixelgrid,
-  .pvfd-compact-stage .pvfd-lcd-phosphor {
-    inset: 5px 7px !important;
-    width: calc(100% - 14px) !important;
-    height: calc(100% - 10px) !important;
-  }
-}
-
-/* ==============================================================
-    version note v1.9-r1: OEL glass and side box hardfix
-   - Give the song title first claim on the skinny LCD.
-   - Shrink the scrub rail aggressively before the title gets chopped.
-   - Rebuild the OEL glass as one even pane instead of a bright clip pasted
-     onto a dark box.
-   ============================================================== */
-.pvfd-meta-lcd {
-  grid-template-columns: minmax(280px, 1fr) clamp(132px, 18vw, 320px) minmax(82px, 94px) !important;
-  gap: 7px !important;
-}
-
-.pvfd-meta-track {
-  min-width: 0 !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-  padding-right: 4px !important;
-}
-
-.pvfd-meta-progress {
-  min-width: 112px !important;
-  height: 16px !important;
-  opacity: 0.92 !important;
-}
-
-.pvfd-meta-progress::before,
-.pvfd-progress-text::before {
-  height: 3px !important;
-}
-
-.pvfd-meta-progress::after {
-  width: 7px !important;
-  height: 14px !important;
-  opacity: 0.92 !important;
-}
-
-.pvfd-meta-time {
-  min-width: 82px !important;
-}
-
-@media (max-width: 1360px) {
-  .pvfd-meta-lcd {
-    grid-template-columns: minmax(250px, 1fr) clamp(104px, 14vw, 220px) minmax(76px, 88px) !important;
-    gap: 6px !important;
-  }
-  .pvfd-meta-progress { min-width: 92px !important; }
-  .pvfd-meta-time { min-width: 76px !important; font-size: 10px !important; }
-}
-
-@media (max-width: 1160px) {
-  .pvfd-meta-lcd {
-    grid-template-columns: minmax(0, 1fr) clamp(72px, 10vw, 110px) 72px !important;
-    gap: 5px !important;
-  }
-  .pvfd-meta-progress { min-width: 64px !important; transform: scaleX(0.92); transform-origin: center; }
-  .pvfd-meta-progress::before,
-  .pvfd-progress-text::before { height: 2px !important; }
-  .pvfd-meta-progress::after { width: 5px !important; height: 11px !important; }
-  .pvfd-meta-time { min-width: 70px !important; font-size: 9px !important; letter-spacing: 0.45px !important; }
-}
-
-@media (max-width: 1020px) {
-  .pvfd-meta-lcd {
-    grid-template-columns: minmax(0, 1fr) 70px !important;
-  }
-  .pvfd-meta-progress {
-    display: none !important;
-  }
-}
-
-.pvfd-compact-stage .pvfd-lcd {
-  isolation: isolate !important;
-  overflow: hidden !important;
-  background:
-    radial-gradient(ellipse at 50% 50%, rgba(var(--pvfd-light-rgb),0.060), transparent 58%),
-    linear-gradient(180deg, rgba(7,18,29,0.94), rgba(1,5,10,0.99)) !important;
-  border-color: rgba(var(--pvfd-light-mid-rgb),0.30) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(0,0,0,0.96),
-    inset 0 0 18px rgba(0, 58, 92, 0.56),
-    inset 0 0 42px rgba(0, 0, 0, 0.84),
-    0 0 0 1px rgba(255,255,255,0.045),
-    0 0 10px rgba(var(--pvfd-light-deep-rgb),0.14) !important;
-}
-
-.pvfd-compact-stage .pvfd-lcd::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(0,0,0,0.34), transparent 15%, transparent 85%, rgba(0,0,0,0.34)),
-    linear-gradient(180deg, rgba(255,255,255,0.035), transparent 20%, transparent 80%, rgba(0,0,0,0.24));
-}
-
-.pvfd-compact-stage .pvfd-lcd::after {
-  content: "";
-  position: absolute;
-  inset: 7px 10px;
-  z-index: 5;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse at 50% 48%, rgba(var(--pvfd-light-rgb),0.055), transparent 56%),
-    linear-gradient(90deg, rgba(0,0,0,0.18), transparent 18%, transparent 82%, rgba(0,0,0,0.18));
-  box-shadow:
-    inset 0 0 16px rgba(var(--pvfd-light-deep-rgb),0.18),
-    inset 0 0 34px rgba(0,0,0,0.42);
-}
-
-.pvfd-compact-stage .pvfd-lcd-canvas {
-  z-index: 2 !important;
   background: #01050a !important;
-  filter: saturate(1.18) brightness(0.92) contrast(0.96) !important;
-}
-
-.pvfd-compact-stage .pvfd-lcd-pixelgrid {
-  z-index: 3 !important;
-  opacity: 0.72 !important;
-}
-
-.pvfd-compact-stage .pvfd-lcd-phosphor {
-  z-index: 4 !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.28) !important;
   box-shadow:
-    inset 0 0 14px rgba(var(--pvfd-light-rgb),0.28),
-    inset 0 0 5px rgba(var(--pvfd-light-rgb),0.34) !important;
+    0 0 0 1px rgba(0,0,0,0.84),
+    0 2px 4px rgba(0,0,0,0.34),
+    inset 0 0 0 1px rgba(0,0,0,0.70),
+    inset 0 0 11px rgba(var(--pvfd-light-deep-rgb),0.105) !important;
 }
 
-@media (max-width: 720px) {
-  .pvfd-compact-stage .pvfd-lcd::after {
-    inset: 5px 7px !important;
-  }
-}
-
-
-/* ==============================================================
-    version note v1.9-r1: OEL glass and side box hardfix
-   - Kill the stray gray glass patch on the main OEL bay.
-   - Nudge both side LCD boxes up ~3px, stretch them 3px taller downward,
-     and scale their internal type up slightly.
-   ============================================================== */
-.pvfd-compact-stage .pvfd-lcd::after {
-  content: none !important;
-  display: none !important;
-}
-
-.pvfd-lcd-side-left,
-.pvfd-lcd-side-right {
-  height: 101px !important;
-  min-height: 101px !important;
-  transform: translateY(-3px) !important;
-}
-
-.pvfd-side-label {
-  font-size: 12.6px !important;
-  margin-bottom: 8px !important;
-}
-
-.pvfd-side-readout,
-.pvfd-side-readouts-right .pvfd-side-readout {
-  font-size: 12.1px !important;
-  line-height: 1.10 !important;
-}
-
-.pvfd-side-readout b {
-  font-size: 10.1px !important;
-}
-
-.pvfd-side-model {
-  font-size: 11px !important;
-}
-
-.pvfd-side-badges span {
-  font-size: 8.5px !important;
-}
-
-.pvfd-side-vu {
-  top: 9px !important;
-  bottom: 25px !important;
-}
-
-@media (max-width: 1420px) {
-  .pvfd-lcd-side-left,
-  .pvfd-lcd-side-right {
-    height: 95px !important;
-    min-height: 95px !important;
-    transform: translateY(-3px) !important;
-  }
-  .pvfd-side-label {
-    font-size: 11.8px !important;
-  }
-  .pvfd-side-readout,
-  .pvfd-side-readouts-right .pvfd-side-readout {
-    font-size: 10.9px !important;
-  }
-  .pvfd-side-readout b {
-    font-size: 9.7px !important;
-  }
-}
-
-/* ==============================================================
-    version note v1.9-r1: OEL glass and side box hardfix
-   - Hard-remove the gray translucent glass patch on the center OEL bay.
-   - Side LCD boxes now occupy the same vertical language as the nearby side
-     controls: lifted higher, extended downward, and larger internal text.
-   - Left side LCD no longer shows the Pioneer model-name line.
-   ============================================================== */
 .pvfd-compact-stage .pvfd-lcd::before,
 .pvfd-compact-stage .pvfd-lcd::after {
   content: none !important;
   display: none !important;
-  opacity: 0 !important;
-  background: none !important;
-  box-shadow: none !important;
 }
 
-.pvfd-compact-stage .pvfd-lcd-phosphor {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  box-shadow: none !important;
-  background: none !important;
-}
-
-.pvfd-compact-stage .pvfd-lcd {
-  background: #01050a !important;
-  border-color: rgba(var(--pvfd-light-mid-rgb),0.34) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(0,0,0,0.98),
-    inset 0 0 14px rgba(0, 45, 70, 0.54),
-    0 0 0 1px rgba(255,255,255,0.035),
-    0 0 10px rgba(var(--pvfd-light-deep-rgb),0.15) !important;
-}
-
+/* Canvas fills the full OEL pane — JS manages pixel resolution via sizeCanvas() */
 .pvfd-compact-stage .pvfd-lcd-canvas {
-  background: transparent !important;
-  filter: saturate(1.22) brightness(0.94) contrast(0.97) !important;
+  position: absolute !important;
+  z-index: 2 !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #02101c !important;
+}
+
+/* Side readout LCD panels */
+.pvfd-lcd-side {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 36%, rgba(var(--pvfd-light-rgb), 0.085), transparent 62%),
+    linear-gradient(180deg, rgba(4, 15, 25, 0.98), rgba(1, 6, 12, 0.99)) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.28) !important;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.84),
+    0 2px 4px rgba(0,0,0,0.34),
+    inset 0 0 0 1px rgba(0,0,0,0.70),
+    inset 0 0 11px rgba(var(--pvfd-light-deep-rgb),0.105) !important;
+}
+
+/* Dot-matrix glass texture */
+.pvfd-lcd-side::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-light-rgb), 0.11) 0 0.62px, transparent 0.78px);
+  background-size: 3px 3px;
+  mix-blend-mode: normal;
+  opacity: 0.36;
+}
+
+/* Edge shimmer */
+.pvfd-lcd-side::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0.34;
+  background:
+    linear-gradient(90deg, rgba(var(--pvfd-light-rgb), 0.045), transparent 20%, transparent 80%, rgba(var(--pvfd-light-rgb), 0.030)),
+    linear-gradient(180deg, rgba(255,255,255,0.025), transparent 28%, transparent 78%, rgba(0,0,0,0.30));
 }
 
 .pvfd-lcd-side-left,
 .pvfd-lcd-side-right {
-  height: 112px !important;
-  min-height: 112px !important;
+  height: 116px !important;
+  min-height: 116px !important;
   transform: translateY(-8px) !important;
-  padding: 10px 13px 10px !important;
+  padding: 10px 13px 8px !important;
+  box-sizing: border-box;
+}
+
+/* Left panel: flex column so badges float to the bottom */
+.pvfd-lcd-side-left {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
 }
 
 .pvfd-lcd-side-left .pvfd-side-model {
@@ -2113,179 +1008,6 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   left: auto !important;
   right: 13px !important;
   bottom: 7px !important;
-}
-
-.pvfd-side-label {
-  font-size: 13.2px !important;
-  line-height: 1.05 !important;
-  margin-bottom: 8px !important;
-}
-
-.pvfd-side-readout,
-.pvfd-side-readouts-right .pvfd-side-readout {
-  grid-template-columns: 44px minmax(0, 1fr) !important;
-  gap: 7px !important;
-  font-size: 12.6px !important;
-  line-height: 1.12 !important;
-  margin-bottom: 5px !important;
-  letter-spacing: 0.72px !important;
-}
-
-.pvfd-side-readout b {
-  font-size: 10.7px !important;
-  letter-spacing: 0.95px !important;
-}
-
-.pvfd-lcd-side-left .pvfd-side-badges {
-  left: 13px !important;
-  right: auto !important;
-  bottom: 9px !important;
-}
-
-.pvfd-lcd-side-right .pvfd-side-badges {
-  bottom: 9px !important;
-}
-
-.pvfd-side-badges span {
-  font-size: 9px !important;
-  line-height: 12px !important;
-  padding: 0 4px !important;
-}
-
-.pvfd-side-readouts-right {
-  padding-right: 45px !important;
-}
-
-.pvfd-side-vu {
-  top: 9px !important;
-  bottom: 26px !important;
-  right: 12px !important;
-  width: 27px !important;
-}
-
-@media (max-width: 1420px) {
-  .pvfd-lcd-side-left,
-  .pvfd-lcd-side-right {
-    height: 106px !important;
-    min-height: 106px !important;
-    transform: translateY(-7px) !important;
-    padding: 9px 11px 9px !important;
-  }
-  .pvfd-side-label {
-    font-size: 12.2px !important;
-    margin-bottom: 7px !important;
-  }
-  .pvfd-side-readout,
-  .pvfd-side-readouts-right .pvfd-side-readout {
-    grid-template-columns: 38px minmax(0, 1fr) !important;
-    font-size: 11.2px !important;
-    gap: 5px !important;
-    margin-bottom: 4px !important;
-  }
-  .pvfd-side-readout b {
-    font-size: 9.6px !important;
-  }
-  .pvfd-side-badges span {
-    font-size: 8px !important;
-    line-height: 11px !important;
-  }
-  .pvfd-side-readouts-right {
-    padding-right: 38px !important;
-  }
-  .pvfd-side-vu {
-    right: 9px !important;
-    width: 23px !important;
-  }
-}
-
-/* ==============================================================
-    version note v2.0-r1: OEL pixel grid and side box clearance
-   - Restore a uniform cyan pixel-mask over the full center OEL window so the
-     right side does not wash out into a flat bright slab.
-   - Give both side LCDs a matching blue dot-matrix glass texture.
-   - Reflow the left LIVE/VFD badges so they stop covering the bottom readout.
-   ============================================================== */
-.pvfd-compact-stage .pvfd-lcd-canvas {
-  image-rendering: pixelated !important;
-  image-rendering: crisp-edges !important;
-}
-
-.pvfd-compact-stage .pvfd-lcd-pixelgrid {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 0.92 !important;
-  z-index: 6 !important;
-  pointer-events: none !important;
-  mix-blend-mode: multiply !important;
-  background-image:
-    repeating-linear-gradient(0deg,
-      rgba(0, 0, 0, 0.00) 0px,
-      rgba(0, 0, 0, 0.00) 2px,
-      rgba(0, 0, 0, 0.76) 2px,
-      rgba(0, 0, 0, 0.76) 3px),
-    repeating-linear-gradient(90deg,
-      rgba(0, 0, 0, 0.00) 0px,
-      rgba(0, 0, 0, 0.00) 2px,
-      rgba(0, 0, 0, 0.62) 2px,
-      rgba(0, 0, 0, 0.62) 3px),
-    radial-gradient(circle at 50% 50%, rgba(var(--pvfd-light-rgb), 0.10) 0 0.65px, transparent 0.75px) !important;
-  background-size: 3px 3px, 3px 3px, 3px 3px !important;
-}
-
-.pvfd-lcd-side {
-  background:
-    radial-gradient(ellipse at 50% 36%, rgba(var(--pvfd-light-rgb), 0.085), transparent 62%),
-    linear-gradient(180deg, rgba(4, 15, 25, 0.98), rgba(1, 6, 12, 0.99)) !important;
-}
-
-.pvfd-lcd-side::before {
-  content: "" !important;
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 5 !important;
-  pointer-events: none !important;
-  opacity: 0.78 !important;
-  mix-blend-mode: normal !important;
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-light-rgb), 0.13) 0 0.7px, transparent 0.85px),
-    repeating-linear-gradient(0deg,
-      transparent 0px,
-      transparent 2px,
-      rgba(0, 0, 0, 0.52) 2px,
-      rgba(0, 0, 0, 0.52) 3px),
-    repeating-linear-gradient(90deg,
-      transparent 0px,
-      transparent 2px,
-      rgba(0, 0, 0, 0.42) 2px,
-      rgba(0, 0, 0, 0.42) 3px) !important;
-  background-size: 3px 3px, 3px 3px, 3px 3px !important;
-}
-
-.pvfd-lcd-side::after {
-  content: "" !important;
-  position: absolute !important;
-  inset: 0 !important;
-  z-index: 6 !important;
-  pointer-events: none !important;
-  opacity: 0.34 !important;
-  background:
-    linear-gradient(90deg, rgba(var(--pvfd-light-rgb), 0.045), transparent 20%, transparent 80%, rgba(var(--pvfd-light-rgb), 0.030)),
-    linear-gradient(180deg, rgba(255,255,255,0.025), transparent 28%, transparent 78%, rgba(0,0,0,0.30)) !important;
-}
-
-.pvfd-lcd-side-left,
-.pvfd-lcd-side-right {
-  height: 116px !important;
-  min-height: 116px !important;
-  transform: translateY(-8px) !important;
-  padding: 10px 13px 8px !important;
-}
-
-.pvfd-lcd-side-left {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: stretch !important;
-  justify-content: flex-start !important;
 }
 
 .pvfd-lcd-side-left .pvfd-side-badges {
@@ -2304,526 +1026,187 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   margin-bottom: 4px !important;
 }
 
+/* Right panel: overflow + isolate keep VU repaints from tearing the footer chrome */
+.pvfd-lcd-side-right {
+  overflow: hidden !important;
+  isolation: isolate !important;
+}
+
+.pvfd-lcd-side-right .pvfd-side-badges {
+  bottom: 9px !important;
+}
+
+.pvfd-lcd-side-right .pvfd-side-model {
+  color: var(--pvfd-green);
+}
+
+/* Side panel z-stack anchors */
+.pvfd-side-label,
+.pvfd-side-model,
+.pvfd-side-badges,
+.pvfd-side-vu {
+  position: relative;
+  z-index: 8;
+}
+
 .pvfd-side-label {
+  color: var(--pvfd-cyan) !important;
+  font-family: "Share Tech Mono", "VT323", monospace;
   font-size: 13px !important;
+  letter-spacing: 1.2px;
+  line-height: 1.05;
+  text-shadow: var(--pvfd-glow-cyan) !important;
   margin-bottom: 7px !important;
+}
+
+.pvfd-side-model {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  color: var(--pvfd-cyan-mid) !important;
+  font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: 11px !important;
+  letter-spacing: 0.8px;
+  text-shadow: var(--pvfd-glow-cyan) !important;
+  max-width: calc(100% - 76px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pvfd-side-badges {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 5px;
+}
+
+.pvfd-side-badges span {
+  color: var(--pvfd-cyan) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.82) !important;
+  background: rgba(var(--pvfd-light-rgb), 0.11) !important;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 9px !important;
+  line-height: 12px !important;
+  padding: 0 4px !important;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-shadow: var(--pvfd-glow-cyan) !important;
 }
 
 .pvfd-side-readout,
 .pvfd-side-readouts-right .pvfd-side-readout {
-  font-size: 12.2px !important;
-  line-height: 1.08 !important;
+  position: relative;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) !important;
+  gap: 7px !important;
+  align-items: center;
+  min-width: 0;
   margin-bottom: 4px !important;
+  color: var(--pvfd-cyan) !important;
+  font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: 12.2px !important;
+  letter-spacing: 0.72px !important;
+  line-height: 1.08 !important;
+  text-shadow: var(--pvfd-glow-cyan) !important;
 }
 
 .pvfd-side-readout b {
+  color: var(--pvfd-cyan-mid) !important;
   font-size: 10.5px !important;
+  letter-spacing: 0.95px !important;
+  text-shadow: var(--pvfd-glow-cyan) !important;
+  font-weight: 700;
 }
 
-@media (max-width: 1420px) {
-  .pvfd-lcd-side-left,
-  .pvfd-lcd-side-right {
-    height: 110px !important;
-    min-height: 110px !important;
-    transform: translateY(-7px) !important;
-    padding: 9px 11px 8px !important;
-  }
-  .pvfd-side-label {
-    font-size: 12px !important;
-    margin-bottom: 6px !important;
-  }
-  .pvfd-side-readout,
-  .pvfd-side-readouts-right .pvfd-side-readout {
-    font-size: 10.8px !important;
-    line-height: 1.06 !important;
-    margin-bottom: 3px !important;
-  }
-  .pvfd-side-readout b {
-    font-size: 9.4px !important;
-  }
-  .pvfd-lcd-side-left .pvfd-side-badges {
-    margin-top: auto !important;
-  }
+.pvfd-side-readout span {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
 }
 
-/* ==============================================================
-    version note v2.1-r1: clean OEL LCD treatment
-   - Remove the black line grid overlay from the center OEL window.
-   - Keep side/meta glass dotted and cyan-biased without drawing dark lattice
-     lines over the LCD artwork.
-   ============================================================== */
-.pvfd-compact-stage .pvfd-lcd-pixelgrid {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  background: none !important;
+.pvfd-side-readouts-right {
+  position: relative;
+  z-index: 8;
+  padding-right: 45px !important;
+  contain: paint;
 }
 
-.pvfd-meta-lcd::before,
-.pvfd-lcd-side::before {
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-light-rgb), 0.11) 0 0.62px, transparent 0.78px) !important;
-  background-size: 3px 3px !important;
-  mix-blend-mode: screen !important;
-  opacity: 0.36 !important;
+.pvfd-side-vu {
+  position: absolute;
+  top: 9px !important;
+  right: 12px !important;
+  bottom: 26px !important;
+  width: 27px !important;
+  display: grid;
+  grid-template-rows: repeat(12, 1fr);
+  gap: 3px;
+  align-items: stretch;
+  contain: paint;
+  overflow: hidden;
+  isolation: isolate;
 }
 
-.pvfd-compact-stage .pvfd-lcd {
-  background: #01050a !important;
+/* JS toggles .on class per segment — transition must not be removed */
+.pvfd-side-vu span {
+  display: block;
+  background: linear-gradient(90deg, rgba(var(--pvfd-light-mid-rgb),0.10), rgba(var(--pvfd-light-rgb),0.82)) !important;
+  box-shadow: inset 0 0 4px rgba(var(--pvfd-light-rgb),0.30) !important;
+  opacity: 0.22;
+  transition: opacity 90ms linear;
 }
 
-/* v2.2: no black inset around the OEL canvas. The animation owns the full pane. */
-.pvfd-compact-stage .pvfd-lcd-canvas {
-  inset: 0 !important;
-  top: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  background: #02101c !important;
+.pvfd-side-vu span:nth-child(n+8) { opacity: 0.72; }
+
+.pvfd-side-vu span:nth-child(n+11) {
+  background: linear-gradient(90deg, rgba(var(--pvfd-light-rgb),0.16), rgba(var(--pvfd-light-rgb),0.96)) !important;
+  box-shadow: inset 0 0 4px rgba(var(--pvfd-light-rgb),0.38) !important;
+  opacity: 0.92;
 }
 
-.pvfd-compact-stage .pvfd-lcd-phosphor {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-}
+/* JS adds/removes .on to activate VU segments */
+.pvfd-side-vu span.on { filter: none; }
 
-/* ==============================================================
-    version note v2.3-r1: LCD presence balance
-   - Align the skinny metadata LCD to the full lower LCD group.
-   - Lift it only a couple pixels for breathing room above the OEL pane.
-   - Add a delicate inset shadow and faint cyan inner rectangle so the LCDs
-     feel seated in the chrome instead of pasted on top.
-   - Nudge the side button stacks inward to balance the narrower top display.
-   ============================================================== */
-.pvfd-display-stack {
-  align-items: center !important;
-  gap: 10px !important;
-}
-
-.pvfd-meta-lcd {
-  width: min(100%, 1120px) !important;
-  max-width: 1120px !important;
-  justify-self: center !important;
-  transform: translateY(-2px) !important;
-  border-color: rgba(var(--pvfd-light-mid-rgb), 0.28) !important;
-  box-shadow:
-    0 0 0 1px rgba(0,0,0,0.80),
-    0 2px 5px rgba(0,0,0,0.34),
-    inset 0 0 0 1px rgba(255,255,255,0.025),
-    inset 0 0 10px rgba(var(--pvfd-light-deep-rgb),0.12) !important;
-}
-
-.pvfd-meta-lcd::after {
-  content: "" !important;
-  display: block !important;
-  position: absolute !important;
-  inset: 3px 4px !important;
-  width: auto !important;
-  height: auto !important;
-  right: auto !important;
-  top: 3px !important;
-  bottom: 3px !important;
-  left: 4px !important;
-  z-index: 2 !important;
-  pointer-events: none !important;
-  opacity: 0.55 !important;
-  background: transparent !important;
-  border: 1px solid rgba(var(--pvfd-light-rgb),0.12) !important;
-  box-shadow:
-    inset 0 0 8px rgba(var(--pvfd-light-rgb),0.070),
-    0 0 4px rgba(var(--pvfd-light-rgb),0.045) !important;
-}
-
-.pvfd-compact-stage .pvfd-lcd,
-.pvfd-lcd-side {
-  box-shadow:
-    0 0 0 1px rgba(0,0,0,0.82),
-    0 2px 5px rgba(0,0,0,0.30),
-    inset 0 0 0 1px rgba(var(--pvfd-light-rgb),0.055),
-    inset 0 0 12px rgba(var(--pvfd-light-deep-rgb),0.105) !important;
-}
-
-.pvfd-mainrow > .pvfd-flank:nth-child(2) {
-  transform: translateX(8px) !important;
-}
-
-.pvfd-mainrow > .pvfd-flank:nth-child(4) {
-  transform: translateX(-8px) !important;
-}
-
-@media (max-width: 1420px) {
-  .pvfd-meta-lcd {
-    width: min(100%, 1000px) !important;
-    max-width: 1000px !important;
-  }
-  .pvfd-mainrow > .pvfd-flank:nth-child(2) {
-    transform: translateX(6px) !important;
-  }
-  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
-    transform: translateX(-6px) !important;
-  }
-}
-
-@media (max-width: 1160px) {
-  .pvfd-meta-lcd {
-    width: min(100%, 680px) !important;
-    max-width: 680px !important;
-  }
-  .pvfd-mainrow > .pvfd-flank:nth-child(2),
-  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
-    transform: none !important;
-  }
-}
-
-@media (max-width: 720px) {
-  .pvfd-meta-lcd {
-    width: min(88vw, 420px) !important;
-    max-width: 420px !important;
-    transform: translateY(-1px) !important;
-  }
-}
-
-/* ==============================================================
-    version note v2.4-r1: corrected LCD span
-   - v2.3 matched the hidden lower container, not the visible side-box span.
-     Use the same visual lower-stage dimensions so the top LCD ends at the
-     far outside edges of both side LCDs.
-   - Remove the drawn inner rectangle; keep the physical presence in the LCD
-     border/shadow itself so the glow stays delicate.
-   ============================================================== */
-.pvfd-display-stack {
-  --pvfd-stage-side-w: clamp(230px, 17vw, 285px);
-  --pvfd-stage-oel-w: clamp(500px, 31.5vw, 590px);
-  --pvfd-stage-gap-w: clamp(30px, 3.1vw, 56px);
-  align-items: center !important;
-  gap: 10px !important;
-}
-
-.pvfd-meta-lcd {
-  width: min(100%, calc(
-    var(--pvfd-stage-side-w) + var(--pvfd-stage-side-w) +
-    var(--pvfd-stage-oel-w) +
-    var(--pvfd-stage-gap-w) + var(--pvfd-stage-gap-w)
-  )) !important;
-  max-width: none !important;
-  justify-self: center !important;
-  transform: translateY(-3px) !important;
-  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.24) !important;
-  box-shadow:
-    0 0 0 1px rgba(0,0,0,0.78),
-    0 2px 4px rgba(0,0,0,0.32),
-    inset 0 0 0 1px rgba(var(--pvfd-light-rgb),0.060),
-    inset 0 0 9px rgba(var(--pvfd-light-deep-rgb),0.090) !important;
-}
-
-.pvfd-meta-lcd::after {
-  content: none !important;
-  display: none !important;
-  opacity: 0 !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  background: none !important;
-}
-
-.pvfd-compact-stage .pvfd-lcd,
-.pvfd-lcd-side {
-  border-color: rgba(var(--pvfd-light-mid-rgb), 0.24) !important;
-  box-shadow:
-    0 0 0 1px rgba(0,0,0,0.76),
-    0 2px 4px rgba(0,0,0,0.30),
-    inset 0 0 0 1px rgba(var(--pvfd-light-rgb),0.052),
-    inset 0 0 10px rgba(var(--pvfd-light-deep-rgb),0.085) !important;
-}
-
-.pvfd-mainrow > .pvfd-flank:nth-child(2) {
-  transform: translateX(12px) !important;
-}
-
-.pvfd-mainrow > .pvfd-flank:nth-child(4) {
-  transform: translateX(-12px) !important;
-}
-
-@media (max-width: 1420px) {
-  .pvfd-display-stack {
-    --pvfd-stage-side-w: clamp(200px, 18vw, 245px);
-    --pvfd-stage-oel-w: clamp(440px, 35vw, 530px);
-    --pvfd-stage-gap-w: clamp(18px, 2vw, 34px);
-  }
-  .pvfd-meta-lcd {
-    transform: translateY(-3px) !important;
-  }
-  .pvfd-mainrow > .pvfd-flank:nth-child(2) {
-    transform: translateX(8px) !important;
-  }
-  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
-    transform: translateX(-8px) !important;
-  }
-}
-
-@media (max-width: 1160px) {
-  .pvfd-meta-lcd {
-    width: min(92vw, 560px) !important;
-    transform: translateY(-2px) !important;
-  }
-  .pvfd-mainrow > .pvfd-flank:nth-child(2),
-  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
-    transform: none !important;
-  }
-}
-
-@media (max-width: 720px) {
-  .pvfd-meta-lcd {
-    width: min(88vw, 420px) !important;
-    transform: translateY(-1px) !important;
-  }
-}
-
-/* ==============================================================
-    version note v2.5-r1: LCD height and presence fix
-   - Restore the skinny LCD's full vertical size after v2.4 width matching.
-   - Keep the 2-3px lift for chrome clearance above the big LCD.
-   - Add the requested delicate inner cyan glow line without filling the LCD.
-   - Move side button stacks inward enough to read visually.
-   ============================================================== */
-.pvfd-display-stack {
-  align-items: stretch !important;
-  justify-items: center !important;
-  gap: 10px !important;
-}
-
-.pvfd-meta-lcd {
-  align-self: stretch !important;
-  height: 28px !important;
-  min-height: 28px !important;
-  max-height: 28px !important;
-  box-sizing: border-box !important;
-  transform: translateY(-3px) !important;
-  background:
-    linear-gradient(180deg, rgba(9, 25, 38, 0.96), rgba(1, 6, 12, 0.985)),
-    var(--pvfd-lcd-void) !important;
-  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.30) !important;
-  box-shadow:
-    0 0 0 1px rgba(0,0,0,0.86),
-    0 2px 4px rgba(0,0,0,0.38),
-    inset 0 0 0 1px rgba(0,0,0,0.74),
-    inset 0 0 10px rgba(var(--pvfd-light-deep-rgb),0.13) !important;
-}
-
-.pvfd-meta-lcd::after {
-  content: "" !important;
-  display: block !important;
-  position: absolute !important;
-  inset: 3px 4px !important;
-  z-index: 4 !important;
-  pointer-events: none !important;
-  opacity: 1 !important;
-  background: transparent !important;
-  border: 1px solid rgba(var(--pvfd-light-rgb),0.115) !important;
-  box-shadow:
-    inset 0 0 5px rgba(var(--pvfd-light-rgb),0.075),
-    0 0 3px rgba(var(--pvfd-light-rgb),0.050) !important;
-}
-
-.pvfd-compact-stage .pvfd-lcd,
-.pvfd-lcd-side {
-  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.28) !important;
-  box-shadow:
-    0 0 0 1px rgba(0,0,0,0.84),
-    0 2px 4px rgba(0,0,0,0.34),
-    inset 0 0 0 1px rgba(0,0,0,0.70),
-    inset 0 0 11px rgba(var(--pvfd-light-deep-rgb),0.105) !important;
-}
-
+/* Flank button stacks — translateX pulls them toward the display center */
 .pvfd-mainrow > .pvfd-flank:nth-child(2) {
   transform: translateX(20px) !important;
 }
-
 .pvfd-mainrow > .pvfd-flank:nth-child(4) {
   transform: translateX(-20px) !important;
 }
 
-@media (max-width: 1420px) {
-  .pvfd-meta-lcd {
-    height: 28px !important;
-    min-height: 28px !important;
-    max-height: 28px !important;
-    transform: translateY(-3px) !important;
-  }
-  .pvfd-mainrow > .pvfd-flank:nth-child(2) {
-    transform: translateX(14px) !important;
-  }
-  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
-    transform: translateX(-14px) !important;
-  }
+/* Repeat/shuffle tab state buttons */
+.pvfd-tab-preset[data-pvfd='shuffle']::after,
+.pvfd-tab-preset[data-pvfd='repeat']::after {
+  content: attr(data-label);
+  position: absolute;
+  right: 6px;
+  bottom: 1px;
+  font-size: 7px;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  color: rgba(6, 16, 24, 0.78);
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+.pvfd-tab-preset[data-pvfd='repeat'].repeat-context {
+  background: linear-gradient(180deg, #91e4ff 0%, #3fa9d8 100%) !important;
+  color: #061018 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.56), 0 0 8px rgba(78,180,216,0.55) !important;
+}
+.pvfd-tab-preset[data-pvfd='repeat'].repeat-one {
+  background: linear-gradient(180deg, #c8f088 0%, #80b840 100%) !important;
+  color: #061018 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.56), 0 0 8px rgba(184,232,150,0.58) !important;
+}
+.pvfd-tab-preset[data-pvfd='shuffle'].active {
+  background: linear-gradient(180deg, #6ed4f8 0%, #4eb4d8 100%) !important;
+  color: #061018 !important;
 }
 
-@media (max-width: 1160px) {
-  .pvfd-meta-lcd {
-    height: 26px !important;
-    min-height: 26px !important;
-    max-height: 26px !important;
-    transform: translateY(-2px) !important;
-  }
-  .pvfd-mainrow > .pvfd-flank:nth-child(2),
-  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
-    transform: none !important;
-  }
-}
-
-@media (max-width: 720px) {
-  .pvfd-meta-lcd {
-    height: 24px !important;
-    min-height: 24px !important;
-    max-height: 24px !important;
-    transform: translateY(-1px) !important;
-  }
-}
-
-/* ==============================================================
-    version note v2.6-r1: collapsed OEL-only layout
-   - In the collapsed layout, the lower display square is OEL-only.
-   - Later side-LCD display rules must not resurrect PLAYBACK/STATUS boxes
-     above or inside the large LCD.
-   ============================================================== */
-@media (max-width: 1160px) {
-  .pvfd-compact-stage {
-    width: min(100%, 680px) !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: minmax(0, 1fr) !important;
-    justify-items: center !important;
-    align-items: center !important;
-    overflow: hidden !important;
-  }
-
-  .pvfd-compact-stage > .pvfd-lcd {
-    grid-column: 1 !important;
-    grid-row: 1 !important;
-    width: min(92vw, 560px) !important;
-    aspect-ratio: 4 / 1 !important;
-    align-self: center !important;
-    justify-self: center !important;
-  }
-
-  .pvfd-compact-stage > .pvfd-lcd-side,
-  .pvfd-compact-stage > .pvfd-lcd-side-left,
-  .pvfd-compact-stage > .pvfd-lcd-side-right {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-    width: 0 !important;
-    min-width: 0 !important;
-    height: 0 !important;
-    min-height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: 0 !important;
-    transform: none !important;
-    overflow: hidden !important;
-  }
-}
-
-@media (max-width: 720px) {
-  .pvfd-compact-stage {
-    width: min(100%, 520px) !important;
-  }
-
-  .pvfd-compact-stage > .pvfd-lcd {
-    width: min(88vw, 420px) !important;
-  }
-}
-
-/* ==============================================================
-    version note v2.7-r1: flank collision guard
-   - Prevent SRC/DIM/OEL and DEMO/MENU/TINT from drifting over the side LCDs.
-   - Medium widths pull the flank buttons away from the display cluster.
-   - Tight widths drop the flank columns entirely and give the LCD cluster the
-     space, keeping the faceplate clean instead of stacked/overlapped.
-   ============================================================== */
-@media (max-width: 1500px) and (min-width: 1321px) {
-  .pvfd-mainrow > .pvfd-flank:nth-child(2) {
-    transform: translateX(-6px) !important;
-  }
-
-  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
-    transform: translateX(6px) !important;
-  }
-}
-
-@media (max-width: 1320px) {
-  .pvfd-mainrow {
-    grid-template-columns: 118px minmax(0, 1fr) 118px !important;
-    gap: 8px !important;
-  }
-
-  .pvfd-mainrow > .pvfd-flank {
-    display: none !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-    width: 0 !important;
-    min-width: 0 !important;
-    transform: none !important;
-  }
-}
-
-@media (max-width: 1200px) {
-  .pvfd-mainrow {
-    grid-template-columns: 108px minmax(0, 1fr) 108px !important;
-    gap: 7px !important;
-  }
-}
-
-@media (max-width: 900px) {
-  .pvfd-mainrow {
-    grid-template-columns: 88px minmax(0, 1fr) 88px !important;
-    gap: 6px !important;
-  }
-}
-
-@media (max-width: 1160px) {
-  .pvfd-mainrow {
-    grid-template-columns: clamp(82px, 9vw, 108px) 38px minmax(0, 1fr) 38px clamp(82px, 9vw, 108px) !important;
-    gap: 5px !important;
-  }
-
-  .pvfd-mainrow > .pvfd-flank {
-    display: flex !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-    width: auto !important;
-    min-width: 34px !important;
-    transform: none !important;
-    gap: 6px !important;
-  }
-
-  .pvfd-pill {
-    min-height: 22px !important;
-    padding: 3px 0 !important;
-    font-size: 8px !important;
-  }
-}
-
-@media (max-width: 900px) {
-  .pvfd-mainrow {
-    grid-template-columns: 76px 34px minmax(0, 1fr) 34px 76px !important;
-    gap: 4px !important;
-  }
-
-  .pvfd-mainrow > .pvfd-flank {
-    min-width: 32px !important;
-    gap: 5px !important;
-  }
-}
-
-/* ==============================================================
-    version note v2.8-r1: library legibility
-   - The library header lives on a dark panel, but the older nav rule colored
-     every nav text label dark like it was sitting on chrome. Keep the VFD
-     styling, but make Your Library / Create / Recents readable.
-   ============================================================== */
+/* Library header legibility on the dark nav panel */
 .Root__nav-bar [aria-label*="Your Library" i],
 .Root__nav-bar [aria-label*="Create" i],
 .Root__nav-bar [aria-label*="Recents" i],
@@ -2886,6 +1269,207 @@ nav[aria-label="Main"] button[aria-label*="Recents" i] {
   box-shadow:
     inset 0 0 6px rgba(var(--pvfd-light-deep-rgb),0.10),
     0 0 4px rgba(0,0,0,0.30) !important;
+}
+
+
+/* ── Responsive breakpoints ──────────────────────────────────────────── */
+
+/* Compact stage and side panels shrink at 1420px */
+@media (max-width: 1420px) {
+  .pvfd-display-stack {
+    --pvfd-stage-side-w: clamp(200px, 18vw, 245px);
+    --pvfd-stage-oel-w: clamp(440px, 35vw, 530px);
+    --pvfd-stage-gap-w: clamp(18px, 2vw, 34px);
+  }
+  .pvfd-compact-stage {
+    width: min(100%, 1000px) !important;
+    height: 120px !important;
+    grid-template-columns: clamp(200px, 18vw, 245px) auto clamp(200px, 18vw, 245px) !important;
+    column-gap: clamp(18px, 2vw, 34px) !important;
+  }
+  .pvfd-compact-stage .pvfd-lcd {
+    width: clamp(440px, 35vw, 530px) !important;
+  }
+  .pvfd-lcd-side-left,
+  .pvfd-lcd-side-right {
+    height: 110px !important;
+    min-height: 110px !important;
+    transform: translateY(-7px) !important;
+    padding: 9px 11px 8px !important;
+  }
+  .pvfd-side-label { font-size: 12px !important; margin-bottom: 6px !important; }
+  .pvfd-side-readout,
+  .pvfd-side-readouts-right .pvfd-side-readout {
+    font-size: 10.8px !important;
+    line-height: 1.06 !important;
+    margin-bottom: 3px !important;
+  }
+  .pvfd-side-readout b { font-size: 9.4px !important; }
+  .pvfd-lcd-side-left .pvfd-side-badges { margin-top: auto !important; }
+  .pvfd-meta-lcd {
+    height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+    transform: translateY(-3px) !important;
+  }
+  .pvfd-mainrow > .pvfd-flank:nth-child(2) { transform: translateX(14px) !important; }
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) { transform: translateX(-14px) !important; }
+}
+
+/* At medium widths pull flanks away from the display cluster to avoid collision */
+@media (max-width: 1500px) and (min-width: 1321px) {
+  .pvfd-mainrow > .pvfd-flank:nth-child(2) { transform: translateX(-6px) !important; }
+  .pvfd-mainrow > .pvfd-flank:nth-child(4) { transform: translateX(6px) !important; }
+}
+
+/* Tighter meta LCD grid */
+@media (max-width: 1360px) {
+  .pvfd-meta-lcd {
+    grid-template-columns: minmax(250px, 1fr) clamp(104px, 14vw, 220px) minmax(76px, 88px) !important;
+    gap: 6px !important;
+  }
+  .pvfd-meta-progress { min-width: 92px !important; }
+  .pvfd-meta-time { min-width: 76px !important; font-size: 10px !important; }
+}
+
+/* Flanks collapse; mainrow becomes knob / display / nav 3-column */
+@media (max-width: 1320px) {
+  .pvfd-mainrow {
+    grid-template-columns: 118px minmax(0, 1fr) 118px !important;
+    gap: 8px !important;
+  }
+  .pvfd-mainrow > .pvfd-flank {
+    display: none !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    transform: none !important;
+  }
+}
+
+/* Player height reduction and slightly narrower mainrow */
+@media (max-width: 1200px) {
+  :root { --pvfd-player-height: 232px; }
+  .pvfd-mainrow {
+    grid-template-columns: 108px minmax(0, 1fr) 108px !important;
+    gap: 7px !important;
+  }
+}
+
+/* Single-column OEL; side LCDs hidden; flanks re-appear at inner compact positions */
+@media (max-width: 1160px) {
+  .pvfd-compact-stage {
+    width: min(100%, 680px) !important;
+    grid-template-columns: minmax(0, auto) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    height: 118px !important;
+    min-height: 108px !important;
+    justify-items: center !important;
+    align-items: center !important;
+    overflow: hidden !important;
+  }
+  .pvfd-compact-stage > .pvfd-lcd {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: min(92vw, 560px) !important;
+    aspect-ratio: 4 / 1 !important;
+    align-self: center !important;
+    justify-self: center !important;
+  }
+  .pvfd-compact-stage > .pvfd-lcd-side,
+  .pvfd-compact-stage > .pvfd-lcd-side-left,
+  .pvfd-compact-stage > .pvfd-lcd-side-right {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    transform: none !important;
+    overflow: hidden !important;
+  }
+  .pvfd-meta-lcd {
+    grid-template-columns: minmax(0, 1fr) clamp(72px, 10vw, 110px) 72px !important;
+    gap: 5px !important;
+    width: min(92vw, 560px) !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    transform: translateY(-2px) !important;
+  }
+  .pvfd-meta-progress {
+    min-width: 64px !important;
+    transform: scaleX(0.92);
+    transform-origin: center;
+  }
+  .pvfd-meta-progress::before,
+  .pvfd-progress-text::before { height: 2px !important; }
+  .pvfd-meta-progress::after { width: 5px !important; height: 11px !important; }
+  .pvfd-meta-time { min-width: 70px !important; font-size: 9px !important; letter-spacing: 0.45px !important; }
+  .pvfd-mainrow {
+    grid-template-columns: clamp(82px, 9vw, 108px) 38px minmax(0, 1fr) 38px clamp(82px, 9vw, 108px) !important;
+    gap: 5px !important;
+  }
+  .pvfd-mainrow > .pvfd-flank {
+    display: flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    width: auto !important;
+    min-width: 34px !important;
+    transform: none !important;
+    gap: 6px !important;
+  }
+  .pvfd-pill {
+    min-height: 22px !important;
+    padding: 3px 0 !important;
+    font-size: 8px !important;
+  }
+}
+
+/* Meta LCD collapses to title + time only; scrub rail hidden */
+@media (max-width: 1020px) {
+  .pvfd-meta-lcd {
+    grid-template-columns: minmax(0, 1fr) 70px !important;
+  }
+  .pvfd-meta-progress { display: none !important; }
+}
+
+/* Narrower player and more compact mainrow with slim flanks */
+@media (max-width: 900px) {
+  :root { --pvfd-player-height: 214px; }
+  .pvfd-mainrow {
+    grid-template-columns: 76px 34px minmax(0, 1fr) 34px 76px !important;
+    gap: 4px !important;
+  }
+  .pvfd-mainrow > .pvfd-flank {
+    min-width: 32px !important;
+    gap: 5px !important;
+  }
+}
+
+/* Very narrow: OEL bay and meta LCD scale down together */
+@media (max-width: 720px) {
+  .pvfd-display-stack { gap: 7px !important; }
+  .pvfd-compact-stage {
+    width: min(100%, 520px) !important;
+    height: 92px !important;
+    min-height: 86px !important;
+  }
+  .pvfd-compact-stage > .pvfd-lcd {
+    width: min(88vw, 420px) !important;
+  }
+  .pvfd-meta-lcd {
+    width: min(88vw, 420px) !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    max-height: 24px !important;
+    transform: translateY(-1px) !important;
+  }
 }
 
 
@@ -3216,7 +1800,6 @@ html[data-pvfd-performance="eco"] .pvfd-library-search-box {
 
   .pvfd-mainrow > .pvfd-flank {
     display: none !important;
-    visibility: hidden !important;
     pointer-events: none !important;
     width: 0 !important;
     min-width: 0 !important;
@@ -4902,7 +3485,7 @@ html[data-pvfd-performance="eco"] .pvfd-library-search-box {
   text-shadow: none !important;
 }
 
-.pvfd-chassis[data-pvfd-performance="eco"] .pvfd-side-badges:not(.pvfd-side-eco-badge),
+.pvfd-chassis[data-pvfd-performance="eco"] .pvfd-side-badges,
 .pvfd-chassis[data-pvfd-performance="eco"] .pvfd-side-vu {
   opacity: 0.18 !important;
 }
@@ -5522,6 +4105,13 @@ html.pvfd-global-search-focused .main-topBar-container {
 /* v2.47-temp: cheaper Home/card hover paint so fast cursor sweeps do not stall the LCD. */
 .Root__main-view :is(.main-card-card, [data-encore-id="card"]) {
   contain: paint !important;
+  transition: none !important;
+}
+
+/* v2.61-perf: isolate Home quick-link tile paints without changing the visible hover skin. */
+.Root__main-view .view-homeShortcutsGrid-shortcut {
+  contain: paint !important;
+  transition: none !important;
 }
 
 .Root__main-view :is(.main-card-card, [data-encore-id="card"]):is(:hover, :focus-within) {
@@ -5530,6 +4120,7 @@ html.pvfd-global-search-focused .main-topBar-container {
   box-shadow:
     inset 0 0 0 1px rgba(var(--pvfd-light-mid-rgb), 0.26),
     inset 0 0 10px rgba(var(--pvfd-light-deep-rgb), 0.10) !important;
+  transition: none !important;
 }
 
 .Root__main-view :is(.main-card-card, [data-encore-id="card"]):is(:hover, :focus-within)
@@ -5823,4 +4414,1377 @@ html:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
     inset 0 0 12px rgba(var(--pvfd-light-deep-rgb), 0.20),
     0 0 18px rgba(var(--pvfd-light-rgb), 0.28),
     0 8px 18px rgba(0, 0, 0, 0.34) !important;
+}
+
+
+/* v2.59: Home LCD refinement.
+   Goal: keep the Home/page LCD background, but remove chunky boxed sections
+   and avoid over-targeting nested Spotify elements.
+   Strategy:
+   - style the page canvas and top tab strip
+   - flatten Spotify route backgrounds
+   - keep shelves mostly transparent
+   - keep cards light and clean, not armored blocks
+   - preserve art and inner utility elements
+*/
+
+.Root__main-view,
+.main-view-container,
+.main-view-container__scroll-node {
+  --pvfd-home-light-rgb: 168, 228, 244;
+  --pvfd-home-light-mid-rgb: 126, 212, 240;
+  --pvfd-home-light-deep-rgb: 78, 180, 216;
+  background:
+    linear-gradient(90deg, rgba(var(--pvfd-home-light-rgb), 0.032), transparent 16%, transparent 84%, rgba(var(--pvfd-home-light-rgb), 0.028)),
+    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-home-light-rgb), 0.09) 0 0.58px, transparent 0.74px),
+    linear-gradient(180deg, rgba(4, 14, 23, 0.99), rgba(1, 6, 12, 0.99)) !important;
+  background-color: #01060c !important;
+  background-size: 100% 100%, 3px 3px, 100% 100% !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.78),
+    inset 0 0 16px rgba(var(--pvfd-home-light-deep-rgb), 0.10),
+    inset 0 0 34px rgba(0, 0, 0, 0.38) !important;
+}
+
+/* Flatten Spotify's own Home plates so the page background is the real surface. */
+.Root__main-view :is(
+  [data-testid="home-page"],
+  [data-testid*="home" i],
+  [class*="home" i],
+  [class*="Home" i],
+  [class*="contentSpacing" i],
+  [class*="ContentSpacing" i],
+  [class*="under-main-view" i],
+  [class*="UnderMainView" i]
+) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.Root__main-view :is(
+  [data-testid="home-page"],
+  [data-testid*="home" i],
+  [class*="home" i],
+  [class*="Home" i],
+  [class*="contentSpacing" i],
+  [class*="ContentSpacing" i]
+)::before,
+.Root__main-view :is(
+  [data-testid="home-page"],
+  [data-testid*="home" i],
+  [class*="home" i],
+  [class*="Home" i],
+  [class*="contentSpacing" i],
+  [class*="ContentSpacing" i]
+)::after {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* Top tab area should feel integrated with the LCD page, but not boxed heavy. */
+.Root__main-view :is(
+  [role="tablist"],
+  [class*="filter" i][class*="list" i],
+  [class*="Filter" i][class*="List" i],
+  [class*="chip" i][class*="list" i],
+  [class*="Chip" i][class*="List" i]
+) {
+  background:
+    linear-gradient(90deg, rgba(var(--pvfd-home-light-rgb), 0.026), transparent 14%, transparent 86%, rgba(var(--pvfd-home-light-rgb), 0.022)),
+    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-home-light-rgb), 0.075) 0 0.56px, transparent 0.72px),
+    linear-gradient(180deg, rgba(4, 14, 23, 0.94), rgba(1, 6, 12, 0.97)) !important;
+  background-size: 100% 100%, 3px 3px, 100% 100% !important;
+  border-bottom: 1px solid rgba(var(--pvfd-home-light-mid-rgb), 0.10) !important;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.70) !important;
+}
+
+.Root__main-view :is(
+  [data-encore-id="chip"],
+  [role="tab"],
+  [class*="chip" i],
+  [class*="Chip" i]
+) {
+  background:
+    linear-gradient(90deg, rgba(var(--pvfd-home-light-rgb), 0.038), transparent 16%, transparent 84%, rgba(var(--pvfd-home-light-rgb), 0.032)),
+    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-home-light-rgb), 0.09) 0 0.58px, transparent 0.74px),
+    linear-gradient(180deg, rgba(6, 17, 27, 0.95), rgba(1, 7, 13, 0.98)) !important;
+  background-size: 100% 100%, 3px 3px, 100% 100% !important;
+  border: 1px solid rgba(var(--pvfd-home-light-mid-rgb), 0.22) !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.58) !important;
+}
+
+.Root__main-view :is(
+  [data-encore-id="chip"],
+  [role="tab"],
+  [class*="chip" i],
+  [class*="Chip" i]
+) :is(span, p, div, a, button, [data-encore-id="text"]) {
+  color: var(--pvfd-cyan) !important;
+  text-shadow: 0 0 2px rgba(var(--pvfd-home-light-rgb), 0.36) !important;
+  font-family: var(--pvfd-font-vfd) !important;
+  letter-spacing: 0.8px !important;
+}
+
+/* Shelves/rows should not become boxed slabs. Keep them mostly transparent.
+   Split-rule: chrome applies to all; background kill skips elements with inline url()
+   (e.g. the artist About section whose image is an inline background-image URL). */
+.Root__main-view :is(
+  section,
+  [data-testid*="shelf" i],
+  [class*="shelf" i],
+  [class*="Shelf" i],
+  [class*="grid" i][class*="container" i],
+  [class*="Grid" i][class*="Container" i],
+  [class*="carousel" i],
+  [class*="Carousel" i]
+) {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.Root__main-view :is(
+  section,
+  [data-testid*="shelf" i],
+  [class*="shelf" i],
+  [class*="Shelf" i],
+  [class*="grid" i][class*="container" i],
+  [class*="Grid" i][class*="Container" i],
+  [class*="carousel" i],
+  [class*="Carousel" i]
+):not([style*="url("]) {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+/* Section titles get a light caption plate, not a whole boxed region. */
+.Root__main-view :is(
+  section h1,
+  section h2,
+  section h3,
+  [data-testid*="shelf" i] h1,
+  [data-testid*="shelf" i] h2,
+  [data-testid*="shelf" i] h3,
+  [class*="shelf" i] h1,
+  [class*="shelf" i] h2,
+  [class*="shelf" i] h3,
+  [class*="Shelf" i] h1,
+  [class*="Shelf" i] h2,
+  [class*="Shelf" i] h3
+) {
+  display: inline-block !important;
+  padding: 1px 8px 0 !important;
+  background:
+    linear-gradient(90deg, rgba(var(--pvfd-home-light-rgb), 0.026), transparent 18%, transparent 82%, rgba(var(--pvfd-home-light-rgb), 0.022)),
+    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-home-light-rgb), 0.07) 0 0.56px, transparent 0.72px),
+    linear-gradient(180deg, rgba(6, 17, 27, 0.88), rgba(1, 7, 13, 0.92)) !important;
+  background-size: 100% 100%, 3px 3px, 100% 100% !important;
+  border: 1px solid rgba(var(--pvfd-home-light-mid-rgb), 0.16) !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.50) !important;
+  color: #c9f8ff !important;
+  text-shadow: 0 0 2px rgba(var(--pvfd-home-light-rgb), 0.48) !important;
+  font-family: var(--pvfd-font-vfd) !important;
+  letter-spacing: 1.05px !important;
+}
+
+/* Card base reset — two rules intentionally split:
+   Rule 1 (no guard): clears color, border, shadow on all card-like elements including
+   inner nodes (card body, metadata, image containers) that share the "card" class token.
+   Rule 2 (:not([style*="url("]): kills background shorthand but skips elements that carry
+   an inline background-image URL — this guard is what keeps artist About photos visible,
+   since Spotify injects those as inline style="background-image: url(...)". */
+.Root__main-view :is(
+  .main-card-card,
+  [data-encore-id="card"],
+  [data-testid*="card" i],
+  [class*="card" i],
+  [class*="Card" i]
+) {
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+}
+.Root__main-view :is(
+  .main-card-card,
+  [data-encore-id="card"],
+  [data-testid*="card" i],
+  [class*="card" i],
+  [class*="Card" i]
+):not([style*="url("]) {
+  background: transparent !important;
+}
+
+/* Quick-link helper containers (not the individual shortcut tiles) are reset to transparent.
+   The actual homepage shortcut tiles (.view-homeShortcutsGrid-shortcut) are excluded here
+   so they keep their natural card background (#06121e) — without it, the hover state
+   changes from transparent to #101721 which is nearly indistinguishable. */
+.Root__main-view :is(
+  [class*="quick" i],
+  [class*="Quick" i],
+  [data-testid*="quick" i]
+):not(.view-homeShortcutsGrid-shortcut) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+}
+
+/* Subtle row separators to keep structure without boxing the whole page. */
+.Root__main-view :is(section, [data-testid*="shelf" i], [class*="shelf" i], [class*="Shelf" i]) + :is(section, [data-testid*="shelf" i], [class*="shelf" i], [class*="Shelf" i]) {
+  box-shadow: inset 0 1px 0 rgba(var(--pvfd-home-light-mid-rgb), 0.06) !important;
+}
+
+/* Card hover — dark navy + cyan outer glow.
+   Selector is intentionally narrow: only the stable outer-container identifiers.
+   Using [class*="card"] here would also match inner elements (cardMetadata, cardBody, etc.)
+   and apply the dark background to them, creating visible boxes around text on hover.
+   The :not([style*="url("]) guard skips cards with an inline background-image (About photos). */
+.Root__main-view :is(
+  .main-card-card,
+  [data-encore-id="card"]
+):is(:hover, :focus-within):not([style*="url("]) {
+  background: #101721 !important;
+  border-color: var(--pvfd-cyan-deep) !important;
+  outline: 1px solid rgba(78, 180, 216, 0.5) !important;
+  box-shadow: none !important;
+}
+
+/* Shortcut tile hover — cyan tint instead of the dark navy used for cards.
+   Tiles keep their #06121e base, so the tint is clearly visible. The real class
+   (.view-homeShortcutsGrid-shortcut) is used directly; [class*="shortcuts"] would
+   also match the grid container and other ancestors. */
+.Root__main-view .view-homeShortcutsGrid-shortcut:is(:hover, :focus-within) {
+  background: rgba(78, 180, 216, 0.18) !important;
+  border-color: var(--pvfd-cyan-deep) !important;
+  box-shadow: inset 0 0 0 1px rgba(78, 180, 216, 0.55) !important;
+  transition: none !important;
+}
+
+/* Kill Spotify's encore gray overlay on card/shortcut hover.
+   Spotify's encore system uses .e-10451-box--interactive:hover::after { background-color:
+   var(--background-highlight) } to apply a gray tint over interactive elements.
+   [class*="box--interactive"] catches that class regardless of the version prefix (e-10451, e-10310, etc.). */
+.Root__main-view :is(
+  .main-card-card,
+  [data-encore-id="card"],
+  [class*="quick" i],
+  [class*="Quick" i],
+  [data-testid*="shortcut" i],
+  .view-homeShortcutsGrid-shortcut
+):hover::after,
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"], .view-homeShortcutsGrid-shortcut) [class*="box--interactive" i]:hover::after,
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"], .view-homeShortcutsGrid-shortcut) [class*="box--interactive" i]:focus-within::after {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Kill CSS transitions on interactive children inside cards and quicklinks.
+   Spotify's encore system adds transition: background-color, box-shadow on interactive
+   descendants. On a fast cursor sweep, dozens of concurrent 200ms transitions run
+   simultaneously — causing the sweep lag on the home page. */
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"], .view-homeShortcutsGrid-shortcut) [class*="box--interactive" i],
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"], .view-homeShortcutsGrid-shortcut) [class*="box--interactive" i]::before,
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"], .view-homeShortcutsGrid-shortcut) [class*="box--interactive" i]::after {
+  transition: none !important;
+}
+
+/* Suppress hover highlight boxes on all non-button descendants inside cards.
+   Spotify's encore wraps interactive text (title, artist name) in hash-named divs that
+   receive background-color: var(--background-tinted-highlight) on hover — showing as
+   visible boxes over the card background. :not(button) catches those divs even when
+   Spotify marks them role="button". Only real <button> tags are excluded so the
+   chrome play button below can override its own background correctly. */
+.Root__main-view .main-card-card :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]):hover,
+.Root__main-view .main-card-card :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]):hover::after,
+.Root__main-view .main-card-card :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]):hover::before,
+.Root__main-view [data-encore-id="card"] :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]):hover,
+.Root__main-view [data-encore-id="card"] :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]):hover::after,
+.Root__main-view [data-encore-id="card"] :not(button):not(.main-card-PlayButtonContainer):not(svg):not(path):not([data-encore-id="icon"]):hover::before {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Direct row-card icon buttons stay native for now.
+   The random "Picked For You" / sponsored row uses a runtime structure that we
+   still need to capture live, so only the known main-card container path below
+   gets the chrome treatment. This keeps large-card hover cost low. */
+
+/* Container-based Home cards keep their chrome shell on the outer wrapper.
+   Clear the direct-button skin inside that wrapper so the two paths don't stack. */
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer :is([class*="button-primary__inner" i], .encore-bright-accent-set)[class*="button-icon-only" i] {
+  --background-base: transparent !important;
+  --background-highlight: transparent !important;
+  --background-press: transparent !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* ── Chrome play button ──────────────────────────────────────────────────────
+   Replaces Spotify's default floating gray circle (.main-card-PlayButtonContainer +
+   inner .e-10310-button--floating-background) with a shiny chrome capsule.
+   Structure: the outer div (.main-card-PlayButtonContainer) carries the chrome gradient;
+   the inner <button> is set transparent so chrome shows through. This avoids the bug
+   where hovering the button changed its own background while leaving the container
+   visually inconsistent ("gray backdrop disappears, leaving only the icon").
+   These rules come after the broad descendant suppression above, and have higher
+   specificity (4 class selectors vs 3+type), so they correctly re-apply box-shadow. */
+
+/* Container: chrome gradient + bevel edge */
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer {
+  background: linear-gradient(145deg,
+    #c8cdd8 0%, #8a9099 28%, #4a5260 60%, #787e8a 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  contain: paint !important;
+  transition: none !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.45),
+    0 3px 8px rgba(0, 0, 0, 0.56),
+    inset 0 1px 0 rgba(255, 255, 255, 0.40) !important;
+}
+
+/* Inner button/background layers: transparent so chrome from container shows through */
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer :is(button, [class*="button--floating-background" i], [class*="button-primary__inner" i]) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: inherit !important;
+}
+
+/* Play icon: cyan + phosphor glow */
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer svg,
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer path,
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer [data-encore-id="icon"] {
+  color: var(--pvfd-cyan) !important;
+  fill: var(--pvfd-cyan) !important;
+}
+
+/* Hover: brighter chrome, but without the scale / persistent compositor hint. */
+.Root__main-view :is(.main-card-card, .main-card-cardContainer, [data-encore-id="card"]) .main-card-PlayButtonContainer:is(:hover, :focus-within) {
+  background: linear-gradient(145deg,
+    #dde3ed 0%, #aab0be 28%, #6a7585 60%, #9ba3b0 100%) !important;
+  transition: none !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.3),
+    0 0 4px rgba(78, 180, 216, 0.20),
+    0 2px 7px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+}
+
+/* ── End chrome play button ──────────────────────────────────────────────── */
+
+/* Typography: crisp but not overcooked. */
+.Root__main-view :is(
+  .main-card-card,
+  [data-encore-id="card"],
+  [data-testid*="card" i],
+  [class*="card" i],
+  [class*="Card" i],
+  [class*="quick" i],
+  [class*="Quick" i]
+) :is(
+  h1, h2, h3, h4, a,
+  [data-encore-id="text"][data-encore-text-variant="titleLarge"],
+  [data-encore-id="text"][data-encore-text-variant="titleMedium"],
+  [data-encore-id="text"][data-encore-text-variant="titleSmall"]
+) {
+  color: #c9f8ff !important;
+  text-shadow: 0 0 2px rgba(var(--pvfd-home-light-rgb), 0.34) !important;
+  font-family: var(--pvfd-font-vfd) !important;
+}
+
+.Root__main-view :is(
+  .main-card-card,
+  [data-encore-id="card"],
+  [data-testid*="card" i],
+  [class*="card" i],
+  [class*="Card" i],
+  [class*="quick" i],
+  [class*="Quick" i]
+) :is(
+  p, span,
+  [data-encore-id="text"][data-encore-text-variant="bodySmall"],
+  [data-encore-id="text"][data-encore-text-variant="bodyMedium"]
+) {
+  color: #9ad9e7 !important;
+  text-shadow: none !important;
+}
+
+/* Preserve artwork/media. */
+.Root__main-view :is(img, picture, canvas, video) {
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+
+/* v2.60-proper: Album/entity header LCD cleanup, rebuilt correctly.
+   This does not turn the album title itself into a container.
+   The header becomes the LCD surface; title text stays naturally positioned and crisp.
+*/
+
+.Root__main-view :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+) {
+  --pvfd-album-light-rgb: 168, 228, 244;
+  --pvfd-album-light-mid-rgb: 126, 212, 240;
+  --pvfd-album-light-deep-rgb: 78, 180, 216;
+  /* Do not paint this container. Artist profiles use this layer for their banner image. */
+}
+
+
+/* Preserve entity-header background layers.
+   Artist profiles often render the portrait/banner through these background nodes.
+*/
+
+
+/* Album/header art safety.
+   Do not draw extra borders or black frames around entity artwork.
+*/
+
+/* Title fix: no title plate, no forced padding, no forced block behavior.
+   This restores natural placement while making the text sharper and less washed out. */
+.Root__main-view :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+) :is(
+  h1,
+  h2,
+  [data-encore-id="text"][data-encore-text-variant="titleLarge"],
+  [data-encore-id="text"][data-encore-text-variant="titleMedium"]
+) {
+  padding: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #e0fbff !important;
+  text-shadow:
+    0 0 2px rgba(var(--pvfd-album-light-rgb), 0.46),
+    0 0 7px rgba(var(--pvfd-album-light-deep-rgb), 0.18) !important;
+  font-family: var(--pvfd-font-vfd) !important;
+  letter-spacing: 0.15em !important;
+  font-weight: 400 !important;
+}
+
+/* Keep title wrappers neutral. Do not style them as panels. */
+.Root__main-view :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+) :is(
+  [class*="title" i],
+  [class*="Title" i],
+  [data-testid*="entity-title" i]
+) {
+  background: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Type label + metadata: crisp cyan, no haze. */
+.Root__main-view :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+) :is(
+  p,
+  span,
+  a,
+  [data-encore-id="text"][data-encore-text-variant="bodySmall"],
+  [data-encore-id="text"][data-encore-text-variant="bodyMedium"]
+) {
+  color: #aeeaf6 !important;
+  text-shadow: 0 0 2px rgba(var(--pvfd-album-light-rgb), 0.20) !important;
+}
+
+/* Header action row should be LCD-adjacent but not a big separate slab. */
+.Root__main-view :is(
+  [class*="actionBar" i],
+  [class*="ActionBar" i],
+  [data-testid*="action-bar" i]
+) {
+  background:
+    linear-gradient(90deg, rgba(var(--pvfd-album-light-rgb), 0.018), transparent 16%, transparent 84%, rgba(var(--pvfd-album-light-rgb), 0.014)),
+    radial-gradient(circle at 1px 1px, rgba(var(--pvfd-album-light-rgb), 0.060) 0 0.54px, transparent 0.70px),
+    linear-gradient(180deg, rgba(3, 12, 20, 0.72), rgba(1, 7, 13, 0.84)) !important;
+  background-size: 100% 100%, 3px 3px, 100% 100% !important;
+  border-top: 1px solid rgba(var(--pvfd-album-light-mid-rgb), 0.08) !important;
+  border-bottom: 1px solid rgba(var(--pvfd-album-light-mid-rgb), 0.06) !important;
+  box-shadow: inset 0 0 8px rgba(var(--pvfd-album-light-deep-rgb), 0.035) !important;
+}
+
+/* Action-bar buttons get LCD cyan color with no background.
+   :not([style*="url("]) is critical — the artist About section places its photo as an
+   inline style="background-image: url(...)" on a button inside the action bar. Without
+   this guard, background-image: none would wipe the About photo entirely. */
+.Root__main-view :is(
+  [class*="actionBar" i],
+  [class*="ActionBar" i],
+  [data-testid*="action-bar" i]
+) :is(button, [role="button"], a):not([style*="url("]) {
+  background: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: var(--pvfd-cyan) !important;
+}
+
+
+/* v2.63: Entity type label alignment micro-fix.
+   Nudge the small overline label, like Album / EP / Single, to the right
+   without touching the main title layout again.
+*/
+
+.Root__main-view :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+) :is(
+  [class*="eyebrow" i],
+  [class*="overline" i],
+  [class*="pretitle" i],
+  [class*="entityType" i],
+  [class*="entity-type" i]
+) {
+  margin-left: 12px !important;
+  padding-left: 0 !important;
+  transform: none !important;
+  text-indent: 0 !important;
+}
+
+.Root__main-view :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+) :is(
+  p,
+  span,
+  [data-encore-id="text"][data-encore-text-variant="bodySmall"]
+):has(~ :is(
+  h1,
+  h2,
+  [data-encore-id="text"][data-encore-text-variant="titleLarge"],
+  [data-encore-id="text"][data-encore-text-variant="titleMedium"]
+)) {
+  margin-left: 12px !important;
+  padding-left: 0 !important;
+  display: inline-block !important;
+  transform: none !important;
+  text-indent: 0 !important;
+}
+
+
+/* v2.64: Proper artist profile image fix.
+   The old global panel rule no longer paints .main-entityHeader-container.
+   This fallback keeps artist profile header image/banner layers visible without touching albums.
+*/
+
+.Root__main-view:has(button[aria-label*="Follow" i]) :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.Root__main-view:has(button[aria-label*="Follow" i]) :is(
+  [class*="entityHeader"][class*="background" i],
+  [class*="EntityHeader"][class*="Background" i],
+  [class*="entityHeader"][class*="image" i],
+  [class*="EntityHeader"][class*="Image" i],
+  [class*="artist"][class*="background" i],
+  [class*="Artist"][class*="Background" i],
+  [class*="artist"][class*="image" i],
+  [class*="Artist"][class*="Image" i],
+  [data-testid*="artist" i][data-testid*="image" i],
+  [data-testid*="artist" i][data-testid*="background" i]
+) {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  filter: none !important;
+}
+
+
+/* v2.65: Search visibility + non-artist entity LCD header fix.
+   Fixes:
+   - visible typed search text/caret inside playlist/liked-song search fields
+   - removes remaining artwork framing
+   - restores LCD-style album/playlist headers while preserving artist banner images
+*/
+
+/* Search inputs in playlist/header/action areas: typed text and caret must always be visible. */
+.Root__main-view :is(
+  input[type="search"],
+  input[type="text"],
+  input[role="searchbox"],
+  [class*="searchInput" i],
+  [class*="SearchInput" i],
+  [class*="searchbar" i] input,
+  [class*="Searchbar" i] input,
+  [data-testid*="search" i] input
+) {
+  color: var(--pvfd-cyan) !important;
+  -webkit-text-fill-color: var(--pvfd-cyan) !important;
+  caret-color: var(--pvfd-cyan-glow) !important;
+  opacity: 1 !important;
+  text-shadow: 0 0 2px rgba(168, 228, 244, 0.42) !important;
+  font-family: var(--pvfd-font-pixel) !important;
+  letter-spacing: 0.8px !important;
+}
+
+.Root__main-view :is(
+  input[type="search"],
+  input[type="text"],
+  input[role="searchbox"],
+  [class*="searchInput" i],
+  [class*="SearchInput" i],
+  [class*="searchbar" i] input,
+  [class*="Searchbar" i] input,
+  [data-testid*="search" i] input
+)::placeholder {
+  color: rgba(168, 228, 244, 0.58) !important;
+  -webkit-text-fill-color: rgba(168, 228, 244, 0.58) !important;
+  opacity: 1 !important;
+}
+
+/* Search box shell: visible LCD input lane without hiding text behind transparent layers. */
+.Root__main-view :is(
+  [role="search"],
+  [class*="searchInput" i],
+  [class*="SearchInput" i],
+  [class*="searchbar" i],
+  [class*="Searchbar" i],
+  [data-testid*="search" i]
+) {
+  color: var(--pvfd-cyan) !important;
+  caret-color: var(--pvfd-cyan-glow) !important;
+}
+
+/* Remove black artwork frames on entity headers. */
+.Root__main-view :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+) :is(img, picture, canvas) {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+
+
+
+/* v2.66: Cover-art scoped entity headers + playlist search icon alignment.
+   Lessons learned:
+   - Artist pages may not expose a useful Follow aria-label. Do not detect artists that way.
+   - Album/playlist pages reliably have cover art in the entity header; artist banners are background layers.
+   - Therefore LCD header styling only applies to entity headers that actually contain cover art.
+*/
+
+/* Album / playlist / EP / single headers only: cover-art presence scopes this away from artist banners. */
+.Root__main-view :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+):has(:is(img, picture, [data-testid*="cover-art" i], [class*="coverArt" i], [class*="CoverArt" i])) {
+  background:
+    linear-gradient(90deg, rgba(168, 228, 244, 0.030), transparent 16%, transparent 84%, rgba(168, 228, 244, 0.026)),
+    radial-gradient(circle at 1px 1px, rgba(168, 228, 244, 0.090) 0 0.58px, transparent 0.74px),
+    linear-gradient(180deg, rgba(5, 16, 25, 0.96), rgba(1, 6, 12, 0.985)) !important;
+  background-color: #01060c !important;
+  background-size: 100% 100%, 3px 3px, 100% 100% !important;
+  border: 1px solid rgba(126, 212, 240, 0.16) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.62),
+    inset 0 0 18px rgba(78, 180, 216, 0.08),
+    inset 0 0 40px rgba(0, 0, 0, 0.34) !important;
+}
+
+/* Only kill album-color washes on cover-art entity pages. Artist banner layers stay alive. */
+.Root__main-view :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+):has(:is(img, picture, [data-testid*="cover-art" i], [class*="coverArt" i], [class*="CoverArt" i])) :is(
+  [class*="background" i],
+  [class*="Background" i],
+  [class*="gradient" i],
+  [class*="Gradient" i],
+  [class*="overlay" i],
+  [class*="Overlay" i]
+) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* Cover art should remain clean. No black outline/frame. */
+.Root__main-view :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+):has(:is(img, picture, [data-testid*="cover-art" i], [class*="coverArt" i], [class*="CoverArt" i])) :is(
+  img,
+  picture,
+  canvas
+) {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Title and metadata on cover-art entity pages: sharp LCD text, no title plate. */
+.Root__main-view :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+):has(:is(img, picture, [data-testid*="cover-art" i], [class*="coverArt" i], [class*="CoverArt" i])) :is(
+  h1,
+  h2,
+  [data-encore-id="text"][data-encore-text-variant="titleLarge"],
+  [data-encore-id="text"][data-encore-text-variant="titleMedium"]
+) {
+  padding: 0 !important;
+  margin-left: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #e0fbff !important;
+  text-shadow:
+    0 0 2px rgba(168, 228, 244, 0.48),
+    0 0 7px rgba(78, 180, 216, 0.18) !important;
+  font-family: var(--pvfd-font-vfd) !important;
+  font-weight: 400 !important;
+}
+
+/* Small Album / EP / Single / Playlist label nudged right, but only on cover-art entity headers. */
+.Root__main-view :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+):has(:is(img, picture, [data-testid*="cover-art" i], [class*="coverArt" i], [class*="CoverArt" i])) :is(
+  [class*="eyebrow" i],
+  [class*="overline" i],
+  [class*="pretitle" i],
+  [class*="entityType" i],
+  [class*="entity-type" i]
+) {
+  margin-left: 12px !important;
+  color: #b7edf8 !important;
+  text-shadow: none !important;
+}
+
+/* Playlist / Liked Songs search: keep the magnifier on the left and typed text visible. */
+.Root__main-view :is(
+  [role="search"],
+  [class*="searchInput" i],
+  [class*="SearchInput" i],
+  [class*="searchbar" i],
+  [class*="Searchbar" i],
+  [class*="filterBox" i],
+  [class*="FilterBox" i],
+  [data-testid*="search" i]
+) {
+  position: relative !important;
+  color: var(--pvfd-cyan) !important;
+  caret-color: var(--pvfd-cyan-glow) !important;
+}
+
+.Root__main-view :is(
+  .x-filterBox-filterInput,
+  input[type="search"],
+  input[type="text"],
+  input[role="searchbox"],
+  [class*="searchInput" i] input,
+  [class*="SearchInput" i] input,
+  [class*="searchbar" i] input,
+  [class*="Searchbar" i] input,
+  [data-testid*="search" i] input
+) {
+  box-sizing: border-box !important;
+  padding-left: 30px !important;
+  padding-inline-start: 30px !important;
+  -webkit-padding-start: 30px !important;
+  padding-right: 8px !important;
+  padding-inline-end: 8px !important;
+  -webkit-padding-end: 8px !important;
+  text-align: left !important;
+  direction: ltr !important;
+  color: var(--pvfd-cyan) !important;
+  -webkit-text-fill-color: var(--pvfd-cyan) !important;
+  caret-color: var(--pvfd-cyan-glow) !important;
+}
+
+.Root__main-view :is(
+  .x-filterBox-searchIconContainer,
+  [class*="searchIcon" i],
+  [class*="SearchIcon" i]
+) {
+  position: absolute !important;
+  top: 50% !important;
+  left: 8px !important;
+  right: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  transform: translateY(-50%) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: none !important;
+}
+
+
+/* v2.67: Local Files LCD header + stable in-playlist search.
+   - Local Files has no cover art, so the cover-art-scoped header rule misses it.
+   - Playlist/Local Files search must be correct from CSS at load, not repaired by JS.
+   - The JS library-search reconciler is now scoped to the left nav only.
+*/
+
+/* Local Files / no-cover entity pages with an in-page search still get the LCD banner treatment. */
+.Root__main-view:has(:is(.x-filterBox-filterInput, input[type="search"], input[role="searchbox"])) :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+):not(:has(:is(img, picture, [data-testid*="cover-art" i], [class*="coverArt" i], [class*="CoverArt" i]))) {
+  background:
+    linear-gradient(90deg, rgba(168, 228, 244, 0.030), transparent 16%, transparent 84%, rgba(168, 228, 244, 0.026)),
+    radial-gradient(circle at 1px 1px, rgba(168, 228, 244, 0.090) 0 0.58px, transparent 0.74px),
+    linear-gradient(180deg, rgba(5, 16, 25, 0.96), rgba(1, 6, 12, 0.985)) !important;
+  background-color: #01060c !important;
+  background-size: 100% 100%, 3px 3px, 100% 100% !important;
+  border: 1px solid rgba(126, 212, 240, 0.16) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.62),
+    inset 0 0 18px rgba(78, 180, 216, 0.08),
+    inset 0 0 40px rgba(0, 0, 0, 0.34) !important;
+}
+
+.Root__main-view:has(:is(.x-filterBox-filterInput, input[type="search"], input[role="searchbox"])) :is(
+  .main-entityHeader-container,
+  [class*="entityHeader"][class*="container"],
+  [class*="EntityHeader"][class*="Container"],
+  [data-testid*="entity-header" i]
+):not(:has(:is(img, picture, [data-testid*="cover-art" i], [class*="coverArt" i], [class*="CoverArt" i]))) :is(
+  [class*="background" i],
+  [class*="Background" i],
+  [class*="gradient" i],
+  [class*="Gradient" i],
+  [class*="overlay" i],
+  [class*="Overlay" i]
+) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* In-page playlist / Liked Songs / Local Files search: stable size, icon left, no focus expansion. */
+.Root__main-view :is(.x-filterBox-filterInputContainer, [class*="filterBox" i], [class*="FilterBox" i]) {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  flex: 0 0 clamp(160px, 18vw, 230px) !important;
+  width: clamp(160px, 18vw, 230px) !important;
+  min-width: 160px !important;
+  max-width: 230px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  transform: none !important;
+  transition: none !important;
+  background:
+    linear-gradient(90deg, rgba(168, 228, 244, 0.024), transparent 20%, transparent 84%, rgba(168, 228, 244, 0.018)),
+    linear-gradient(180deg, rgba(0, 13, 21, 0.96), rgba(0, 4, 9, 0.99)) !important;
+  border: 1px solid rgba(126, 212, 240, 0.18) !important;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.82),
+    inset 0 0 7px rgba(78, 180, 216, 0.08) !important;
+}
+
+.Root__main-view :is(.x-filterBox-filterInputContainer, [class*="filterBox" i], [class*="FilterBox" i]):focus-within {
+  flex-basis: clamp(160px, 18vw, 230px) !important;
+  width: clamp(160px, 18vw, 230px) !important;
+  min-width: 160px !important;
+  max-width: 230px !important;
+  transform: none !important;
+  transition: none !important;
+  border-color: rgba(168, 228, 244, 0.42) !important;
+}
+
+.Root__main-view :is(.x-filterBox-filterInput, input[type="search"], input[role="searchbox"]) {
+  position: relative !important;
+  z-index: 2 !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 8px 0 30px !important;
+  padding-inline-start: 30px !important;
+  -webkit-padding-start: 30px !important;
+  padding-inline-end: 8px !important;
+  -webkit-padding-end: 8px !important;
+  text-align: left !important;
+  direction: ltr !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--pvfd-cyan) !important;
+  -webkit-text-fill-color: var(--pvfd-cyan) !important;
+  caret-color: var(--pvfd-cyan-glow) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+
+.Root__main-view :is(.x-filterBox-filterInput, input[type="search"], input[role="searchbox"])::placeholder {
+  color: rgba(168, 228, 244, 0.62) !important;
+  -webkit-text-fill-color: rgba(168, 228, 244, 0.62) !important;
+  opacity: 1 !important;
+}
+
+.Root__main-view .x-filterBox-searchIconContainer {
+  position: absolute !important;
+  z-index: 3 !important;
+  left: 8px !important;
+  right: auto !important;
+  top: 50% !important;
+  width: 16px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  min-height: 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: translateY(-50%) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  color: var(--pvfd-cyan-glow) !important;
+  pointer-events: none !important;
+}
+
+.Root__main-view .x-filterBox-searchIconContainer :is(svg, path) {
+  color: var(--pvfd-cyan-glow) !important;
+  fill: currentColor !important;
+  stroke: none !important;
+  filter: none !important;
+}
+
+
+/* v2.74: repaired static left-library search + Recents layout.
+   The previous block used descendant :has(), which matched every ancestor
+   containing the search box and destroyed the whole left library panel.
+   This version targets only:
+   - the search input container itself
+   - the immediate toolbar parent that directly contains the search box
+   - the Recents control itself
+*/
+
+/* Only the immediate toolbar row around the search box. Not every ancestor. */
+.Root__nav-bar :is(div, section):has(> .x-filterBox-filterInputContainer),
+nav[aria-label="Main"] :is(div, section):has(> .x-filterBox-filterInputContainer),
+[role="navigation"] :is(div, section):has(> .x-filterBox-filterInputContainer),
+.main-yourLibraryX-library :is(div, section):has(> .x-filterBox-filterInputContainer) {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Static left-library search box. */
+.Root__nav-bar .x-filterBox-filterInputContainer,
+nav[aria-label="Main"] .x-filterBox-filterInputContainer,
+[role="navigation"] .x-filterBox-filterInputContainer,
+.main-yourLibraryX-library .x-filterBox-filterInputContainer,
+.pvfd-library-search-box {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  flex: 1 1 0 !important;
+  width: auto !important;
+  min-width: 132px !important;
+  max-width: 220px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  background: linear-gradient(180deg, rgba(0, 13, 21, 0.96), rgba(0, 4, 9, 0.99)) !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.22) !important;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.82),
+    inset 0 0 7px rgba(var(--pvfd-light-deep-rgb), 0.09),
+    0 0 0 1px rgba(0, 0, 0, 0.42) !important;
+  transition: none !important;
+  contain: layout paint style !important;
+}
+
+.Root__nav-bar .x-filterBox-filterInputContainer:focus-within,
+nav[aria-label="Main"] .x-filterBox-filterInputContainer:focus-within,
+[role="navigation"] .x-filterBox-filterInputContainer:focus-within,
+.main-yourLibraryX-library .x-filterBox-filterInputContainer:focus-within,
+.pvfd-library-search-box:focus-within {
+  border-color: rgba(var(--pvfd-light-rgb), 0.62) !important;
+  background: linear-gradient(180deg, rgba(0, 18, 29, 0.98), rgba(0, 5, 11, 0.99)) !important;
+}
+
+.Root__nav-bar .x-filterBox-filterInput,
+nav[aria-label="Main"] .x-filterBox-filterInput,
+[role="navigation"] .x-filterBox-filterInput,
+.main-yourLibraryX-library .x-filterBox-filterInput,
+.pvfd-library-search-box .x-filterBox-filterInput {
+  position: relative !important;
+  z-index: 2 !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding-left: 34px !important;
+  padding-inline-start: 34px !important;
+  -webkit-padding-start: 34px !important;
+  padding-right: 8px !important;
+  padding-inline-end: 8px !important;
+  -webkit-padding-end: 8px !important;
+  text-indent: 0 !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--pvfd-cyan) !important;
+  -webkit-text-fill-color: var(--pvfd-cyan) !important;
+  caret-color: var(--pvfd-cyan-glow) !important;
+  text-shadow: none !important;
+  font-family: var(--pvfd-font-pixel) !important;
+  font-size: 12px !important;
+  line-height: 28px !important;
+}
+
+.Root__nav-bar .x-filterBox-filterInput::placeholder,
+nav[aria-label="Main"] .x-filterBox-filterInput::placeholder,
+[role="navigation"] .x-filterBox-filterInput::placeholder,
+.main-yourLibraryX-library .x-filterBox-filterInput::placeholder,
+.pvfd-library-search-box .x-filterBox-filterInput::placeholder {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  opacity: 0 !important;
+  text-shadow: none !important;
+}
+
+.Root__nav-bar .x-filterBox-overlay,
+.Root__nav-bar .x-filterBox-searchIconContainer,
+nav[aria-label="Main"] .x-filterBox-overlay,
+nav[aria-label="Main"] .x-filterBox-searchIconContainer,
+[role="navigation"] .x-filterBox-overlay,
+[role="navigation"] .x-filterBox-searchIconContainer,
+.main-yourLibraryX-library .x-filterBox-overlay,
+.main-yourLibraryX-library .x-filterBox-searchIconContainer,
+.pvfd-library-search-box .x-filterBox-overlay,
+.pvfd-library-search-box .x-filterBox-searchIconContainer {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+.Root__nav-bar .x-filterBox-searchIconContainer,
+nav[aria-label="Main"] .x-filterBox-searchIconContainer,
+[role="navigation"] .x-filterBox-searchIconContainer,
+.main-yourLibraryX-library .x-filterBox-searchIconContainer,
+.pvfd-library-search-box .x-filterBox-searchIconContainer {
+  position: absolute !important;
+  z-index: 3 !important;
+  left: 8px !important;
+  right: auto !important;
+  top: 50% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 16px !important;
+  width: 16px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  min-height: 16px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  transform: translateY(-50%) !important;
+  color: var(--pvfd-cyan-glow) !important;
+  pointer-events: none !important;
+}
+
+.Root__nav-bar .x-filterBox-searchIconContainer :is(svg, path),
+nav[aria-label="Main"] .x-filterBox-searchIconContainer :is(svg, path),
+[role="navigation"] .x-filterBox-searchIconContainer :is(svg, path),
+.main-yourLibraryX-library .x-filterBox-searchIconContainer :is(svg, path),
+.pvfd-library-search-box .x-filterBox-searchIconContainer :is(svg, path) {
+  color: var(--pvfd-cyan-glow) !important;
+  fill: currentColor !important;
+  stroke: none !important;
+  filter: none !important;
+}
+
+.Root__nav-bar .x-filterBox-overlay,
+nav[aria-label="Main"] .x-filterBox-overlay,
+[role="navigation"] .x-filterBox-overlay,
+.main-yourLibraryX-library .x-filterBox-overlay,
+.pvfd-library-search-box .x-filterBox-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Static Recents geometry. */
+.Root__nav-bar :is(button, [role="button"]):is([aria-label*="Recents" i], [title*="Recents" i], [data-testid*="recents" i], [class*="recents" i], [class*="Recents"]),
+nav[aria-label="Main"] :is(button, [role="button"]):is([aria-label*="Recents" i], [title*="Recents" i], [data-testid*="recents" i], [class*="recents" i], [class*="Recents"]),
+[role="navigation"] :is(button, [role="button"]):is([aria-label*="Recents" i], [title*="Recents" i], [data-testid*="recents" i], [class*="recents" i], [class*="Recents"]),
+.main-yourLibraryX-library :is(button, [role="button"]):is([aria-label*="Recents" i], [title*="Recents" i], [data-testid*="recents" i], [class*="recents" i], [class*="Recents"]),
+.pvfd-library-recents-control {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+  min-width: 86px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 8px !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  color: var(--pvfd-cyan) !important;
+  opacity: 1 !important;
+}
+
+/* Artist About media safety.
+   Do not let global image/background cleanup hide About photos/cards.
+*/
+.Root__main-view :is(
+  [data-testid*="artist" i],
+  [data-testid*="about" i],
+  [class*="artist" i],
+  [class*="Artist" i],
+  [class*="about" i],
+  [class*="About" i]
+) :is(img, picture, canvas, video) {
+  display: revert !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.Root__main-view :is(
+  [data-testid*="artist" i],
+  [data-testid*="about" i],
+  [class*="artist" i],
+  [class*="Artist" i],
+  [class*="about" i],
+  [class*="About" i]
+) :is(
+  [style*="background-image"],
+  [class*="image" i],
+  [class*="Image" i],
+  [class*="photo" i],
+  [class*="Photo" i],
+  [class*="background" i],
+  [class*="Background" i]
+) {
+  display: revert !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  filter: none !important;
+}
+
+
+/* v2.75: artist About image/background repair.
+   Spotify's artist About artwork is commonly rendered as CSS background-image
+   on generic div/card nodes, not as a normal <img>. Earlier background cleanup
+   rules can accidentally flatten those layers. This late rule restores visibility
+   for About / biography media without changing album headers or artist banners.
+*/
+
+.Root__main-view :is(
+  [data-testid*="about" i],
+  [data-testid*="biography" i],
+  [data-testid*="artist-about" i],
+  [class*="about" i],
+  [class*="About" i],
+  [class*="biography" i],
+  [class*="Biography" i],
+  [aria-label*="About" i]
+) {
+  visibility: visible !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+}
+
+/* Restore normal media elements inside About sections. */
+.Root__main-view :is(
+  [data-testid*="about" i],
+  [data-testid*="biography" i],
+  [data-testid*="artist-about" i],
+  [class*="about" i],
+  [class*="About" i],
+  [class*="biography" i],
+  [class*="Biography" i],
+  [aria-label*="About" i]
+) :is(img, picture, canvas, video) {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  max-width: 100% !important;
+  object-fit: cover !important;
+  filter: none !important;
+}
+
+/* Restore CSS-background image cards inside About sections. */
+.Root__main-view :is(
+  [data-testid*="about" i],
+  [data-testid*="biography" i],
+  [data-testid*="artist-about" i],
+  [class*="about" i],
+  [class*="About" i],
+  [class*="biography" i],
+  [class*="Biography" i],
+  [aria-label*="About" i]
+) :is(
+  [style*="background-image"],
+  [style*="background:"],
+  [class*="image" i],
+  [class*="Image" i],
+  [class*="photo" i],
+  [class*="Photo" i],
+  [class*="avatar" i],
+  [class*="Avatar" i],
+  [class*="media" i],
+  [class*="Media" i],
+  [class*="visual" i],
+  [class*="Visual" i],
+  [class*="card" i],
+  [class*="Card" i]
+) {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  filter: none !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* Do not let generic card/background cleanup make About picture cards transparent. */
+.Root__main-view :is(
+  [data-testid*="about" i],
+  [data-testid*="biography" i],
+  [data-testid*="artist-about" i],
+  [class*="about" i],
+  [class*="About" i],
+  [class*="biography" i],
+  [class*="Biography" i],
+  [aria-label*="About" i]
+) :is(
+  [style*="background-image"]
+)::before,
+.Root__main-view :is(
+  [data-testid*="about" i],
+  [data-testid*="biography" i],
+  [data-testid*="artist-about" i],
+  [class*="about" i],
+  [class*="About" i],
+  [class*="biography" i],
+  [class*="Biography" i],
+  [aria-label*="About" i]
+) :is(
+  [style*="background-image"]
+)::after {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* If Spotify uses an absolutely-positioned About image/backdrop, keep it behind text but visible. */
+.Root__main-view :is(
+  [data-testid*="about" i],
+  [data-testid*="biography" i],
+  [data-testid*="artist-about" i],
+  [class*="about" i],
+  [class*="About" i],
+  [class*="biography" i],
+  [class*="Biography" i],
+  [aria-label*="About" i]
+) :is(
+  [class*="background" i],
+  [class*="Background" i],
+  [class*="backdrop" i],
+  [class*="Backdrop" i]
+) {
+  visibility: visible !important;
+  opacity: 1 !important;
+  filter: none !important;
+  background-size: cover !important;
+  background-position: center center !important;
+}
+
+
+/* v2.76: catch-all for runtime-injected background images in the main view.
+   Spotify sets background-image/background URLs as inline styles at runtime.
+   Class-name selectors miss these when Spotify updates its DOM. Target the
+   style attribute directly so About photos, artist backdrops, and card art
+   cannot be hidden by earlier background-cleanup rules, regardless of class names.
+*/
+.Root__main-view [style*="background-image:"],
+.Root__main-view [style*="background-image :"],
+.Root__main-view [style*="background: url"],
+.Root__main-view [style*="background:url"] {
+  visibility: visible !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* Flicker containment for the right LCD panel.
+   mix-blend-mode: multiply on ::before forces full recomposition whenever JS
+   updates VU opacity or text readouts, causing a visible bottom-strip tear.
+   normal blend on this near-black background is visually indistinguishable. */
+.pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side-right {
+  overflow: hidden !important;
+  isolation: isolate !important;
+}
+.pvfd-chassis .pvfd-compact-stage > .pvfd-lcd-side-right::before {
+  mix-blend-mode: normal !important;
 }
