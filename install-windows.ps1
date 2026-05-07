@@ -38,7 +38,7 @@ try {
     Write-Warning "spicetify backup did not complete; continuing with apply."
 }
 
-spicetify config current_theme PioneerVFD color_scheme "Pioneer DEH-P7600MP" inject_css 1 inject_theme_js 1 replace_colors 1 overwrite_assets 1 expose_apis 1
+spicetify config current_theme PioneerVFD color_scheme "PioneerVFD" inject_css 1 inject_theme_js 1 replace_colors 1 overwrite_assets 1 expose_apis 1
 spicetify config extensions pioneerVFD.js
 spicetify apply
 
