@@ -352,6 +352,10 @@
       if (canvas) ctx = canvas.getContext("2d");
       if (ctx) ctx.imageSmoothingEnabled = false;
       sizeCanvas();
+      // v2.64-perf: belt-and-braces re-measure on next rAF in case the bar wasn't
+      // laid out yet on first attach. Without this, canvasCssW could stay 0 and
+      // the loop's safe-bail path would fire every frame until a window resize.
+      if (!canvasCssW || !canvasCssH) scheduleSizeCanvas();
       return true;
     }
 
@@ -365,6 +369,7 @@
       ctx = canvas.getContext("2d");
       if (ctx) ctx.imageSmoothingEnabled = false;
       sizeCanvas();
+      if (!canvasCssW || !canvasCssH) scheduleSizeCanvas();
       window.addEventListener("resize", scheduleSizeCanvas, { passive: true });
     }
     wireControls();
@@ -2400,7 +2405,20 @@
 
     syncCurrentTrackFromPlayer(false, ts);
 
-    const w = canvasCssW || canvas.clientWidth, h = canvasCssH || canvas.clientHeight;
+    // v2.64-perf: never read canvas.clientWidth/Height inline. That branch was a safety
+    // fallback when the size cache was 0, but reading clientWidth forces a synchronous
+    // style+layout flush. With Spotify's main-view mouseover delegate (tX) and React
+    // scheduler tick (MessagePort.onmessage P) both running on the same main thread,
+    // a per-frame forced flush from us was invalidating their layout caches and pushing
+    // their per-event cost into the 100ms+ range during home-quicklink horizontal sweeps
+    // (measured: pioneerVFD.js|loop = 98ms forcedLayout across 4 frames).
+    // If the cache is missing for any reason, schedule a sizeCanvas pass (which runs in
+    // its own rAF outside the hot loop) and bail this frame instead of forcing layout.
+    if (!canvasCssW || !canvasCssH) {
+      scheduleSizeCanvas();
+      return;
+    }
+    const w = canvasCssW, h = canvasCssH;
     const timing = getSampledPlaybackTiming(ts);
     const progressMs = getDisplayProgressMs(ts, timing);
     const tSec = progressMs / 1000;
@@ -2773,6 +2791,97 @@
     }
   }
 
+  // v2.67-perf: home-page hover/pointer event suppression
+  //              (extends v2.66 from quicklinks-only to full home-page cards).
+  //
+  // Background (diagnosed May 7, 2026 via window-capture event blocking A/B):
+  //   After leaving Home and returning, fast horizontal sweeps over the top
+  //   quick-link tiles produced 100-130ms longtasks paced at the user's hover
+  //   rate. Attribution from `long-animation-frame`:
+  //     - `xpui-modules.js | tX`  (DIV#main mouseover listener)  ~99% forced layout
+  //     - `xpui-modules.js | P`   (MessagePort.onmessage = React 18 scheduler)
+  //                               ~86% forced layout
+  //   Each pointer movement drove a chain of:
+  //     mouseover -> tX reads layout (forced flush) -> tX writes React state
+  //     -> React schedules commit -> P commits the fiber, writes DOM
+  //     -> next mouseover/pointerover/pointermove -> tX flushes again.
+  //
+  //   Diagnostic A/B (window-capture stopImmediatePropagation per type):
+  //     - block mouseover  alone -> still lags
+  //     - block pointerover alone -> still lags
+  //     - block pointermove alone -> still lags
+  //     - block ALL of {mouseover, mouseout, mouseenter, mouseleave,
+  //                     pointerover, pointerout, pointerenter, pointerleave,
+  //                     pointermove, mousemove} -> buttery smooth
+  //   Conclusion: Spotify's React commit work is fired redundantly by every
+  //   hover-class event, so silencing only one type leaves the others as backup
+  //   triggers. Blocking the entire family is the minimum sufficient set.
+  //
+  //   v2.65 (intra-tile mouseover coalescer) was insufficient: mouseover-only,
+  //   same-tile-only. Replaced by v2.66's full-family block on the quicklinks
+  //   grid. v2.67 extends the same proven block to the rest of the home page
+  //   (album/playlist cards and their chrome play-button containers), verified
+  //   via the same window-capture A/B method on the cards surface.
+  //
+  // What this DOES suppress (capture phase on `window`, scoped to the
+  // selectors below):
+  //     mouseover, mouseout, mouseenter, mouseleave,
+  //     pointerover, pointerout, pointerenter, pointerleave,
+  //     pointermove, mousemove.
+  //
+  // Scopes (any element matching closest() of these gets its hover events killed):
+  //   - `.view-homeShortcutsGrid-grid`         (top quicklink tiles)
+  //   - `[data-testid="home-page"] .main-card-card`
+  //   - `[data-testid="home-page"] [data-encore-id="card"]`
+  //   - `[data-testid="home-page"] .main-card-cardContainer`
+  //   - `[data-testid="home-page"] .main-card-PlayButtonContainer`
+  //
+  // What this does NOT touch:
+  //   - any event outside home (other pages unaffected; fix is gated by
+  //     `[data-testid="home-page"]` for the cards + a unique class for quicklinks)
+  //   - click, auxclick, dblclick, contextmenu (-> tile/card activation works)
+  //   - mousedown/up, pointerdown/up, touchstart/end (-> activation works)
+  //   - focusin/focusout, keydown/up (-> keyboard nav + focus rings work)
+  //   - drag, dragstart, dragend, dragover, drop (-> dnd unaffected)
+  //   - wheel, scroll (-> scrolling unaffected)
+  //   - CSS :hover (browser-internal, independent of JS event dispatch),
+  //     so the visible hover glow / play-button reveal still appear.
+  //
+  // Disable at runtime for A/B testing without a reinstall:
+  //     window.__pvfdDisableHoverBlock = true;
+  const PVFD_HOVER_BLOCK_TYPES = [
+    "mouseover", "mouseout", "mouseenter", "mouseleave",
+    "pointerover", "pointerout", "pointerenter", "pointerleave",
+    "pointermove", "mousemove"
+  ];
+  const PVFD_HOVER_BLOCK_SCOPE = [
+    ".view-homeShortcutsGrid-grid",
+    '[data-testid="home-page"] .main-card-card',
+    '[data-testid="home-page"] [data-encore-id="card"]',
+    '[data-testid="home-page"] .main-card-cardContainer',
+    '[data-testid="home-page"] .main-card-PlayButtonContainer'
+  ].join(", ");
+  let pvfdHoverBlockInstalled = false;
+  function pvfdHoverBlockHandler(e) {
+    if (window.__pvfdDisableHoverBlock) return;
+    const t = e.target;
+    if (!t || !t.closest) return;
+    if (!t.closest(PVFD_HOVER_BLOCK_SCOPE)) return;
+    e.stopImmediatePropagation();
+    e.stopPropagation();
+  }
+  function installShortcutHoverBlock() {
+    if (pvfdHoverBlockInstalled) return;
+    pvfdHoverBlockInstalled = true;
+    for (let i = 0; i < PVFD_HOVER_BLOCK_TYPES.length; i++) {
+      window.addEventListener(
+        PVFD_HOVER_BLOCK_TYPES[i],
+        pvfdHoverBlockHandler,
+        { capture: true, passive: true }
+      );
+    }
+  }
+
   function onHomeShortcutPointerStress(event) {
     const target = event && event.target;
     if (!target || !target.closest) return;
@@ -2837,6 +2946,8 @@
     document.addEventListener("focusout", (e) => {
       if (isGlobalSearchFocusTarget(e.target)) window.setTimeout(() => syncGlobalSearchFocus(), 0);
     }, true);
+
+    installShortcutHoverBlock();
 
     console.log("[PVFD] PioneerVFD online - LCD glow and responsive layout fixes loaded.");
   }
