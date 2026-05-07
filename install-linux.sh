@@ -39,7 +39,7 @@ spicetify backup >/dev/null 2>&1 || printf '%s\n' "Warning: spicetify backup did
 
 spicetify config \
   current_theme PioneerVFD \
-  color_scheme "Pioneer DEH-P7600MP" \
+  color_scheme "PioneerVFD" \
   inject_css 1 \
   inject_theme_js 1 \
   replace_colors 1 \
