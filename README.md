@@ -49,6 +49,12 @@ The extension saves the preferences users are likely to expect across Spotify la
 
 ## Install
 
+### No-Script Install
+
+1. Make sure you have Spicetify installed along with the Marketplace
+2. Search PioneerVFD on Spicetify Marketplace
+3. Click Install
+
 ### Windows quick install
 
 1. Download the latest release ZIP.
