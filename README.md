@@ -5,6 +5,9 @@ Miss the old 2000s Pioneer head units? Wish you could still have those dolphins 
 
 This is a Spicetify theme and extension that turns Spotify desktop into a 2000s Pioneer DEH-P7600MP-style VFD/LCD stereo interface.
 
+**Feedback Wanted:** Let me know what you think about this visualizer idea!
+https://www.youtube.com/watch?v=uJ62IlVMnT4
+
 ## Preview
 
 <img width="1280" height="720" alt="ultraspiritPIONEER" src="https://github.com/user-attachments/assets/04205af8-9910-4051-9833-66abd7600616" />
