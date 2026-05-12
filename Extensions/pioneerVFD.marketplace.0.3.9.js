@@ -602,7 +602,7 @@
     root.className = "pvfd-chassis";
     root.innerHTML = `
       <div class="pvfd-faceplate">
-        <div class="pvfd-faceplate-left">
+        <div style="display:flex;align-items:center;gap:14px;justify-content:flex-start;">
           <span class="pvfd-silk-eeq">EEQ</span>
           <span class="pvfd-silk-label">MOSFET 50W&times;4</span>
           <button class="pvfd-silk-lyrics" type="button" data-pvfd="lyrics" aria-label="Open song lyrics" title="Open lyrics">Lyrics</button>
@@ -628,11 +628,11 @@
             <span class="pvfd-vbar pvfd-vbar-right-air"></span>
           </div>
         </div>
-        <div class="pvfd-faceplate-right">
+        <div style="display:flex;align-items:center;gap:12px;justify-content:flex-end;">
           <span class="pvfd-silk-label">WMA / MP3</span>
           <span class="pvfd-silk-dab">DAB CONTROL</span>
-          <div class="pvfd-open-wrap">
-            <span class="pvfd-silk-open">OPEN</span>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <span style="color:#d8dce0;font-size:10px;font-weight:700;letter-spacing:0.5px;">OPEN</span>
             <div class="pvfd-open-led" data-pvfd="open" title="Open device picker"></div>
           </div>
         </div>
@@ -759,206 +759,6 @@
     return root;
   }
 
-  function setImportantStyle(el, name, value) {
-    if (!el || !el.style) return;
-    if (el.style.getPropertyValue(name) === value && el.style.getPropertyPriority(name) === "important") return;
-    el.style.setProperty(name, value, "important");
-  }
-
-  function setImportantStyles(el, styles) {
-    if (!el || !styles) return;
-    Object.keys(styles).forEach((name) => setImportantStyle(el, name, styles[name]));
-  }
-
-  function applyCriticalOelLayerStyles(lcd, video, canvas, tintWash, probe) {
-    setImportantStyles(lcd, {
-      "position": "relative",
-      "overflow": "hidden"
-    });
-
-    setImportantStyles(probe, {
-      "position": "absolute",
-      "inset": "0",
-      "width": "0",
-      "height": "0",
-      "opacity": "0",
-      "pointer-events": "none",
-      "overflow": "hidden"
-    });
-
-    setImportantStyles(video, {
-      "position": "absolute",
-      "inset": "0",
-      "width": "100%",
-      "height": "100%",
-      "pointer-events": "none",
-      "object-fit": "fill",
-      "background": "transparent",
-      "z-index": "3"
-    });
-
-    setImportantStyles(canvas, {
-      "position": "absolute",
-      "inset": "0",
-      "width": "100%",
-      "height": "100%",
-      "display": "block",
-      "visibility": "hidden",
-      "opacity": "0",
-      "pointer-events": "none",
-      "background": "transparent",
-      "z-index": "1"
-    });
-
-    setImportantStyles(tintWash, {
-      "position": "absolute",
-      "inset": "0",
-      "display": "block",
-      "pointer-events": "none",
-      "z-index": "4"
-    });
-  }
-
-  function applyOelVideoVisibility(state) {
-    const dom = getPvfdDom();
-    const visible = state === "loading" || state === "active";
-    setImportantStyles(dom.lcdVideo, {
-      "display": visible ? "block" : "none",
-      "visibility": visible ? "visible" : "hidden",
-      "opacity": visible ? "1" : "0"
-    });
-    setImportantStyles(dom.lcdCanvas, {
-      "visibility": "hidden",
-      "opacity": "0",
-      "background": "transparent",
-      "z-index": "1"
-    });
-  }
-
-  function applyCriticalLogoStripStyles() {
-    if (!chassis) return;
-    const faceplate = chassis.querySelector(".pvfd-faceplate");
-    const strip = chassis.querySelector(".pvfd-logo-strip");
-    const logo = chassis.querySelector(".pvfd-silk-pioneer");
-    const glowCanvas = strip && strip.querySelector("canvas.pvfd-logo-glow-canvas");
-
-    setImportantStyles(faceplate, {
-      "position": "relative",
-      "display": "grid",
-      "grid-template-columns": "1fr auto 1fr",
-      "align-items": "center",
-      "height": "30px",
-      "min-height": "30px",
-      "max-height": "30px",
-      "padding-top": "0",
-      "padding-bottom": "0",
-      "box-sizing": "border-box"
-    });
-
-    if (faceplate && faceplate.children) {
-      Array.from(faceplate.children).forEach((child) => {
-        setImportantStyles(child, {
-          "display": "flex",
-          "align-items": "center",
-          "height": "30px",
-          "min-height": "30px",
-          "max-height": "30px",
-          "line-height": "1",
-          "overflow": "visible"
-        });
-      });
-    }
-
-    safe(() => {
-      chassis.querySelectorAll(".pvfd-silk-eeq, .pvfd-silk-label, .pvfd-silk-dab, .pvfd-silk-lyrics, .pvfd-silk-open").forEach((el) => {
-        setImportantStyles(el, {
-          "position": "relative",
-          "display": "inline-flex",
-          "align-items": "center",
-          "height": "16px",
-          "line-height": "1",
-          "top": "0",
-          "transform": "none"
-        });
-      });
-    });
-
-    setImportantStyles(strip, {
-      "position": "relative",
-      "display": "grid",
-      "grid-template-columns": "minmax(72px, 1fr) auto minmax(72px, 1fr)",
-      "align-items": "center",
-      "justify-items": "center",
-      "height": "30px",
-      "min-height": "30px",
-      "max-height": "30px",
-      "overflow": "visible",
-      "z-index": "2",
-      "pointer-events": "none"
-    });
-
-    setImportantStyles(logo, {
-      "position": "relative",
-      "display": "inline-flex",
-      "align-items": "center",
-      "justify-content": "center",
-      "height": "30px",
-      "min-height": "30px",
-      "max-height": "30px",
-      "line-height": "1",
-      "top": "0",
-      "transform": "none",
-      "opacity": "1",
-      "visibility": "visible",
-      "z-index": "3"
-    });
-
-    setImportantStyles(glowCanvas, {
-      "position": "absolute",
-      "left": "50%",
-      "top": "50%",
-      "width": "170px",
-      "height": "34px",
-      "transform": "translate(-50%, -50%)",
-      "pointer-events": "none",
-      "z-index": "-1",
-      "opacity": "1",
-      "visibility": "visible"
-    });
-
-    safe(() => {
-      const spectrumOpacity = logoGlowEnabled ? "1" : "0";
-      strip?.querySelectorAll(".pvfd-logo-spectrum").forEach((side) => {
-        setImportantStyles(side, {
-          "position": "relative",
-          "display": "block",
-          "width": "48px",
-          "min-width": "48px",
-          "max-width": "48px",
-          "height": "23px",
-          "min-height": "23px",
-          "max-height": "23px",
-          "overflow": "visible",
-          "opacity": spectrumOpacity,
-          "visibility": "visible",
-          "pointer-events": "none"
-        });
-      });
-      strip?.querySelectorAll(".pvfd-logo-meter-canvas").forEach((meterCanvas) => {
-        setImportantStyles(meterCanvas, {
-          "position": "absolute",
-          "inset": "0",
-          "display": "block",
-          "width": "48px",
-          "height": "23px",
-          "opacity": "1",
-          "visibility": "visible",
-          "pointer-events": "none"
-        });
-      });
-    });
-  }
-
   function ensureOelVideoMarkup() {
     if (!chassis) return;
     const lcd = chassis.querySelector(".pvfd-lcd");
@@ -997,16 +797,12 @@
       domChanged = true;
     }
 
-    const canvasEl = lcd.querySelector(".pvfd-lcd-canvas");
-    applyCriticalOelLayerStyles(lcd, video, canvasEl, tintWash, probe);
-
     if (!lcd.hasAttribute("data-pvfd-video-state")) {
       lcd.setAttribute("data-pvfd-video-state", "fallback");
       domChanged = true;
     }
 
     if (domChanged) pvfdDom = null;
-    applyOelVideoVisibility(lcd.getAttribute("data-pvfd-video-state") || "fallback");
     syncOelColorModeAttributes();
   }
 
@@ -1069,7 +865,6 @@
 
     logoGlowCanvasCache.canvas = glowCanvas;
     logoGlowCanvasCache.ctx = glowCtx;
-    applyCriticalLogoStripStyles();
 
     const ensureSide = (selector, cacheKey) => {
       const side = strip.querySelector(selector);
@@ -1108,7 +903,6 @@
 
     ensureSide(".pvfd-logo-spectrum-left", "left");
     ensureSide(".pvfd-logo-spectrum-right", "right");
-    applyCriticalLogoStripStyles();
 
     logoRenderState.dirty = true;
     renderLogoVisuals(performance.now(), true);
@@ -1442,19 +1236,11 @@
     video.addEventListener("loadedmetadata", () => {
       const clipKey = video.dataset.pvfdClipKey || "unknown";
       console.log(`[PVFD] OEL WebM proof: loadedmetadata clip=${clipKey}`);
-      if (clipKey !== "unknown") requestOelVideoPlay(video);
-    });
-
-    video.addEventListener("loadeddata", () => {
-      const clipKey = video.dataset.pvfdClipKey || "unknown";
-      console.log(`[PVFD] OEL WebM proof: loadeddata clip=${clipKey}`);
-      if (clipKey !== "unknown") requestOelVideoPlay(video);
     });
 
     video.addEventListener("canplay", () => {
       const clipKey = video.dataset.pvfdClipKey || "unknown";
       console.log(`[PVFD] OEL WebM proof: canplay clip=${clipKey}`);
-      if (clipKey !== "unknown") requestOelVideoPlay(video);
     });
 
     video.addEventListener("playing", () => {
@@ -1483,7 +1269,6 @@
       else delete dom.lcdVideo.dataset.pvfdClipKey;
     }
     if (state !== "active") oelVideoActiveClipKey = "";
-    applyOelVideoVisibility(state);
     syncOelColorModeAttributes();
     applyLcdFilter();
   }
@@ -1539,17 +1324,6 @@
 
   function requestOelVideoPlay(video) {
     if (!video || video.dataset.pvfdPlayPending === "1") return;
-    if (!oelDisplayEnabled) {
-      safe(() => video.pause());
-      applyOelVideoVisibility("off");
-      return;
-    }
-    video.muted = true;
-    video.defaultMuted = true;
-    video.playsInline = true;
-    video.setAttribute("muted", "");
-    video.setAttribute("playsinline", "");
-    video.setAttribute("webkit-playsinline", "");
     video.dataset.pvfdPlayPending = "1";
     let playResult = null;
     try {
@@ -1570,10 +1344,6 @@
       console.log("[PVFD] OEL WebM proof: play() resolved");
     }).catch((err) => {
       delete video.dataset.pvfdPlayPending;
-      if (err && err.name === "AbortError") {
-        console.warn("[PVFD] OEL WebM proof: play() aborted during source swap");
-        return;
-      }
       console.warn("[PVFD] OEL WebM proof: play() rejected", err);
       pauseOelVideoPlayback("error");
     });
@@ -1696,18 +1466,10 @@
       console.log(`[PVFD] OEL WebM proof: assigned clip=${clipKey} src-type=${assignedSrcType} length=${video.src.length}`);
       logOelWebmSourceCheck(activeClip, video.src);
       safe(() => { video.currentTime = 0; });
+      safe(() => video.load());
       video.addEventListener("canplay", () => {
         requestOelVideoPlay(video);
       }, { once: true });
-      video.addEventListener("loadeddata", () => {
-        requestOelVideoPlay(video);
-      }, { once: true });
-      safe(() => video.load());
-      requestOelVideoPlay(video);
-      window.setTimeout(() => requestOelVideoPlay(video), 250);
-      window.setTimeout(() => {
-        if (video.paused && video.readyState >= 2) requestOelVideoPlay(video);
-      }, 850);
       pvfdPerfEnd("webmOelSync", perfAt);
       return false;
     }
@@ -2192,7 +1954,6 @@
       stopDesktopAudioCapture();
       stopLogoLiveAudioCapture();
     }
-    applyCriticalLogoStripStyles();
     if (persist) safe(() => window.localStorage.setItem(LOGO_GLOW_STORAGE_KEY, logoGlowEnabled ? "ON" : "OFF"));
     updateMenuPanel();
   }
@@ -2248,6 +2009,7 @@
     if (canvas) canvas.style.display = "";
     const dom = getPvfdDom();
     syncOelColorModeAttributes();
+    if (dom.lcdVideo) dom.lcdVideo.style.display = oelDisplayEnabled ? "block" : "none";
     if (!oelDisplayEnabled && ctx && canvasCssW && canvasCssH) {
       ctx.clearRect(0, 0, canvasCssW, canvasCssH);
       lastCanvasFrameKey = "";

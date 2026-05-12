@@ -465,10 +465,9 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
 .pvfd-faceplate {
   background: linear-gradient(180deg, var(--pvfd-lcd-deep) 0%, var(--pvfd-lcd-void) 50%, var(--pvfd-lcd-deep) 100%);
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.95), inset 0 2px 6px rgba(0,0,0,0.85);
-  padding: 0 16px;
+  padding: 5px 16px;
   height: 30px;
   min-height: 30px;
-  max-height: 30px;
   box-sizing: border-box;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -476,22 +475,6 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   gap: 14px;
   position: relative;
 }
-
-.pvfd-faceplate-left,
-.pvfd-faceplate-right,
-.pvfd-open-wrap {
-  display: flex;
-  align-items: center;
-  height: 30px;
-  min-height: 30px;
-  max-height: 30px;
-  min-width: 0;
-  line-height: 1;
-}
-
-.pvfd-faceplate-left { gap: 14px; justify-content: flex-start; }
-.pvfd-faceplate-right { gap: 12px; justify-content: flex-end; }
-.pvfd-open-wrap { gap: 4px; }
 
 
 /* CSSOM rule 33 */
@@ -594,13 +577,6 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
 /* CSSOM rule 38 */
 .pvfd-silk-label { color: rgb(var(--pvfd-chrome-label-rgb)); font-weight: 700; font-size: 11px; letter-spacing: 1.3px; }
 
-.pvfd-silk-open {
-  color: #d8dce0;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
 
 /* CSSOM rule 39 */
 .pvfd-silk-pioneer {
@@ -618,7 +594,7 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   transform: none;
   display: inline-block;
   position: relative;
-  top: 0;
+  top: -2px;
   z-index: 0;
   overflow: visible !important;
 }
@@ -935,7 +911,7 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   inset: 0;
   width: 100%;
   height: 100%;
-  display: none;
+  display: block;
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
@@ -954,7 +930,6 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
 /* CSSOM rule 72 */
 .pvfd-lcd[data-pvfd-video-state="loading"] .pvfd-lcd-video,
 .pvfd-lcd[data-pvfd-video-state="active"] .pvfd-lcd-video {
-  display: block;
   visibility: visible;
   opacity: 1;
 }
@@ -1109,7 +1084,7 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
 /* Pioneer logo sits inside the top band */
 .pvfd-silk-pioneer {
   transform: none !important;
-  top: 0 !important;
+  top: -2px !important;
 }
 
 
@@ -6419,9 +6394,9 @@ body.pvfd-theme-active [role="dialog"] {
   isolation: isolate !important;
 
   width: clamp(264px, 30vw, 396px) !important;
-  height: 30px !important;
-  min-height: 30px !important;
-  max-height: 30px !important;
+  height: 25px !important;
+  min-height: 25px !important;
+  max-height: 25px !important;
 
   display: grid !important;
   grid-template-columns: 48px auto 48px !important;
@@ -6556,47 +6531,26 @@ body.pvfd-theme-active [role="dialog"] {
 
 /* Marketplace CSS injection can delay custom font resolution. Keep the top-band
    silk labels and logo visible/aligned even when the font falls back first. */
-.pvfd-chassis .pvfd-faceplate {
-  align-items: center !important;
-  height: 30px !important;
-  min-height: 30px !important;
-  max-height: 30px !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  box-sizing: border-box !important;
-}
-
 .pvfd-chassis .pvfd-faceplate > div {
-  display: flex !important;
   align-items: center !important;
-  height: 30px !important;
-  min-height: 30px !important;
-  max-height: 30px !important;
   line-height: 1 !important;
-  overflow: visible !important;
 }
 
-.pvfd-chassis :is(.pvfd-silk-eeq, .pvfd-silk-label, .pvfd-silk-dab, .pvfd-silk-lyrics, .pvfd-silk-open) {
-  position: relative !important;
+.pvfd-chassis :is(.pvfd-silk-eeq, .pvfd-silk-label, .pvfd-silk-dab) {
   display: inline-flex !important;
   align-items: center !important;
-  height: 16px !important;
   line-height: 1 !important;
-  top: 0 !important;
-  transform: none !important;
 }
 
 .pvfd-chassis .pvfd-silk-pioneer {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  height: 30px !important;
-  min-height: 30px !important;
-  max-height: 30px !important;
+  min-height: 25px !important;
   line-height: 1 !important;
   opacity: 1 !important;
   visibility: visible !important;
-  top: 0 !important;
+  top: -1px !important;
 }
 
 
@@ -7560,60 +7514,6 @@ body.pvfd-theme-active #main-view.Root__main-view .main-home-homeHeader {
 
 .pvfd-lcd[data-pvfd-oel-clip="racing-cart-longloop-webm"][data-pvfd-racing-color="on"] .pvfd-oel-tint-wash {
   opacity: 0 !important;
-}
-
-/* Marketplace hardening: these rules mirror the inline JS guard so the WebM
-   layer cannot fall back to static flow underneath an opaque canvas. */
-.pvfd-chassis .pvfd-lcd {
-  position: relative !important;
-  overflow: hidden !important;
-}
-
-.pvfd-chassis .pvfd-lcd-video {
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  pointer-events: none !important;
-  object-fit: fill !important;
-  background: transparent !important;
-  z-index: 3 !important;
-}
-
-.pvfd-chassis .pvfd-lcd[data-pvfd-video-state="loading"] .pvfd-lcd-video,
-.pvfd-chassis .pvfd-lcd[data-pvfd-video-state="active"] .pvfd-lcd-video {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-.pvfd-chassis .pvfd-lcd[data-pvfd-video-state="fallback"] .pvfd-lcd-video,
-.pvfd-chassis .pvfd-lcd[data-pvfd-video-state="error"] .pvfd-lcd-video,
-.pvfd-chassis .pvfd-lcd[data-pvfd-video-state="off"] .pvfd-lcd-video {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-}
-
-.pvfd-chassis .pvfd-lcd-canvas {
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  display: block !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  background: transparent !important;
-  z-index: 1 !important;
-}
-
-.pvfd-chassis .pvfd-oel-tint-wash {
-  position: absolute !important;
-  inset: 0 !important;
-  display: block !important;
-  pointer-events: none !important;
-  z-index: 4 !important;
 }
 
 /* Marketplace header/search strip.
