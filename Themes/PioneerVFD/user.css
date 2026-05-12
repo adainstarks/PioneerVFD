@@ -902,9 +902,6 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   opacity: 0;
   pointer-events: none;
   overflow: hidden;
-  background-image: url("assets/movie5_longloop.webm");
-  background-repeat: no-repeat;
-  background-size: 0 0;
 }
 
 

@@ -1190,60 +1190,9 @@
     return clip && clip.assetName ? clip.assetName : "";
   }
 
-  function extractUrlFromCssValue(value) {
-    const match = String(value || "").match(/^url\(["']?(.*?)["']?\)$/);
-    return match ? match[1] : "";
-  }
-
-  function uniqueStrings(values) {
-    const out = [];
-    const seen = Object.create(null);
-    values.forEach((value) => {
-      const str = String(value || "").trim();
-      if (!str || seen[str]) return;
-      seen[str] = true;
-      out.push(str);
-    });
-    return out;
-  }
-
-  function deriveOelAssetBaseFromUrl(url) {
-    const str = normalizeOelAssetUrl(url);
-    if (!str) return "";
-    const marker = "movie5_longloop.webm";
-    const markerIdx = str.indexOf(marker);
-    if (markerIdx >= 0) return str.slice(0, markerIdx);
-    if (/\/Extensions\/pioneerVFD\.js(?:[?#].*)?$/i.test(str)) {
-      return str.replace(/\/Extensions\/pioneerVFD\.js(?:[?#].*)?$/i, "/Themes/PioneerVFD/assets/");
-    }
-    if (/\/Themes\/PioneerVFD\/user\.css(?:[?#].*)?$/i.test(str)) {
-      return str.replace(/\/Themes\/PioneerVFD\/user\.css(?:[?#].*)?$/i, "/Themes/PioneerVFD/assets/");
-    }
-    return "";
-  }
-
-  function normalizeOelAssetUrl(url) {
-    const str = String(url || "").trim();
-    if (!str) return "";
-    return str.replace(/\/Themes\/PioneerVFD\/assets\/assets\//gi, "/Themes/PioneerVFD/assets/");
-  }
-
-  function isJsdelivrAssetBase(baseUrl) {
-    return safeReturn(() => {
-      const parsed = new URL(baseUrl);
-      return /^cdn\.jsdelivr\./i.test(parsed.hostname);
-    }, false);
-  }
-
-  function isUsableOelAssetBase(baseUrl) {
-    const str = String(baseUrl || "").trim();
-    if (!str || isJsdelivrAssetBase(str)) return false;
-    return /^[a-z][a-z0-9+.-]*:/i.test(str) || str.indexOf("//") === 0;
-  }
-
   function buildOelSourceMapFromBase(baseUrl) {
-    const base = normalizeOelAssetUrl(baseUrl);
-    if (!base || !isUsableOelAssetBase(base)) return null;
+    const base = String(baseUrl || "").trim();
+    if (!base) return null;
     const normalizedBase = base.endsWith("/") ? base : base + "/";
     const map = Object.create(null);
     OEL_WEBM_CLIPS.forEach((clip) => {
@@ -1253,86 +1202,11 @@
     return map;
   }
 
-  function collectOelAssetBaseCandidatesFromScripts() {
-    const urls = [];
-    const current = document.currentScript && document.currentScript.src;
-    if (current) urls.push(current);
-    safe(() => {
-      document.querySelectorAll("script[src]").forEach((script) => {
-        const src = script && script.src ? String(script.src) : "";
-        if (src.indexOf("pioneerVFD.js") >= 0 || src.indexOf("PioneerVFD") >= 0) urls.push(src);
-      });
-    });
-    return urls.map(deriveOelAssetBaseFromUrl).filter(Boolean);
-  }
-
-  function collectOelAssetBaseCandidatesFromStyles() {
-    const bases = [];
-
-    safe(() => {
-      document.querySelectorAll('link[rel~="stylesheet"][href]').forEach((link) => {
-        const href = link && link.href ? String(link.href) : "";
-        if (href.indexOf("PioneerVFD") >= 0 || href.indexOf("user.css") >= 0) {
-          const base = deriveOelAssetBaseFromUrl(href);
-          if (base) bases.push(base);
-        }
-      });
-    });
-
-    safe(() => {
-      const sheets = Array.from(document.styleSheets || []);
-      for (let sheetIdx = 0; sheetIdx < sheets.length; sheetIdx += 1) {
-        const sheet = sheets[sheetIdx];
-        if (sheet && sheet.href) {
-          const base = deriveOelAssetBaseFromUrl(sheet.href);
-          if (base) bases.push(base);
-        }
-        let rules = null;
-        try {
-          rules = sheet && sheet.cssRules ? Array.from(sheet.cssRules) : null;
-        } catch (_) {
-          rules = null;
-        }
-        if (!rules) continue;
-        for (let ruleIdx = 0; ruleIdx < rules.length; ruleIdx += 1) {
-          const ruleText = String(rules[ruleIdx] && rules[ruleIdx].cssText || "");
-          if (ruleText.indexOf("movie5_longloop.webm") < 0) continue;
-          const match = ruleText.match(/url\(["']?([^"')]*movie5_longloop\.webm[^"')]*)["']?\)/);
-          if (match && match[1]) {
-            const assetUrl = sheet && sheet.href ? new URL(match[1], sheet.href).href : match[1];
-            const base = deriveOelAssetBaseFromUrl(assetUrl);
-            if (base) bases.push(base);
-          }
-        }
-      }
-    });
-
-    safe(() => {
-      document.querySelectorAll("style").forEach((style) => {
-        const text = String(style && style.textContent || "");
-        if (text.indexOf("movie5_longloop.webm") < 0) return;
-        const match = text.match(/url\(["']?([^"')]*movie5_longloop\.webm[^"')]*)["']?\)/);
-        if (match && match[1]) {
-          const base = deriveOelAssetBaseFromUrl(match[1]);
-          if (base) bases.push(base);
-        }
-      });
-    });
-
-    return bases;
-  }
-
   function resolveMarketplaceOelSourceMap() {
-    const bases = uniqueStrings([
-      ...OEL_MARKETPLACE_ASSET_BASES,
-      ...collectOelAssetBaseCandidatesFromStyles(),
-      ...collectOelAssetBaseCandidatesFromScripts()
-    ]);
-
-    for (let i = 0; i < bases.length; i += 1) {
-      const map = buildOelSourceMapFromBase(bases[i]);
+    for (let i = 0; i < OEL_MARKETPLACE_ASSET_BASES.length; i += 1) {
+      const map = buildOelSourceMapFromBase(OEL_MARKETPLACE_ASSET_BASES[i]);
       if (map) {
-        console.log(`[PVFD] OEL WebM registry using Marketplace asset base: ${bases[i]}`);
+        console.log(`[PVFD] OEL WebM registry using remote asset base: ${OEL_MARKETPLACE_ASSET_BASES[i]}`);
         return map;
       }
     }
