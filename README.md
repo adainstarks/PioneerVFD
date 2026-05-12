@@ -1,6 +1,7 @@
 <img width="2000" height="668" alt="PioneerVFD logo" src="https://github.com/user-attachments/assets/d84f1508-fee8-4ebd-b3b5-8600e1bec88e" />
 
 > Unofficial fan-made Spicetify theme. Not affiliated with Pioneer Corporation.
+> The Marketplace Install will ONLY fetch WEBM for the VFD if you have Wi-Fi! If you want to have animations without Wi-Fi: use the local installer on Github!
 
 Miss the old 2000s Pioneer head units? Wish you could still have those dolphins swimming while you bump tunes? Maybe you never got to experience it and want to? Well, now you can.
 
@@ -187,6 +188,7 @@ PioneerVFD/
 
 ## Notes
 
+- The Marketplace Install will ONLY fetch WEBM for the VFD if you have Wi-Fi! If you want to have animations without Wi-Fi: use the local installer on Github!
 - `Extensions/pioneerVFD.js` owns the head-unit runtime, menu behavior, WebM OEL state, Chromium live audio capture, route state, and visualizer logic.
 - `Themes/PioneerVFD/user.css` owns the chrome body, LCD/OEL styling, RGB tint variables, app-wide Spotify styling, route-specific layout, and performance gates.
 - `Themes/PioneerVFD/color.ini` defines the `PioneerVFD` Spicetify color scheme.
