@@ -1,4 +1,4 @@
-# <img width="2000" height="668" alt="PioneerVFD logo" src="https://github.com/user-attachments/assets/d84f1508-fee8-4ebd-b3b5-8600e1bec88e" />
+<img width="800" height="185" alt="PioneerVFDRacing" src="https://github.com/user-attachments/assets/6d700636-1e1e-4624-8789-c1d9d57178b1" /># <img width="2000" height="668" alt="PioneerVFD logo" src="https://github.com/user-attachments/assets/d84f1508-fee8-4ebd-b3b5-8600e1bec88e" />
 > Unofficial fan-made Spicetify theme. Not affiliated with Pioneer Corporation.
 
 Miss the old 2000s Pioneer head units? Wish you could still have those dolphins swimming while you bump tunes? Maybe you never got to experience it and want to? Well, now you can.
@@ -9,15 +9,16 @@ This current build is the WebM/live-audio refactor. The old `.LKD` frame-by-fram
 
 ## Preview
 
-<img width="1280" height="720" alt="PioneerVFD full Spotify view" src="https://github.com/user-attachments/assets/04205af8-9910-4051-9833-66abd7600616" />
+<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/794cf0e6-9662-466f-af15-651180eb1334" />
 
 ##
 
-<img width="1327" height="814" alt="PioneerVFD library view" src="https://github.com/user-attachments/assets/79820ae8-6894-473a-8413-07661b7ffdc4" />
+<img width="1280" height="720" alt="Screenshot 2026-05-11 203645" src="https://github.com/user-attachments/assets/65cab486-6eeb-4be3-ad75-586955a808f6" />
 
 ##
 
-<img width="1210" height="220" alt="PioneerVFD head unit closeup" src="https://github.com/user-attachments/assets/7901de2e-d963-4be3-9418-f4d24201de89" />
+<img width="800" height="185" alt="PioneerVFDRacing" src="https://github.com/user-attachments/assets/09dbbf09-c911-4304-bb53-dd0ef278480e" />
+
 
 ## What It Does
 
