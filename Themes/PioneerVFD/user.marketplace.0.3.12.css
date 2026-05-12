@@ -6114,6 +6114,34 @@ body.pvfd-theme-active #global-nav-bar
   box-shadow: none !important;
 }
 
+/* Playlist explicit badge.
+   Box Spotify's .x-explicit-label, tint the .x-explicit-icon "E" already in DOM. */
+body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow .x-explicit-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  width: 13px !important;
+  height: 11px !important;
+  min-width: 13px !important;
+  max-width: 13px !important;
+
+  margin-right: 5px !important;
+  padding: 0 !important;
+
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.78) !important;
+  border-radius: 2px !important;
+
+  background: rgba(0, 0, 0, 0.52) !important;
+
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--pvfd-light-mid-rgb), 0.16),
+    0 0 4px rgba(var(--pvfd-light-mid-rgb), 0.22) !important;
+
+  overflow: hidden !important;
+  vertical-align: -1px !important;
+}
+
 /* Search result explicit badge.
    Style Spotify's real explicit node, but draw only ONE clean E. */
 body.pvfd-theme-active #global-nav-bar
