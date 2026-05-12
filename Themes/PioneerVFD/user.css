@@ -24,7 +24,7 @@
        url("fonts/Neuropol.woff") format("woff" );
   font-style: normal;
   font-weight: 400;
-  font-display: block;
+  font-display: swap;
 }
 
 
@@ -6530,6 +6530,30 @@ body.pvfd-theme-active [role="dialog"] {
     0 0 1px rgba(255,255,255,0.72),
     0 0 5px rgba(var(--pvfd-text-bright-rgb),0.34),
     0 1px 2px rgba(0,0,0,0.82) !important;
+}
+
+/* Marketplace CSS injection can delay custom font resolution. Keep the top-band
+   silk labels and logo visible/aligned even when the font falls back first. */
+.pvfd-chassis .pvfd-faceplate > div {
+  align-items: center !important;
+  line-height: 1 !important;
+}
+
+.pvfd-chassis :is(.pvfd-silk-eeq, .pvfd-silk-label, .pvfd-silk-dab) {
+  display: inline-flex !important;
+  align-items: center !important;
+  line-height: 1 !important;
+}
+
+.pvfd-chassis .pvfd-silk-pioneer {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 25px !important;
+  line-height: 1 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  top: -1px !important;
 }
 
 

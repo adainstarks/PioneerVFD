@@ -316,6 +316,10 @@
   const RACING_CLIP_ID = "racing-cart-longloop-webm";
   const OEL_WEBM_SOURCE_MAP_PLACEHOLDER = "__PVFD_" + "OEL_WEBM_SOURCE_MAP_JSON__";
   const OEL_WEBM_SOURCE_MAP = "__PVFD_OEL_WEBM_SOURCE_MAP_JSON__";
+  const OEL_MARKETPLACE_ASSET_BASES = [
+    "https://adainstarks.github.io/PioneerVFD/Themes/PioneerVFD/assets/",
+    "https://raw.githubusercontent.com/adainstarks/PioneerVFD/main/Themes/PioneerVFD/assets/"
+  ];
   const OEL_WEBM_CLIPS = [
     { id: "movie5-longloop-webm-proof", label: "CARZERIA", name: "MOVIE5 LONG", assetName: "movie5_longloop.webm" },
     { id: "movie1-longloop-webm", label: "JETS", name: "MOVIE1 LONG", assetName: "movie1_longloop.webm" },
@@ -1191,6 +1195,137 @@
     return match ? match[1] : "";
   }
 
+  function uniqueStrings(values) {
+    const out = [];
+    const seen = Object.create(null);
+    values.forEach((value) => {
+      const str = String(value || "").trim();
+      if (!str || seen[str]) return;
+      seen[str] = true;
+      out.push(str);
+    });
+    return out;
+  }
+
+  function deriveOelAssetBaseFromUrl(url) {
+    const str = String(url || "").trim();
+    if (!str) return "";
+    const marker = "movie5_longloop.webm";
+    const markerIdx = str.indexOf(marker);
+    if (markerIdx >= 0) return str.slice(0, markerIdx);
+    if (/\/Extensions\/pioneerVFD\.js(?:[?#].*)?$/i.test(str)) {
+      return str.replace(/\/Extensions\/pioneerVFD\.js(?:[?#].*)?$/i, "/Themes/PioneerVFD/assets/");
+    }
+    if (/\/Themes\/PioneerVFD\/user\.css(?:[?#].*)?$/i.test(str)) {
+      return str.replace(/\/Themes\/PioneerVFD\/user\.css(?:[?#].*)?$/i, "/Themes/PioneerVFD/assets/");
+    }
+    return "";
+  }
+
+  function isUsableOelAssetBase(baseUrl) {
+    const str = String(baseUrl || "").trim();
+    return /^[a-z][a-z0-9+.-]*:/i.test(str) || str.indexOf("//") === 0;
+  }
+
+  function buildOelSourceMapFromBase(baseUrl) {
+    const base = String(baseUrl || "").trim();
+    if (!base || !isUsableOelAssetBase(base)) return null;
+    const normalizedBase = base.endsWith("/") ? base : base + "/";
+    const map = Object.create(null);
+    OEL_WEBM_CLIPS.forEach((clip) => {
+      const assetName = clipWebmAssetName(clip);
+      if (assetName) map[assetName] = normalizedBase + encodeURIComponent(assetName);
+    });
+    return map;
+  }
+
+  function collectOelAssetBaseCandidatesFromScripts() {
+    const urls = [];
+    const current = document.currentScript && document.currentScript.src;
+    if (current) urls.push(current);
+    safe(() => {
+      document.querySelectorAll("script[src]").forEach((script) => {
+        const src = script && script.src ? String(script.src) : "";
+        if (src.indexOf("pioneerVFD.js") >= 0 || src.indexOf("PioneerVFD") >= 0) urls.push(src);
+      });
+    });
+    return urls.map(deriveOelAssetBaseFromUrl).filter(Boolean);
+  }
+
+  function collectOelAssetBaseCandidatesFromStyles() {
+    const bases = [];
+
+    safe(() => {
+      document.querySelectorAll('link[rel~="stylesheet"][href]').forEach((link) => {
+        const href = link && link.href ? String(link.href) : "";
+        if (href.indexOf("PioneerVFD") >= 0 || href.indexOf("user.css") >= 0) {
+          const base = deriveOelAssetBaseFromUrl(href);
+          if (base) bases.push(base);
+        }
+      });
+    });
+
+    safe(() => {
+      const sheets = Array.from(document.styleSheets || []);
+      for (let sheetIdx = 0; sheetIdx < sheets.length; sheetIdx += 1) {
+        const sheet = sheets[sheetIdx];
+        if (sheet && sheet.href) {
+          const base = deriveOelAssetBaseFromUrl(sheet.href);
+          if (base) bases.push(base);
+        }
+        let rules = null;
+        try {
+          rules = sheet && sheet.cssRules ? Array.from(sheet.cssRules) : null;
+        } catch (_) {
+          rules = null;
+        }
+        if (!rules) continue;
+        for (let ruleIdx = 0; ruleIdx < rules.length; ruleIdx += 1) {
+          const ruleText = String(rules[ruleIdx] && rules[ruleIdx].cssText || "");
+          if (ruleText.indexOf("movie5_longloop.webm") < 0) continue;
+          const match = ruleText.match(/url\(["']?([^"')]*movie5_longloop\.webm[^"')]*)["']?\)/);
+          if (match && match[1]) {
+            const assetUrl = sheet && sheet.href ? new URL(match[1], sheet.href).href : match[1];
+            const base = deriveOelAssetBaseFromUrl(assetUrl);
+            if (base) bases.push(base);
+          }
+        }
+      }
+    });
+
+    safe(() => {
+      document.querySelectorAll("style").forEach((style) => {
+        const text = String(style && style.textContent || "");
+        if (text.indexOf("movie5_longloop.webm") < 0) return;
+        const match = text.match(/url\(["']?([^"')]*movie5_longloop\.webm[^"')]*)["']?\)/);
+        if (match && match[1]) {
+          const base = deriveOelAssetBaseFromUrl(match[1]);
+          if (base) bases.push(base);
+        }
+      });
+    });
+
+    return bases;
+  }
+
+  function resolveMarketplaceOelSourceMap() {
+    const bases = uniqueStrings([
+      ...collectOelAssetBaseCandidatesFromStyles(),
+      ...collectOelAssetBaseCandidatesFromScripts(),
+      ...OEL_MARKETPLACE_ASSET_BASES
+    ]);
+
+    for (let i = 0; i < bases.length; i += 1) {
+      const map = buildOelSourceMapFromBase(bases[i]);
+      if (map) {
+        console.log(`[PVFD] OEL WebM registry using Marketplace asset base: ${bases[i]}`);
+        return map;
+      }
+    }
+
+    return null;
+  }
+
   function prepareOelVideoElement(video) {
     if (!video || video.dataset.pvfdInit === "1") return;
     video.dataset.pvfdInit = "1";
@@ -1278,6 +1413,12 @@
       ) {
         oelWebmSourceMap = injectedMap;
         console.log(`[PVFD] OEL WebM registry ready: clips=${Object.keys(injectedMap).length}`);
+      }
+      if (!oelWebmSourceMap) {
+        oelWebmSourceMap = resolveMarketplaceOelSourceMap();
+        if (oelWebmSourceMap) {
+          console.log(`[PVFD] OEL WebM Marketplace registry ready: clips=${Object.keys(oelWebmSourceMap).length}`);
+        }
       }
     }
     return oelWebmSourceMap;
