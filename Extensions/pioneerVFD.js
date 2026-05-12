@@ -1208,7 +1208,7 @@
   }
 
   function deriveOelAssetBaseFromUrl(url) {
-    const str = String(url || "").trim();
+    const str = normalizeOelAssetUrl(url);
     if (!str) return "";
     const marker = "movie5_longloop.webm";
     const markerIdx = str.indexOf(marker);
@@ -1222,13 +1222,27 @@
     return "";
   }
 
+  function normalizeOelAssetUrl(url) {
+    const str = String(url || "").trim();
+    if (!str) return "";
+    return str.replace(/\/Themes\/PioneerVFD\/assets\/assets\//gi, "/Themes/PioneerVFD/assets/");
+  }
+
+  function isJsdelivrAssetBase(baseUrl) {
+    return safeReturn(() => {
+      const parsed = new URL(baseUrl);
+      return /^cdn\.jsdelivr\./i.test(parsed.hostname);
+    }, false);
+  }
+
   function isUsableOelAssetBase(baseUrl) {
     const str = String(baseUrl || "").trim();
+    if (!str || isJsdelivrAssetBase(str)) return false;
     return /^[a-z][a-z0-9+.-]*:/i.test(str) || str.indexOf("//") === 0;
   }
 
   function buildOelSourceMapFromBase(baseUrl) {
-    const base = String(baseUrl || "").trim();
+    const base = normalizeOelAssetUrl(baseUrl);
     if (!base || !isUsableOelAssetBase(base)) return null;
     const normalizedBase = base.endsWith("/") ? base : base + "/";
     const map = Object.create(null);
@@ -1310,9 +1324,9 @@
 
   function resolveMarketplaceOelSourceMap() {
     const bases = uniqueStrings([
+      ...OEL_MARKETPLACE_ASSET_BASES,
       ...collectOelAssetBaseCandidatesFromStyles(),
-      ...collectOelAssetBaseCandidatesFromScripts(),
-      ...OEL_MARKETPLACE_ASSET_BASES
+      ...collectOelAssetBaseCandidatesFromScripts()
     ]);
 
     for (let i = 0; i < bases.length; i += 1) {
@@ -1424,19 +1438,14 @@
     return oelWebmSourceMap;
   }
 
-  async function logOelWebmSourceCheck(clip, url) {
+  function logOelWebmSourceCheck(clip, url) {
     if (!url || url === oelWebmLastCheckedUrl) return;
     oelWebmLastCheckedUrl = url;
     const clipKey = clipStorageId(clip);
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const contentType = response.headers.get("content-type") || blob.type || "unknown";
-      console.log(`[PVFD] OEL WebM proof: fetch check clip=${clipKey} status=${response.status} content-type=${contentType} blob-size=${blob.size}`);
-    } catch (err) {
-      const detail = err && err.message ? err.message : err;
-      console.warn(`[PVFD] OEL WebM proof: fetch check failed clip=${clipKey}`, detail);
-    }
+    const sourceType = url.startsWith("data:video/webm;base64,")
+      ? "data"
+      : (url.startsWith("blob:") ? "blob" : "url");
+    console.log(`[PVFD] OEL WebM source clip=${clipKey} source-type=${sourceType} length=${url.length}`);
   }
 
   function requestOelVideoPlay(video) {
