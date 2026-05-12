@@ -44,7 +44,6 @@ The center OEL/VFD display is WebM-based. The current clip set includes:
 - `movie10_f_longloop.webm`
 - `diverdolphins_longloop.webm`
 - `6_Racing_Cart_longloop.webm`
-- `movie5.webm`
 
 The installer builds the installed extension by injecting a WebM source map into `pioneerVFD.js`. This is intentional. A raw copy of the extension file is not enough for the full WebM OEL display, because the source file contains a placeholder until the installer writes the asset map.
 
