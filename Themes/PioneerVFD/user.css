@@ -7384,7 +7384,11 @@ body.pvfd-theme-active [role="dialog"] {
 
 
 /* CSSOM rule 549 */
-/* Canvas-owned total-energy glow behind the Pioneer logo. */
+/* Canvas-owned total-energy glow behind the Pioneer logo. The radial mask
+   fades the canvas opacity to transparent toward its edges so the
+   rectangular bounds stop reading as a slab against the dark nameplate —
+   most importantly on the left/right sides where the canvas was clashing
+   with the dark strip. Mask shape is wider than tall to match the canvas. */
 .pvfd-chassis .pvfd-logo-glow-canvas {
   position: absolute !important;
   left: 50% !important;
@@ -7401,6 +7405,9 @@ body.pvfd-theme-active [role="dialog"] {
   image-rendering: auto !important;
   opacity: 1 !important;
   visibility: visible !important;
+
+  -webkit-mask-image: radial-gradient(ellipse 55% 70% at center, #000 28%, transparent 92%);
+  mask-image: radial-gradient(ellipse 55% 70% at center, #000 28%, transparent 92%);
 }
 
 
@@ -8736,4 +8743,164 @@ body.pvfd-theme-active .Root__main-view :is(
   [data-testid*="sync" i]
 ) :is(svg, path, rect, line, circle) {
   filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-rgb), 0.52)) !important;
+}
+
+/* =========================================================================
+   Habahooney69 — special-profile easter egg.
+   Scoped strictly to body[data-pvfd-special-profile="habahooney69"] so it
+   has zero visual effect on any other profile or route. Tint auto-locks to
+   MAGENTA in JS; this stylesheet layers a continuous color-sweeping wash
+   across the whole viewport, a slow color-cycling glow on her avatar, and
+   a one-shot burst of floating hearts injected by JS on route entry.
+   Her color palette: emerald #00d68f, purple #b366ff, neon #ff3df0, butter #ffdd80.
+   ========================================================================= */
+
+@keyframes pvfd-habby-sweep {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes pvfd-habby-glow-cycle {
+  0%, 100% {
+    box-shadow:
+      0 0 18px 4px #00d68f,
+      0 0 38px 10px rgba(0, 214, 143, 0.45);
+  }
+  25% {
+    box-shadow:
+      0 0 18px 4px #b366ff,
+      0 0 38px 10px rgba(179, 102, 255, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 18px 4px #ff3df0,
+      0 0 38px 10px rgba(255, 61, 240, 0.45);
+  }
+  75% {
+    box-shadow:
+      0 0 18px 4px #ffdd80,
+      0 0 38px 10px rgba(255, 221, 128, 0.45);
+  }
+}
+
+@keyframes pvfd-habby-heart-float {
+  0%   { transform: translateY(0)      scale(0.6); opacity: 0; }
+  8%   { transform: translateY(-6vh)   scale(1.0); opacity: 0.95; }
+  55%  { transform: translateY(-58vh)  scale(1.05); opacity: 0.88; }
+  100% { transform: translateY(-115vh) scale(1.15); opacity: 0; }
+}
+
+/* Sweep overlay: injected by JS into the main-view scroll-node-child so the
+   effect is bounded to her profile content area, not the whole app shell.
+   pointer-events none. mix-blend-mode: overlay re-tints content beneath it
+   through the moving gradient. Ordered emerald → purple → neon → butter
+   diagonally, looping seamlessly via duplicated start color at 100%. */
+.pvfd-habby-sweep-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  background: linear-gradient(135deg,
+    #00d68f 0%,
+    #b366ff 25%,
+    #ff3df0 50%,
+    #ffdd80 75%,
+    #00d68f 100%
+  );
+  background-size: 300% 300%;
+  mix-blend-mode: overlay;
+  opacity: 0.58;
+  animation: pvfd-habby-sweep 10s linear infinite;
+}
+
+/* Hearts container: full-viewport, no blend, above the sweep so heart colors
+   stay punchy. Hearts each carry their own inline left/duration/delay/color/
+   size from JS. Animation plays once and the container is removed after the
+   last heart finishes (handled in JS). */
+.pvfd-habby-hearts-container {
+  position: fixed;
+  inset: 0;
+  z-index: 51;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Heart shape rendered via SVG mask so the silhouette is guaranteed
+   regardless of the inherited font. JS sets inline color, font-size, left,
+   animation-duration, and animation-delay; width/height follow font-size
+   via em units, background-color follows inline color via currentColor. */
+.pvfd-habby-heart {
+  position: absolute;
+  bottom: -10vh;
+  display: block;
+  width: 1em;
+  height: 1em;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/></svg>") center / contain no-repeat;
+  filter:
+    drop-shadow(0 0 4px currentColor)
+    drop-shadow(0 0 10px currentColor);
+  animation-name: pvfd-habby-heart-float;
+  animation-timing-function: ease-out;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  will-change: transform, opacity;
+}
+
+/* Avatar pulse ring: cycles through her four colors over 12s while she's
+   the active profile. Targets the profile photo wrapper inside the entity
+   header. The selector net is wide because Spotify versions the avatar
+   element name differently across builds. */
+body[data-pvfd-special-profile="habahooney69"] .Root__main-view :is(
+  .main-entityHeader-imageContainer,
+  .main-entityHeader-imageContainer img,
+  .main-entityHeader-image,
+  [class*="entityHeader"][class*="image" i] img,
+  [class*="EntityHeader"][class*="Image" i] img
+) {
+  border-radius: 50% !important;
+  animation: pvfd-habby-glow-cycle 12s linear infinite !important;
+}
+
+/* Color cycle for text inside her profile — keyframe rotates through her
+   four palette colors. Each surface using the animation phases through the
+   same loop, so headings + subtitle + content text breathe in sync. */
+@keyframes pvfd-habby-text-cycle {
+  0%, 100% { color: #00d68f; }
+  25%      { color: #b366ff; }
+  50%      { color: #ff3df0; }
+  75%      { color: #ffdd80; }
+}
+
+body[data-pvfd-special-profile="habahooney69"] .Root__main-view :is(
+  h1, h2, h3, h4,
+  [data-encore-id="text"],
+  [class*="entityHeader"][class*="subtitle" i],
+  [class*="EntityHeader"][class*="Subtitle" i],
+  .main-shelf-shelf [data-encore-id="text"]
+) {
+  animation: pvfd-habby-text-cycle 12s linear infinite !important;
+  -webkit-text-fill-color: currentColor !important;
+  text-shadow: 0 0 8px currentColor !important;
+}
+
+/* Annotation tag rendered next to her name. CSS ::after on the entity
+   header h1 — content is a literal string, no DOM injection needed. Stays
+   inline with the heading via vertical-align: super, color-cycles on the
+   same 12s loop as the rest of the text so it pulses in unison. */
+body[data-pvfd-special-profile="habahooney69"] .Root__main-view :is(
+  .main-entityHeader-container h1,
+  [class*="entityHeader"][class*="container" i] h1,
+  [data-testid*="entity-header" i] h1
+)::after {
+  content: " William's GF<3";
+  display: inline-block;
+  margin-left: 0.5em;
+  vertical-align: super;
+  font-size: 0.30em;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  animation: pvfd-habby-text-cycle 12s linear infinite !important;
+  text-shadow: 0 0 6px currentColor !important;
 }

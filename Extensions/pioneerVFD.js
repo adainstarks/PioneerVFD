@@ -315,6 +315,9 @@
   const RACING_COLOR_STORAGE_KEY = "pvfd-racing-color-mode";
   const LEGACY_RACING_COLOR_STORAGE_KEY = "pvfd-racing-color-breakout";
   const CHROME_STORAGE_KEY = "pvfd-chrome-mode";
+  const SPECIAL_PROFILE_USERNAME = "habahooney69";
+  const SPECIAL_PROFILE_COLORS = ["#00d68f", "#b366ff", "#ff3df0", "#ffdd80"];
+  const SPECIAL_PROFILE_HEART_COUNT = 15;
   const RACING_CLIP_ID = "racing-cart-longloop-webm";
   const OEL_WEBM_SOURCE_MAP_PLACEHOLDER = "__PVFD_" + "OEL_WEBM_SOURCE_MAP_JSON__";
   const OEL_WEBM_SOURCE_MAP = "__PVFD_OEL_WEBM_SOURCE_MAP_JSON__";
@@ -356,8 +359,16 @@
   let sourceFlashUntil = 0;
   let demoAutoMode = false;
   let demoLastClipSwitchMs = 0;
+  let demoSavedClipIdx = null;
+  const DEMO_CYCLE_INTERVAL_MS = 15000;
   let menuOpen = false;
   let tintMenuOpen = false;
+  let pvfdSpecialProfileActive = false;
+  let pvfdSpecialProfileSavedTintIdx = null;
+  let pvfdSpecialProfileSweepEl = null;
+  let pvfdSpecialProfileHeartsTimer = 0;
+  let pvfdSpecialProfileRetriesLeft = 0;
+  let pvfdSpecialProfileCheckTimer = 0;
 
   // Legacy LKD payload intentionally stripped from the production path now that the
   // WebM OEL system is the only active renderer.
@@ -499,6 +510,16 @@
   const LOGO_LIVE_HIGH_MAX_HZ = LOGO_LIVE_AIR_MAX_HZ;
   const LOGO_LIVE_ATTACK = 0.96;
   const LOGO_LIVE_RELEASE = 0.64;
+  // Per-band AGC. Tracks each band's recent raw peak with a slow decay; the
+  // effective compression gain is then reduced when the band has been
+  // sustained-loud (shoegaze wall, dense mids) so transients still have
+  // headroom to read above the wall. Floor prevents under-amplifying quiet
+  // material. Target is the peak level where base gain is preserved at 1×.
+  // At ~30fps render rate, 0.997/frame ≈ ~5s peak half-life.
+  const LOGO_LIVE_AGC_DECAY = 0.997;
+  const LOGO_LIVE_AGC_TARGET = 0.50;
+  const LOGO_LIVE_AGC_FLOOR = 0.18;
+  const logoLiveBandPeaks = new Float32Array(7);
   const LOGO_LIVE_HIGH_ATTACK = 0.97;
   const LOGO_LIVE_HIGH_RELEASE = 0.70;
   const LOGO_LIVE_LOGO_ATTACK = 0.24;
@@ -1068,6 +1089,151 @@
     applyRouteStateToDom();
   }
 
+  // Special-profile easter egg. Spotify user URLs use internal IDs that don't
+  // carry the display name, so we identify her by the rendered entity-header
+  // heading once it lands in the DOM. Bounded retries cover the small window
+  // between "route became profile" and "Spotify rendered the h1".
+  function pvfdCheckSpecialProfile() {
+    if (pvfdRouteState.route !== "profile") {
+      if (pvfdSpecialProfileActive) pvfdExitSpecialProfile();
+      pvfdSpecialProfileRetriesLeft = 0;
+      if (pvfdSpecialProfileCheckTimer) {
+        clearTimeout(pvfdSpecialProfileCheckTimer);
+        pvfdSpecialProfileCheckTimer = 0;
+      }
+      return;
+    }
+    const headingText = pvfdReadProfileHeading();
+    const onSpecial = headingText === SPECIAL_PROFILE_USERNAME;
+    if (onSpecial && !pvfdSpecialProfileActive) {
+      pvfdSpecialProfileRetriesLeft = 0;
+      pvfdEnterSpecialProfile();
+    } else if (!onSpecial && pvfdSpecialProfileActive) {
+      pvfdSpecialProfileRetriesLeft = 0;
+      pvfdExitSpecialProfile();
+    } else if (!onSpecial && !pvfdSpecialProfileActive) {
+      pvfdScheduleSpecialProfileRecheck();
+    }
+  }
+
+  function pvfdReadProfileHeading() {
+    const mainView = document.querySelector(".Root__main-view");
+    if (!mainView) return "";
+    const heading =
+      mainView.querySelector(".main-entityHeader-container h1") ||
+      mainView.querySelector("[class*='entityHeader'][class*='container' i] h1") ||
+      mainView.querySelector("[data-testid*='entity-header' i] h1") ||
+      mainView.querySelector("h1[data-encore-id='text']");
+    return heading ? String(heading.textContent || "").trim().toLowerCase() : "";
+  }
+
+  function pvfdScheduleSpecialProfileRecheck() {
+    if (pvfdSpecialProfileCheckTimer) return;
+    if (pvfdSpecialProfileRetriesLeft <= 0) return;
+    pvfdSpecialProfileRetriesLeft--;
+    pvfdSpecialProfileCheckTimer = window.setTimeout(function () {
+      pvfdSpecialProfileCheckTimer = 0;
+      if (pvfdRouteState.route === "profile" && !pvfdSpecialProfileActive) {
+        pvfdCheckSpecialProfile();
+      }
+    }, 350);
+  }
+
+  function pvfdEnterSpecialProfile() {
+    pvfdSpecialProfileActive = true;
+    const roots = [document.documentElement, document.body, chassis].filter(Boolean);
+    for (const root of roots) {
+      if (root.dataset) root.dataset.pvfdSpecialProfile = SPECIAL_PROFILE_USERNAME;
+      else root.setAttribute("data-pvfd-special-profile", SPECIAL_PROFILE_USERNAME);
+    }
+    // Auto-lock TINT to MAGENTA, remembering whatever she had set so we can
+    // restore on exit. applyTintMode(false) does NOT persist to localStorage.
+    const magentaIdx = TINT_LABELS.indexOf("MAGENTA");
+    if (magentaIdx >= 0 && tintIdx !== magentaIdx) {
+      pvfdSpecialProfileSavedTintIdx = tintIdx;
+      tintIdx = magentaIdx;
+      applyTintMode(false);
+    }
+    pvfdInjectSpecialProfileSweep();
+    pvfdBurstSpecialProfileHearts();
+  }
+
+  function pvfdExitSpecialProfile() {
+    pvfdSpecialProfileActive = false;
+    const roots = [document.documentElement, document.body, chassis].filter(Boolean);
+    for (const root of roots) {
+      if (root && root.removeAttribute) root.removeAttribute("data-pvfd-special-profile");
+    }
+    if (pvfdSpecialProfileSavedTintIdx !== null) {
+      tintIdx = pvfdSpecialProfileSavedTintIdx;
+      pvfdSpecialProfileSavedTintIdx = null;
+      applyTintMode(false);
+    }
+    if (pvfdSpecialProfileSweepEl && pvfdSpecialProfileSweepEl.parentNode) {
+      pvfdSpecialProfileSweepEl.parentNode.removeChild(pvfdSpecialProfileSweepEl);
+    }
+    pvfdSpecialProfileSweepEl = null;
+    if (pvfdSpecialProfileHeartsTimer) {
+      clearTimeout(pvfdSpecialProfileHeartsTimer);
+      pvfdSpecialProfileHeartsTimer = 0;
+    }
+    const hearts = document.querySelector(".pvfd-habby-hearts-container");
+    if (hearts && hearts.parentNode) hearts.parentNode.removeChild(hearts);
+  }
+
+  function pvfdInjectSpecialProfileSweep() {
+    if (pvfdSpecialProfileSweepEl) return;
+    const host = document.querySelector(".Root__main-view .main-view-container__scroll-node-child")
+      || document.querySelector(".main-view-container__scroll-node-child")
+      || document.querySelector(".Root__main-view");
+    if (!host) return;
+    const el = document.createElement("div");
+    el.className = "pvfd-habby-sweep-overlay";
+    el.setAttribute("aria-hidden", "true");
+    // Ensure the host can position absolute children even if Spotify left it static.
+    if (host.style && getComputedStyle(host).position === "static") {
+      host.style.position = "relative";
+    }
+    host.appendChild(el);
+    pvfdSpecialProfileSweepEl = el;
+  }
+
+  function pvfdBurstSpecialProfileHearts() {
+    const prior = document.querySelector(".pvfd-habby-hearts-container");
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+    if (pvfdSpecialProfileHeartsTimer) {
+      clearTimeout(pvfdSpecialProfileHeartsTimer);
+      pvfdSpecialProfileHeartsTimer = 0;
+    }
+    const container = document.createElement("div");
+    container.className = "pvfd-habby-hearts-container";
+    container.setAttribute("aria-hidden", "true");
+    let maxEndMs = 0;
+    for (let i = 0; i < SPECIAL_PROFILE_HEART_COUNT; i++) {
+      const heart = document.createElement("div");
+      heart.className = "pvfd-habby-heart";
+      const startX = Math.random() * 96;
+      const duration = 3 + Math.random() * 2;
+      const delay = Math.random() * 0.8;
+      const size = 16 + Math.random() * 12;
+      const color = SPECIAL_PROFILE_COLORS[Math.floor(Math.random() * SPECIAL_PROFILE_COLORS.length)];
+      heart.style.cssText =
+        "left:" + startX + "vw;" +
+        "animation-duration:" + duration + "s;" +
+        "animation-delay:" + delay + "s;" +
+        "font-size:" + size + "px;" +
+        "color:" + color + ";";
+      container.appendChild(heart);
+      const end = (delay + duration) * 1000;
+      if (end > maxEndMs) maxEndMs = end;
+    }
+    document.body.appendChild(container);
+    pvfdSpecialProfileHeartsTimer = window.setTimeout(function () {
+      if (container.parentNode) container.parentNode.removeChild(container);
+      pvfdSpecialProfileHeartsTimer = 0;
+    }, maxEndMs + 600);
+  }
+
   function isRouteChurnActive(ts = performance.now()) {
     if (ts < pvfdRouteState.churnUntil) return true;
     if (pvfdRouteState.churnUntil !== 0) {
@@ -1160,8 +1326,15 @@
     }
     const nextRoute = detectPvfdRoute();
     pvfdRouteState.at = ts;
-    if (pvfdRouteState.route !== nextRoute) pvfdRouteState.route = nextRoute;
+    const prevRoute = pvfdRouteState.route;
+    if (prevRoute !== nextRoute) {
+      pvfdRouteState.route = nextRoute;
+      // Entering a profile route — give the special-profile heading detector
+      // enough retries (8 × 350ms ≈ 2.8s) to catch Spotify's render.
+      if (nextRoute === "profile") pvfdSpecialProfileRetriesLeft = 8;
+    }
     applyRouteStateToDom();
+    pvfdCheckSpecialProfile();
     pvfdPerfEnd("routeStateUpdate", perfAt);
     return pvfdRouteState.route;
   }
@@ -2130,7 +2303,16 @@
 
   function toggleDemoMode() {
     demoAutoMode = !demoAutoMode;
-    demoLastClipSwitchMs = performance.now();
+    if (demoAutoMode) {
+      // Remember whichever clip the user had set so we can restore it when
+      // DEMO is turned off. Cycle advances are non-persisted (setActiveClip
+      // false) so the user's saved clip in localStorage is never touched.
+      demoSavedClipIdx = clipIdx;
+      demoLastClipSwitchMs = performance.now();
+    } else if (demoSavedClipIdx !== null) {
+      setActiveClip(demoSavedClipIdx, false);
+      demoSavedClipIdx = null;
+    }
     if (chassis) chassis.setAttribute("data-pvfd-demo", demoAutoMode ? "on" : "off");
     markStaticReadoutsDirty();
     updateRoleButtonStates();
@@ -2514,7 +2696,11 @@
       const sourceNode = audioCtx.createMediaStreamSource(new MediaStream([audioTrack]));
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = DESKTOP_CAPTURE_FFT_SIZE;
-      analyser.smoothingTimeConstant = 0.62;
+      // Lower smoothingTimeConstant exposes short transients (pick attacks,
+      // hi-hat hits, vocal sibilance) instead of being smeared away before
+      // the band-energy and flux measurements even see them. Sustained bass
+      // is still smooth because band-level RMS averages across multiple bins.
+      analyser.smoothingTimeConstant = 0.32;
       sourceNode.connect(analyser);
 
       logoLiveAudioStream = stream;
@@ -2956,6 +3142,18 @@
     return clamp(Math.pow(Math.max(0, value) * gain, curve), 0, 1);
   }
 
+  // Per-band AGC: update the band's rolling peak, return a gain reduction
+  // factor in [floor, 1]. When peak ≤ target, returns 1 (full base gain).
+  // When peak rises above target, returns target/peak so the effective gain
+  // shrinks proportionally with how hard the band has been pinned.
+  function pvfdBandAgcGain(bandIdx, rawValue) {
+    let peak = logoLiveBandPeaks[bandIdx] * LOGO_LIVE_AGC_DECAY;
+    if (rawValue > peak) peak = rawValue;
+    logoLiveBandPeaks[bandIdx] = peak;
+    const ceiling = peak < LOGO_LIVE_AGC_FLOOR ? LOGO_LIVE_AGC_FLOOR : peak;
+    return ceiling <= LOGO_LIVE_AGC_TARGET ? 1 : (LOGO_LIVE_AGC_TARGET / ceiling);
+  }
+
   function readLogoGuitarNoteMotion() {
     const analyser = logoLiveAudioAnalyser;
     const bins = logoLiveAudioBins;
@@ -3138,9 +3336,17 @@
         }
 
         const rms = Math.sqrt(squareSum / count);
-        const topAverage = (top1 + top2 + top3 + top4) * 0.25;
+        // Divide by min(4, count) so narrow bands (sub: ~2-4 bins, bass:
+        // ~4-6 bins) compute topAverage from the actual count of available
+        // top bins instead of always dividing by 4. Without this, top3/top4
+        // stay zero in narrow bands and topAverage is underestimated.
+        const topAverage = (top1 + top2 + top3 + top4) / (count < 4 ? count : 4);
 
-        energy = rms * 0.72 + topAverage * 0.28;
+        // 50/50 RMS-vs-top blend (was 72/28). RMS captures sustained spectral
+        // fill (walls, drones); topAverage captures discrete loud bins (note
+        // harmonics, vocal formants). Equal weight means a guitar harmonic
+        // riding on top of a saturated wall still moves the bar.
+        energy = rms * 0.50 + topAverage * 0.50;
         flux = fSum / denom;
       }
       // Map band index → out fields. Order matches ANALYSER_BAND_RANGES.
@@ -3239,13 +3445,13 @@
     const metricEnergy = metrics.energy != null ? clamp(Number(metrics.energy), 0, 1) : null;
     const metricPunch = metrics.punch != null ? clamp(Number(metrics.punch), 0, 1) : null;
 
-    const subEnergy = compressAudioValue(subRaw, 2.35, 0.58);
-    const bassEnergy = compressAudioValue(bassRaw, 2.20, 0.57);
-    const lowMidEnergy = compressAudioValue(lowMidRaw, 2.55, 0.55);
-    const midEnergy = compressAudioValue(midRaw, 4.60, 0.50);
-    const upperMidEnergy = compressAudioValue(upperMidRaw, 5.40, 0.49);
-    const presenceEnergy = compressAudioValue(presenceRaw, 6.80, 0.47);
-    const airEnergy = compressAudioValue(airRaw, 8.40, 0.45);
+    const subEnergy      = compressAudioValue(subRaw,      2.35 * pvfdBandAgcGain(0, subRaw),      0.58);
+    const bassEnergy     = compressAudioValue(bassRaw,     2.20 * pvfdBandAgcGain(1, bassRaw),     0.57);
+    const lowMidEnergy   = compressAudioValue(lowMidRaw,   2.55 * pvfdBandAgcGain(2, lowMidRaw),   0.55);
+    const midEnergy      = compressAudioValue(midRaw,      4.60 * pvfdBandAgcGain(3, midRaw),      0.50);
+    const upperMidEnergy = compressAudioValue(upperMidRaw, 5.40 * pvfdBandAgcGain(4, upperMidRaw), 0.49);
+    const presenceEnergy = compressAudioValue(presenceRaw, 6.80 * pvfdBandAgcGain(5, presenceRaw), 0.47);
+    const airEnergy      = compressAudioValue(airRaw,      8.40 * pvfdBandAgcGain(6, airRaw),      0.45);
 
     const subMotion = compressAudioValue(subFlux, 9.5, 0.68);
     const bassMotion = compressAudioValue(bassFlux, 9.0, 0.68);
@@ -4178,6 +4384,14 @@
     const scrollStress = isPvfdPlaylistScrollStressActive(ts);
 
     setAttrIfChanged(chassis, "data-pvfd-demo", demoAutoMode ? "on" : "off");
+
+    // DEMO showroom auto-cycle. Advance to the next clip every
+    // DEMO_CYCLE_INTERVAL_MS while DEMO is on. setActiveClip with persist=false
+    // means the cycle doesn't overwrite the user's saved clip preference.
+    if (demoAutoMode && ts - demoLastClipSwitchMs >= DEMO_CYCLE_INTERVAL_MS) {
+      setActiveClip(clipIdx + 1, false);
+      demoLastClipSwitchMs = ts;
+    }
 
     // Never read canvas.clientWidth/Height inline — that forces a synchronous layout
     // flush which collides with Spotify's main-view mouseover delegate and React
