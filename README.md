@@ -15,7 +15,7 @@ This current build is the WebM/live-audio refactor. The old `.LKD` frame-by-fram
 
 ##
 
-<img width="1280" height="720" alt="Screenshot 2026-05-11 203645" src="https://github.com/user-attachments/assets/65cab486-6eeb-4be3-ad75-586955a808f6" />
+<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/afc8dc5a-fcf8-4e2e-9642-57084db37070" />
 
 ##
 
