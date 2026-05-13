@@ -25,13 +25,11 @@ PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 
 ## What It Does
 
 - Replaces Spotify's lower player area with a custom chrome Pioneer-style head-unit panel.
-- Uses real WebM OEL clips for the center animation display instead of packed `.LKD` frame reads.
+- Uses real WebM OEL clips for the center animation display
 - Ships the OEL media assets in `Themes/PioneerVFD/assets`.
 - Adds metadata LCDs for artist, title, playtime, source state, tint, dim, mode, and playback readouts.
 - Adds mirrored live spectrum bars around the Pioneer logo.
 - Uses Chromium desktop audio capture for the `PULSE` live visualizer.
-- Supports app-wide RGB tint treatment for cyan, amber, and violet modes.
-- Adds route-aware Spotify styling for home, search, library, album, playlist, queue, lyrics, artist, and other views.
 - Includes `FULL` and `ECO` performance modes for different machines.
 
 ## OEL And Media
@@ -45,7 +43,7 @@ The center OEL/VFD display is WebM-based. The current clip set includes:
 - `diverdolphins_longloop.webm`
 - `6_Racing_Cart_longloop.webm`
 
-The installer builds the installed extension by injecting a WebM source map into `pioneerVFD.js`. This is intentional. A raw copy of the extension file is not enough for the full WebM OEL display, because the source file contains a placeholder until the installer writes the asset map.
+The installer builds the installed extension by injecting a WebM source map into `pioneerVFD.js`.
 
 ## Controls
 
@@ -54,7 +52,7 @@ The Pioneer `MENU` button exposes the main runtime controls:
 - `SRC` cycles the Spotify source view.
 - `OEL` cycles the WebM OEL clip.
 - `DEMO` auto-cycles OEL clips without changing the saved startup clip.
-- `TINT` cycles cyan, amber, and violet display treatment.
+- `TINT` cycles 10-color display treatment.
 - `TYPE` switches the Spotify content font preset.
 - `PERF` switches between `FULL` and `ECO`.
 - `PULSE` toggles Chromium live audio capture for the logo spectrum.
@@ -71,8 +69,6 @@ Saved preferences include `PERF`, `TINT`, `DIM`, `TYPE`, selected `OEL` clip, `V
 `FULL` keeps the rich display treatment active.
 
 `ECO` is the lower-cost mode. It keeps the main OEL display usable while reducing surrounding visual work, side-panel updates, high-cost glow treatment, side VU behavior, and app-side decorative styling. The player still shows enough status to explain what it is doing.
-
-The CSS is split around a simple rule: Pioneer-owned UI can be rich; high-churn Spotify-owned UI has to stay cheap. The theme uses route attributes and RGB variables so the app-wide tinting can stay consistent without leaning on broad expensive selectors.
 
 ## Requirements
 
@@ -192,7 +188,6 @@ PioneerVFD/
 - `Themes/PioneerVFD/user.css` owns the chrome body, LCD/OEL styling, RGB tint variables, app-wide Spotify styling, route-specific layout, and performance gates.
 - `Themes/PioneerVFD/color.ini` defines the `PioneerVFD` Spicetify color scheme.
 - Manual raw-copy installs are not recommended for this build because the extension must be installed with the WebM source map injected.
-- The old helper/audio-analysis path is not the supported visualizer path. `PULSE` uses Chromium live capture.
 - If `PULSE` has no signal, turn it off and on again, then pick a capture source that includes audio.
 - If the OEL screen is blank after a manual copy, rerun the platform installer.
 - If macOS opens Spotify to a black screen or the Pioneer player appears without working JavaScript, fully quit Spotify and rerun:
