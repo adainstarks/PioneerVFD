@@ -317,7 +317,14 @@
   const CHROME_STORAGE_KEY = "pvfd-chrome-mode";
   const RACING_CLIP_ID = "racing-cart-longloop-webm";
   const OEL_WEBM_SOURCE_MAP_PLACEHOLDER = "__PVFD_" + "OEL_WEBM_SOURCE_MAP_JSON__";
-  const OEL_WEBM_SOURCE_MAP = "__PVFD_OEL_WEBM_SOURCE_MAP_JSON__";
+  const OEL_WEBM_SOURCE_MAP = {
+    "movie5_longloop.webm": "https://adainstarks.github.io/PioneerVFD/Themes/PioneerVFD/assets/movie5_longloop.webm",
+    "movie1_longloop.webm": "https://adainstarks.github.io/PioneerVFD/Themes/PioneerVFD/assets/movie1_longloop.webm",
+    "movie6_longloop.webm": "https://adainstarks.github.io/PioneerVFD/Themes/PioneerVFD/assets/movie6_longloop.webm",
+    "movie10_f_longloop.webm": "https://adainstarks.github.io/PioneerVFD/Themes/PioneerVFD/assets/movie10_f_longloop.webm",
+    "diverdolphins_longloop.webm": "https://adainstarks.github.io/PioneerVFD/Themes/PioneerVFD/assets/diverdolphins_longloop.webm",
+    "6_Racing_Cart_longloop.webm": "https://adainstarks.github.io/PioneerVFD/Themes/PioneerVFD/assets/6_Racing_Cart_longloop.webm"
+  };
   const OEL_WEBM_CLIPS = [
     { id: "movie5-longloop-webm-proof", label: "CARZERIA", name: "MOVIE5 LONG", assetName: "movie5_longloop.webm" },
     { id: "movie1-longloop-webm", label: "JETS", name: "MOVIE1 LONG", assetName: "movie1_longloop.webm" },
