@@ -2816,10 +2816,10 @@ nav[aria-label="Main"] button[aria-label*="Recents" i] {
 /* Pre-shrink threshold: ORANGE / MAGENTA overflow the unshrunken side TINT
    pill at this width even though pill size hasn't compacted yet. Swap the
    chassis TINT pill's displayed label for the short variant (ORNGE / MGNTA)
-   below 1468px. Other tints have short == long; swap is a visual no-op there.
+   below 1762px. Other tints have short == long; swap is a visual no-op there.
    The narrower 1160px block below shrinks the ::after font-size to match the
    pill's compacted font-size, so the abbreviated label tracks pill scaling. */
-@media (max-width: 1468px) {
+@media (max-width: 1762px) {
   .pvfd-pill[data-pvfd='tint'][data-pvfd-tint-short] {
     font-size: 0 !important;
   }
