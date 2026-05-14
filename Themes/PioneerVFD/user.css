@@ -2842,15 +2842,17 @@ nav[aria-label="Main"] button[aria-label*="Recents" i] {
    doesn't stack with the 1160px compact rule below or fight wider layouts
    that already have natural breathing room. */
 @media (min-width: 1161px) {
-  .pvfd-mainrow {
+  /* High-specificity selectors so this beats the gap:8px + translateX(±10)
+     rules at user.css ~3613/~4161/~4189 (max-width 1760 and 1620-1321 ranges
+     plus the @container variant). Those rules set gap:8px !important and
+     translate flanks inward by 8-10px, crowding the pills against the knob
+     halos. Specificity here is (0,3,1) vs their (0,1,0)/(0,2,0), so we win
+     by specificity regardless of source order or container scope. */
+  body.pvfd-theme-active .pvfd-chassis .pvfd-mainrow {
     gap: 40px !important;
   }
-  /* Neutralize the existing pull-toward-knob transforms at narrower widths.
-     Without this, at 1321-1500px the flanks get translateX(±6-8px) inward,
-     re-crowding the knob halo and undoing the gap fix. Apply at every width
-     above the compact threshold so we don't leave an upper-bound hole. */
-  .pvfd-mainrow > .pvfd-flank:nth-child(2),
-  .pvfd-mainrow > .pvfd-flank:nth-child(4) {
+  body.pvfd-theme-active .pvfd-chassis .pvfd-mainrow > .pvfd-flank:nth-child(2),
+  body.pvfd-theme-active .pvfd-chassis .pvfd-mainrow > .pvfd-flank:nth-child(4) {
     transform: none !important;
   }
 }
