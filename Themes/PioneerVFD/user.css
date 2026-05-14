@@ -2831,21 +2831,27 @@ nav[aria-label="Main"] button[aria-label*="Recents" i] {
   }
 }
 
-/* Pre-shrink threshold: pull the side flanks (DEMO/MENU/TINT and SRC/DIM/OEL
-   pill stacks) inward away from the knob/dpad outer halos. The knob LED arc
-   carries a 14px box-shadow blur on top of its already-large ring; that bright
-   halo bleeds well past the 136px column boundary, and the default 12px grid
-   gap leaves the pills sitting inside that halo. 20px of inner margin is
-   enough to clear the visible halo on both rotaries.
-   Below 1160px the main row resizes its columns entirely with its own gap
-   values, so this fix is scoped to the 1161–1520px range to avoid stacking
-   with that compact-mode rule. */
-@media (max-width: 1520px) and (min-width: 1161px) {
-  .pvfd-mainrow > .pvfd-flank:nth-child(2) {
-    margin-left: 20px;
+/* Pre-shrink threshold: open the column gap on the main row so the side
+   flank pills (DEMO/MENU/TINT and SRC/DIM/OEL) sit centered between the
+   knob/dpad halos and the side LCD edges instead of crowding either. The
+   default 12px gap leaves the pills inside the knob LED arc's 14px halo;
+   bumping to 22px keeps the pill column the same width but doubles the
+   space on each side, so visually the pill sits in the middle of the
+   knob-to-LCD channel. Center display still has ample minmax(420px, 1fr).
+   Scoped to 1161-1800px so it covers small-to-medium Spotify windows but
+   doesn't stack with the 1160px compact rule below or fight wider layouts
+   that already have natural breathing room. */
+@media (min-width: 1161px) {
+  .pvfd-mainrow {
+    gap: 40px !important;
   }
+  /* Neutralize the existing pull-toward-knob transforms at narrower widths.
+     Without this, at 1321-1500px the flanks get translateX(±6-8px) inward,
+     re-crowding the knob halo and undoing the gap fix. Apply at every width
+     above the compact threshold so we don't leave an upper-bound hole. */
+  .pvfd-mainrow > .pvfd-flank:nth-child(2),
   .pvfd-mainrow > .pvfd-flank:nth-child(4) {
-    margin-right: 20px;
+    transform: none !important;
   }
 }
 
