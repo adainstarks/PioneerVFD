@@ -2426,11 +2426,46 @@
   function bindProgressScrubber(el) {
     if (!el) return;
     let scrubRect = null;
+    let pendingTarget = null;
+    let commitTimer = 0;
+
+    // Visual preview updates on every pointermove (instant feedback through
+    // scrubPreviewMs). The actual Spicetify.Player.seek() commits are
+    // debounced — without this, fast back-and-forth scrubbing fires 120+
+    // overlapping async seeks that race in Spotify's audio engine and make
+    // the displayed position jump erratically until the in-flight seeks
+    // settle. 80ms commit window matches roughly what Spotify can chew
+    // through cleanly without queuing.
+    const commit = () => {
+      commitTimer = 0;
+      if (pendingTarget === null) return;
+      const target = pendingTarget;
+      pendingTarget = null;
+      safe(() => Spicetify.Player.seek(target));
+    };
+
     const apply = (e) => {
       const rect = scrubRect || el.getBoundingClientRect();
       if (!rect.width) return;
-      seekToFraction((e.clientX - rect.left) / rect.width);
+      const duration = getCurrentDurationMs();
+      if (!duration) return;
+      const frac = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+      const target = frac * duration;
+      // Visual: write the CSS variable directly on every pointermove so the
+      // bar/thumb tracks the cursor at native pointer rate (60-240Hz) instead
+      // of waiting for the next render-loop tick (30-60fps). Without this,
+      // each move incurred up to ~33ms of perceived lag because --pvfd-progress
+      // only updated when the main render loop next ran. scrubPreviewMs still
+      // gets set so the render loop reads the right value when it does run.
+      el.style.setProperty("--pvfd-progress", (frac * 100).toFixed(2) + "%");
+      scrubPreviewMs = target;
+      scrubPreviewUntil = performance.now() + 700;
+      playerTimingCache.at = -Infinity;
+      // Engine: debounce so we don't queue overlapping seeks.
+      pendingTarget = target;
+      if (!commitTimer) commitTimer = window.setTimeout(commit, 80);
     };
+
     let activePointer = null;
     el.addEventListener("pointerdown", (e) => {
       e.preventDefault();
@@ -2449,6 +2484,25 @@
       activePointer = null;
       scrubRect = null;
       el.classList.remove("scrubbing");
+      // On release, flush any pending seek immediately so the final landing
+      // position is committed without waiting out the 80ms debounce.
+      if (commitTimer) {
+        clearTimeout(commitTimer);
+        commit();
+      }
+      // Extend the visual preview lock past Spotify's typical seek+buffer
+      // window. Without this, scrubPreviewMs invalidates after 700ms while
+      // the player is still mid-seek and reporting the OLD position; the
+      // bar visibly bounces back to old, then snaps to new once Spotify
+      // catches up. 2000ms covers the worst-case buffer reload on slower
+      // connections; under normal conditions Spotify lands well inside
+      // this window and the transition to player-reported state is
+      // imperceptible because the values match.
+      scrubPreviewUntil = performance.now() + 2000;
+      // Also force the player timing cache to re-sample on the next read
+      // after the preview window expires, so we read Spotify's settled
+      // position rather than a stale cached value from before the seek.
+      playerTimingCache.at = -Infinity;
     };
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", end);
