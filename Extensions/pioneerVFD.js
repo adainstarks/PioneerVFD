@@ -315,6 +315,7 @@
   const RACING_COLOR_STORAGE_KEY = "pvfd-racing-color-mode";
   const LEGACY_RACING_COLOR_STORAGE_KEY = "pvfd-racing-color-breakout";
   const CHROME_STORAGE_KEY = "pvfd-chrome-mode";
+  const LYRICS_PASS_STORAGE_KEY = "pvfd-lyrics-pass";
   const SPECIAL_PROFILE_USERNAME = "habahooney69";
   const SPECIAL_PROFILE_COLORS = ["#00d68f", "#b366ff", "#ff3df0", "#ffdd80"];
   const SPECIAL_PROFILE_HEART_COUNT = 15;
@@ -465,6 +466,7 @@
   let canvas = null, ctx = null;
   let lcdDimmed = false;
   let chromeDarkEnabled = false;
+  let lyricsPassEnabled = false;
   let chassis = null;
   let trackTitle = "", trackArtist = "";
   let lastTrackUri = "";
@@ -477,6 +479,7 @@
   let lastCanvasFrameKey = "";
   let oelVideoActiveClipKey = "";
   let oelWebmSourceMap = null;
+  let oelWebmCachePopulationStarted = false;
   let oelWebmLastCheckedUrl = "";
   let oelCanvasRendererDisabledLogged = false;
   let clipCacheRebuildBlockedUntil = 0;
@@ -728,7 +731,7 @@
             <div class="pvfd-menu-title">PIONEER MENU</div>
             <div class="pvfd-menu-main" data-pvfd="menu-main">
               <div class="pvfd-menu-row-split">
-                <div class="pvfd-menu-row" data-pvfd-menu-action="source"><b>SRC</b><span data-pvfd="menu-src">PLAY</span></div>
+                <div class="pvfd-menu-row" data-pvfd-menu-action="lyricsPass" title="Defer the lyrics view to installed lyrics extensions"><b>LYRICS</b><span data-pvfd="menu-lyrics">PVFD</span></div>
                 <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-perf-toggle" type="button" data-pvfd-menu-action="perf" title="Cycle performance mode"><b>PERF</b><span data-pvfd="menu-perf">FULL</span></button>
               </div>
               <div class="pvfd-menu-row-split">
@@ -1363,6 +1366,11 @@
     return saved === "ON" || saved === "TRUE" || saved === "1" || saved === "DARK";
   }
 
+  function readLyricsPassEnabled() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(LYRICS_PASS_STORAGE_KEY), "") || "").toUpperCase();
+    return saved === "ON" || saved === "EXT" || saved === "PASS" || saved === "TRUE" || saved === "1";
+  }
+
   function clipStorageId(clip, idx = 0) {
     return String((clip && (clip.id || clip.assetName || clip.source || clip.name)) || idx);
   }
@@ -1458,6 +1466,87 @@
     setOelVideoState(state);
   }
 
+  const OEL_WEBM_CACHE_DB_NAME = "pvfd-oel-webm-cache";
+  const OEL_WEBM_CACHE_STORE = "clips";
+  // Bump when a webm's bytes change at the same filename — invalidates IndexedDB.
+  const OEL_WEBM_CACHE_VERSION = 1;
+  const OEL_WEBM_GITHUB_BASE = "https://adainstarks.github.io/PioneerVFD/Themes/PioneerVFD/assets/";
+
+  function oelWebmCacheKey(assetName) {
+    return `${assetName}@v${OEL_WEBM_CACHE_VERSION}`;
+  }
+
+  function openOelWebmCacheDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(OEL_WEBM_CACHE_DB_NAME, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(OEL_WEBM_CACHE_STORE);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function readOelWebmFromCache(assetName) {
+    return openOelWebmCacheDB().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(OEL_WEBM_CACHE_STORE, "readonly");
+      const req = tx.objectStore(OEL_WEBM_CACHE_STORE).get(oelWebmCacheKey(assetName));
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    }));
+  }
+
+  function writeOelWebmToCache(assetName, blob) {
+    return openOelWebmCacheDB().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(OEL_WEBM_CACHE_STORE, "readwrite");
+      tx.objectStore(OEL_WEBM_CACHE_STORE).put(blob, oelWebmCacheKey(assetName));
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+
+  async function resolveClipUrlViaCache(clip) {
+    const assetName = clip.assetName;
+    const githubUrl = OEL_WEBM_GITHUB_BASE + assetName;
+
+    try {
+      const cachedBlob = await readOelWebmFromCache(assetName);
+      if (cachedBlob) {
+        console.log(`[PVFD] OEL WebM cache hit: ${assetName} (${cachedBlob.size} bytes)`);
+        return URL.createObjectURL(cachedBlob);
+      }
+    } catch (err) {
+      console.warn(`[PVFD] OEL WebM cache read failed for ${assetName}:`, err);
+    }
+
+    fetch(githubUrl)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.blob();
+      })
+      .then((blob) => writeOelWebmToCache(assetName, blob)
+        .then(() => console.log(`[PVFD] OEL WebM cached: ${assetName} (${blob.size} bytes)`)))
+      .catch((err) => console.warn(`[PVFD] OEL WebM cache populate failed for ${assetName}:`, err && err.message || err));
+
+    return githubUrl;
+  }
+
+  function startOelWebmCachePopulation() {
+    if (oelWebmCachePopulationStarted) return;
+    oelWebmCachePopulationStarted = true;
+    oelWebmSourceMap = {};
+    console.log("[PVFD] OEL WebM cache: starting population");
+
+    for (const clip of OEL_WEBM_CLIPS) {
+      if (!clip || !clip.assetName) continue;
+      resolveClipUrlViaCache(clip)
+        .then((url) => {
+          oelWebmSourceMap[clip.assetName] = url;
+          console.log(`[PVFD] OEL WebM ready: ${clip.assetName} → ${url.startsWith("blob:") ? "blob" : "github"}`);
+          safe(() => syncOelVideoPlayback(true));
+        })
+        .catch((err) => console.warn(`[PVFD] OEL WebM resolve failed: ${clip.assetName}`, err && err.message || err));
+    }
+  }
+
   function resolveOelWebmSourceMap() {
     if (!oelWebmSourceMap) {
       const injectedMap = OEL_WEBM_SOURCE_MAP;
@@ -1469,6 +1558,8 @@
       ) {
         oelWebmSourceMap = injectedMap;
         console.log(`[PVFD] OEL WebM registry ready: clips=${Object.keys(injectedMap).length}`);
+      } else {
+        startOelWebmCachePopulation();
       }
     }
     return oelWebmSourceMap;
@@ -1969,7 +2060,7 @@
       menuPanel: chassis.querySelector("[data-pvfd='menu-panel']"),
       menuMain: chassis.querySelector("[data-pvfd='menu-main']"),
       menu: {
-        src: chassis.querySelector("[data-pvfd='menu-src']"),
+        lyricsPass: chassis.querySelector("[data-pvfd='menu-lyrics']"),
         oel: chassis.querySelector("[data-pvfd='menu-oel']"),
         demo: chassis.querySelector("[data-pvfd='menu-demo']"),
         tint: chassis.querySelector("[data-pvfd='menu-tint']"),
@@ -2068,8 +2159,7 @@
       return;
     }
     const dom = getPvfdDom();
-    const source = SOURCE_TARGETS[sourceIdx] || SOURCE_TARGETS[0];
-    setTextIfChanged(dom.menu && dom.menu.src, source.label);
+    setTextIfChanged(dom.menu && dom.menu.lyricsPass, lyricsPassEnabled ? "EXT" : "PVFD");
     setTextIfChanged(dom.menu && dom.menu.oel, activeClipName(12));
     setTextIfChanged(dom.menu && dom.menu.demo, demoAutoMode ? "AUTO" : "OFF");
     setTextIfChanged(dom.menu && dom.menu.tint, TINT_LABELS[tintIdx]);
@@ -2132,6 +2222,42 @@
   function toggleChromeMode() {
     chromeDarkEnabled = !chromeDarkEnabled;
     applyChromeMode(true);
+  }
+
+  // LYRICS PASS mode: when ON, Pioneer stops tagging lyrics surfaces with its
+  // .pvfd-lyrics-* classes and the mutation observer's lyrics branch no-ops.
+  // That lets installed lyrics extensions (Beautiful Lyrics, Simple Beautiful
+  // Lyrics, etc.) own the lyrics view's DOM. When OFF, Pioneer re-tags any
+  // current lyrics surfaces and resumes its native lyrics styling, overriding
+  // whatever the extension was injecting.
+  function applyLyricsPassMode(persist = false) {
+    if (document.body) {
+      if (lyricsPassEnabled) document.body.setAttribute("data-pvfd-lyrics-pass", "on");
+      else document.body.removeAttribute("data-pvfd-lyrics-pass");
+    }
+    if (chassis) {
+      if (lyricsPassEnabled) chassis.setAttribute("data-pvfd-lyrics-pass", "on");
+      else chassis.removeAttribute("data-pvfd-lyrics-pass");
+    }
+    if (lyricsPassEnabled) {
+      untagLyricsSurfaces();
+    } else {
+      // Resume Pioneer's lyrics tagging on whatever's currently rendered.
+      tagLyricsSurfaces(document);
+    }
+    if (persist) safe(() => window.localStorage.setItem(LYRICS_PASS_STORAGE_KEY, lyricsPassEnabled ? "EXT" : "OFF"));
+    updateMenuPanel();
+  }
+
+  function toggleLyricsPassMode() {
+    lyricsPassEnabled = !lyricsPassEnabled;
+    applyLyricsPassMode(true);
+  }
+
+  function untagLyricsSurfaces() {
+    document.querySelectorAll(".pvfd-lyrics-surface, .pvfd-lyrics-background, .pvfd-lyrics-content").forEach((el) => {
+      el.classList.remove("pvfd-lyrics-surface", "pvfd-lyrics-background", "pvfd-lyrics-content");
+    });
   }
 
   function applyBrowseFontPreset(persist = false) {
@@ -2320,7 +2446,7 @@
   }
 
   function activateMenuAction(action) {
-    if (action === "source") cycleSource();
+    if (action === "lyricsPass") toggleLyricsPassMode();
     else if (action === "clip") cycleClipMode();
     else if (action === "demo") toggleDemoMode();
     else if (action === "tint") openTintMenu();
@@ -4787,6 +4913,7 @@
   }
 
   function tagLyricsSurfaces(root = document) {
+    if (lyricsPassEnabled) return 0;
     const scope = root && root.querySelectorAll ? root : document;
     let tagged = 0;
     const surfaces = [];
@@ -4822,7 +4949,7 @@
 
   function reconcileLyricsSyncButtons(root = document) {
     const perfAt = pvfdPerfStart();
-    if (!hasLyricsView() || !rootLooksLyricsScoped(root)) {
+    if (lyricsPassEnabled || !hasLyricsView() || !rootLooksLyricsScoped(root)) {
       pvfdPerfEnd("searchReconciliation", perfAt);
       return 0;
     }
@@ -5134,6 +5261,7 @@
     tintIdx = readTintIdx();
     lcdDimmed = readDimEnabled();
     chromeDarkEnabled = readChromeDarkEnabled();
+    lyricsPassEnabled = readLyricsPassEnabled();
     performanceModeIdx = readPerformanceModeIdx();
     logoGlowEnabled = readLogoGlowEnabled();
     oelDisplayEnabled = readOelDisplayEnabled();
@@ -5145,6 +5273,7 @@
     applyTintMode(false);
     applyDimMode(false);
     applyChromeMode(false);
+    applyLyricsPassMode(false);
     applyLogoGlowMode(false);
     applyOelDisplayMode(false);
     applyRacingColorMode(false);
