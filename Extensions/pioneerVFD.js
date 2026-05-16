@@ -316,6 +316,8 @@
   const LEGACY_RACING_COLOR_STORAGE_KEY = "pvfd-racing-color-breakout";
   const CHROME_STORAGE_KEY = "pvfd-chrome-mode";
   const LYRICS_PASS_STORAGE_KEY = "pvfd-lyrics-pass";
+  const EEQ_TINT_STORAGE_KEY = "pvfd-eeq-tint";
+  const LED_GLOW_STORAGE_KEY = "pvfd-led-glow";
   const SPECIAL_PROFILE_USERNAME = "habahooney69";
   const SPECIAL_PROFILE_COLORS = ["#00d68f", "#b366ff", "#ff3df0", "#ffdd80"];
   const SPECIAL_PROFILE_HEART_COUNT = 15;
@@ -330,8 +332,8 @@
     { id: "diverdolphins-longloop-webm", label: "DOLPHIN", name: "DIVER DOLPHINS", assetName: "diverdolphins_longloop.webm" },
     { id: "racing-cart-longloop-webm", label: "RACING", name: "RACING CART", assetName: "6_Racing_Cart_longloop.webm" }
   ];
-  const PVFD_PLAY_GLYPH = "\u25B6";
-  const PVFD_PAUSE_GLYPH = "\u23F8";
+  const PVFD_PLAY_GLYPH = "\u25B6\uFE0E";
+  const PVFD_PAUSE_GLYPH = "\u23F8\uFE0E";
   const PVFD_META_IDLE_GLYPH = "\u2014";
   const PVFD_META_PAUSE_GLYPH = "\u2161";
   const FONT_PRESETS = [
@@ -467,6 +469,8 @@
   let lcdDimmed = false;
   let chromeDarkEnabled = false;
   let lyricsPassEnabled = false;
+  let eeqTinted = false;
+  let ledGlowEnabled = true;
   let chassis = null;
   let trackTitle = "", trackArtist = "";
   let lastTrackUri = "";
@@ -627,7 +631,7 @@
     root.innerHTML = `
       <div class="pvfd-faceplate">
         <div style="display:flex;align-items:center;gap:14px;justify-content:flex-start;">
-          <span class="pvfd-silk-eeq">EEQ</span>
+          <span class="pvfd-silk-eeq" data-pvfd="eeq" role="button" tabindex="0" title="Toggle EEQ tint">EEQ</span>
           <span class="pvfd-silk-label">MOSFET 50W&times;4</span>
           <button class="pvfd-silk-lyrics" type="button" data-pvfd="lyrics" aria-label="Open song lyrics" title="Open lyrics">Lyrics</button>
         </div>
@@ -750,6 +754,10 @@
                 <div class="pvfd-menu-row" data-pvfd-menu-action="type"><b>TYPE</b><span data-pvfd="menu-type">DOT</span></div>
                 <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="chromeMode" title="Toggle dark chrome plastic"><b>DARK</b><span data-pvfd="menu-chrome">OFF</span></button>
               </div>
+              <div class="pvfd-menu-row-split">
+                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="ledGlow" title="Toggle transport button LED glow"><b>BUTTON</b><span data-pvfd="menu-led-glow">GLOW</span></button>
+                <div></div>
+              </div>
             </div>
           </div>
         </div>
@@ -779,9 +787,9 @@
         <div class="pvfd-tab-side" data-pvfd="queue" title="Queue">QUE<div class="pvfd-led-strip"></div></div>
         <div class="pvfd-preset-row">
           <div class="pvfd-tab-preset" data-pvfd="shuffle" title="Shuffle">&#8646;<div class="pvfd-led-strip"></div></div>
-          <div class="pvfd-tab-preset" data-pvfd="prev"    title="Previous">&#9198;<div class="pvfd-led-strip"></div></div>
-          <div class="pvfd-tab-preset" data-pvfd="play"    title="Play / pause">&#9654;<div class="pvfd-led-strip"></div></div>
-          <div class="pvfd-tab-preset" data-pvfd="next"    title="Next">&#9197;<div class="pvfd-led-strip"></div></div>
+          <div class="pvfd-tab-preset" data-pvfd="prev"    title="Previous">&#9198;&#xFE0E;<div class="pvfd-led-strip"></div></div>
+          <div class="pvfd-tab-preset" data-pvfd="play"    title="Play / pause">&#9654;&#xFE0E;<div class="pvfd-led-strip"></div></div>
+          <div class="pvfd-tab-preset" data-pvfd="next"    title="Next">&#9197;&#xFE0E;<div class="pvfd-led-strip"></div></div>
           <div class="pvfd-tab-preset" data-pvfd="repeat"  title="Repeat">&#8635;<div class="pvfd-led-strip"></div></div>
           <div class="pvfd-tab-preset" data-pvfd="love"    title="Save to liked">&#9829;<div class="pvfd-led-strip"></div></div>
         </div>
@@ -1369,6 +1377,16 @@
   function readLyricsPassEnabled() {
     const saved = String(safeReturn(() => window.localStorage.getItem(LYRICS_PASS_STORAGE_KEY), "") || "").toUpperCase();
     return saved === "ON" || saved === "EXT" || saved === "PASS" || saved === "TRUE" || saved === "1";
+  }
+
+  function readEeqTinted() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(EEQ_TINT_STORAGE_KEY), "") || "").toUpperCase();
+    return saved === "ON" || saved === "TRUE" || saved === "1";
+  }
+
+  function readLedGlowEnabled() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(LED_GLOW_STORAGE_KEY), "") || "").toUpperCase();
+    return !(saved === "OFF" || saved === "FALSE" || saved === "0");
   }
 
   function clipStorageId(clip, idx = 0) {
@@ -2070,6 +2088,7 @@
         oelDisplay: chassis.querySelector("[data-pvfd='menu-oel-display']"),
         racingColor: chassis.querySelector("[data-pvfd='menu-racing-color']"),
         chromeMode: chassis.querySelector("[data-pvfd='menu-chrome']"),
+        ledGlow: chassis.querySelector("[data-pvfd='menu-led-glow']"),
       },
       buttons: {
         play: chassis.querySelector("[data-pvfd='play']"),
@@ -2169,6 +2188,7 @@
     setTextIfChanged(dom.menu && dom.menu.oelDisplay, oelDisplayEnabled ? "ON" : "OFF");
     setTextIfChanged(dom.menu && dom.menu.racingColor, racingColorModeLabel());
     setTextIfChanged(dom.menu && dom.menu.chromeMode, chromeDarkEnabled ? "ON" : "OFF");
+    setTextIfChanged(dom.menu && dom.menu.ledGlow, ledGlowEnabled ? "GLOW" : "OFF");
     refreshTintMenuSelection();
     pvfdPerfEnd("menuRefreshUpdate", perfAt);
   }
@@ -2222,6 +2242,27 @@
   function toggleChromeMode() {
     chromeDarkEnabled = !chromeDarkEnabled;
     applyChromeMode(true);
+  }
+
+  function applyEeqTint(persist = false) {
+    if (document.body) document.body.setAttribute("data-pvfd-eeq-tint", eeqTinted ? "ON" : "OFF");
+    if (persist) safe(() => window.localStorage.setItem(EEQ_TINT_STORAGE_KEY, eeqTinted ? "ON" : "OFF"));
+  }
+
+  function toggleEeqTint() {
+    eeqTinted = !eeqTinted;
+    applyEeqTint(true);
+  }
+
+  function applyLedGlow(persist = false) {
+    if (document.body) document.body.setAttribute("data-pvfd-led-glow", ledGlowEnabled ? "GLOW" : "OFF");
+    if (persist) safe(() => window.localStorage.setItem(LED_GLOW_STORAGE_KEY, ledGlowEnabled ? "ON" : "OFF"));
+    updateMenuPanel();
+  }
+
+  function toggleLedGlow() {
+    ledGlowEnabled = !ledGlowEnabled;
+    applyLedGlow(true);
   }
 
   // LYRICS PASS mode: when ON, Pioneer stops tagging lyrics surfaces with its
@@ -2456,6 +2497,7 @@
     else if (action === "oelDisplay") toggleOelDisplay();
     else if (action === "racingColor") toggleRacingColorMode();
     else if (action === "chromeMode") toggleChromeMode();
+    else if (action === "ledGlow") toggleLedGlow();
   }
 
   function getPlayerVolume(now = performance.now(), force = false) {
@@ -2728,6 +2770,7 @@
     bind($("[data-pvfd='navright']"), () => invokePlayerAction(() => Spicetify.Player.next(), 300));
 
     bind($("[data-pvfd='scan']"), cycleSource);
+    bind($("[data-pvfd='eeq']"), toggleEeqTint);
     bind($("[data-pvfd='lyrics']"), openLyrics);
     bind($("[data-pvfd='dim']"), toggleDimMode);
     bind($("[data-pvfd='clip']"), cycleClipMode);
@@ -5262,6 +5305,8 @@
     lcdDimmed = readDimEnabled();
     chromeDarkEnabled = readChromeDarkEnabled();
     lyricsPassEnabled = readLyricsPassEnabled();
+    eeqTinted = readEeqTinted();
+    ledGlowEnabled = readLedGlowEnabled();
     performanceModeIdx = readPerformanceModeIdx();
     logoGlowEnabled = readLogoGlowEnabled();
     oelDisplayEnabled = readOelDisplayEnabled();
@@ -5274,6 +5319,8 @@
     applyDimMode(false);
     applyChromeMode(false);
     applyLyricsPassMode(false);
+    applyEeqTint(false);
+    applyLedGlow(false);
     applyLogoGlowMode(false);
     applyOelDisplayMode(false);
     applyRacingColorMode(false);

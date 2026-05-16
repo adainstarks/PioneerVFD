@@ -528,6 +528,14 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   color: var(--pvfd-green); font-style: italic; font-weight: 700; font-size: 13px;
   text-shadow: 0 0 3px rgba(var(--pvfd-green-rgb),0.55);
 }
+.pvfd-silk-eeq[data-pvfd="eeq"] {
+  cursor: pointer;
+  user-select: none;
+}
+body[data-pvfd-eeq-tint="ON"] .pvfd-silk-eeq {
+  color: var(--pvfd-accent);
+  text-shadow: 0 0 3px rgba(var(--pvfd-accent-rgb), 0.55);
+}
 
 
 /* CSSOM rule 36 */
@@ -973,6 +981,9 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
   position: absolute; left: 1px; right: 1px; bottom: -1px; height: 2px;
   background: var(--pvfd-green);
   box-shadow: 0 0 5px rgba(var(--pvfd-green-rgb),0.85);
+}
+body[data-pvfd-led-glow="OFF"] .pvfd-led-strip {
+  display: none;
 }
 
 
@@ -8277,13 +8288,13 @@ body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-playButton {
 }
 
 body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-playButton::before {
-  content: "\25B6";
+  content: "\25B6\FE0E";
   font-size: 15px !important;
   text-shadow: 0 0 5px rgba(var(--pvfd-accent-rgb), 0.42) !important;
 }
 
 body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[aria-label*="Pause" i] .view-homeShortcutsGrid-playButton::before {
-  content: "\23F8";
+  content: "\23F8\FE0E";
 }
 
 body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-playButton svg,
