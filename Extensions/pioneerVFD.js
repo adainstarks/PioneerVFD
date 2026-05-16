@@ -739,7 +739,7 @@
                 <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-perf-toggle" type="button" data-pvfd-menu-action="perf" title="Cycle performance mode"><b>PERF</b><span data-pvfd="menu-perf">FULL</span></button>
               </div>
               <div class="pvfd-menu-row-split">
-                <div class="pvfd-menu-row" data-pvfd-menu-action="clip"><b>OEL</b><span data-pvfd="menu-oel">----</span></div>
+                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="ledGlow" title="Toggle transport button LED glow"><b>BUTTON</b><span data-pvfd="menu-led-glow">GLOW</span></button>
                 <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-logo-toggle" type="button" data-pvfd-menu-action="logoGlow" title="Toggle Chromium live audio capture"><b>PULSE</b><span data-pvfd="menu-logo-glow">OFF</span></button>
               </div>
               <div class="pvfd-menu-row-split">
@@ -753,10 +753,6 @@
               <div class="pvfd-menu-row-split">
                 <div class="pvfd-menu-row" data-pvfd-menu-action="type"><b>TYPE</b><span data-pvfd="menu-type">DOT</span></div>
                 <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="chromeMode" title="Toggle dark chrome plastic"><b>DARK</b><span data-pvfd="menu-chrome">OFF</span></button>
-              </div>
-              <div class="pvfd-menu-row-split">
-                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="ledGlow" title="Toggle transport button LED glow"><b>BUTTON</b><span data-pvfd="menu-led-glow">GLOW</span></button>
-                <div></div>
               </div>
             </div>
           </div>
@@ -2079,7 +2075,6 @@
       menuMain: chassis.querySelector("[data-pvfd='menu-main']"),
       menu: {
         lyricsPass: chassis.querySelector("[data-pvfd='menu-lyrics']"),
-        oel: chassis.querySelector("[data-pvfd='menu-oel']"),
         demo: chassis.querySelector("[data-pvfd='menu-demo']"),
         tint: chassis.querySelector("[data-pvfd='menu-tint']"),
         type: chassis.querySelector("[data-pvfd='menu-type']"),
@@ -2179,7 +2174,6 @@
     }
     const dom = getPvfdDom();
     setTextIfChanged(dom.menu && dom.menu.lyricsPass, lyricsPassEnabled ? "EXT" : "PVFD");
-    setTextIfChanged(dom.menu && dom.menu.oel, activeClipName(12));
     setTextIfChanged(dom.menu && dom.menu.demo, demoAutoMode ? "AUTO" : "OFF");
     setTextIfChanged(dom.menu && dom.menu.tint, TINT_LABELS[tintIdx]);
     setTextIfChanged(dom.menu && dom.menu.type, FONT_PRESETS[fontPresetIdx].label);
@@ -2488,7 +2482,6 @@
 
   function activateMenuAction(action) {
     if (action === "lyricsPass") toggleLyricsPassMode();
-    else if (action === "clip") cycleClipMode();
     else if (action === "demo") toggleDemoMode();
     else if (action === "tint") openTintMenu();
     else if (action === "type") cycleFontPreset();
