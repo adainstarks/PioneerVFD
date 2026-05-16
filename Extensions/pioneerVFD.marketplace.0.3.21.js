@@ -315,12 +315,15 @@
   const RACING_COLOR_STORAGE_KEY = "pvfd-racing-color-mode";
   const LEGACY_RACING_COLOR_STORAGE_KEY = "pvfd-racing-color-breakout";
   const CHROME_STORAGE_KEY = "pvfd-chrome-mode";
+  const LYRICS_PASS_STORAGE_KEY = "pvfd-lyrics-pass";
   const EEQ_TINT_STORAGE_KEY = "pvfd-eeq-tint";
   const LED_GLOW_STORAGE_KEY = "pvfd-led-glow";
   const SPECIAL_PROFILE_USERNAME = "habahooney69";
   const SPECIAL_PROFILE_COLORS = ["#00d68f", "#b366ff", "#ff3df0", "#ffdd80"];
   const SPECIAL_PROFILE_HEART_COUNT = 15;
   const RACING_CLIP_ID = "racing-cart-longloop-webm";
+  const OEL_WEBM_SOURCE_MAP_PLACEHOLDER = "__PVFD_" + "OEL_WEBM_SOURCE_MAP_JSON__";
+  const OEL_WEBM_SOURCE_MAP = "__PVFD_OEL_WEBM_SOURCE_MAP_JSON__";
   const OEL_WEBM_CLIPS = [
     { id: "movie5-longloop-webm-proof", label: "CARZERIA", name: "MOVIE5 LONG", assetName: "movie5_longloop.webm" },
     { id: "movie1-longloop-webm", label: "JETS", name: "MOVIE1 LONG", assetName: "movie1_longloop.webm" },
@@ -465,6 +468,7 @@
   let canvas = null, ctx = null;
   let lcdDimmed = false;
   let chromeDarkEnabled = false;
+  let lyricsPassEnabled = false;
   let eeqTinted = false;
   let ledGlowEnabled = true;
   let chassis = null;
@@ -480,6 +484,7 @@
   let oelVideoActiveClipKey = "";
   let oelWebmSourceMap = null;
   let oelWebmCachePopulationStarted = false;
+  let oelWebmLastCheckedUrl = "";
   let oelCanvasRendererDisabledLogged = false;
   let clipCacheRebuildBlockedUntil = 0;
   const CLIP_CACHE_BATCH_MS = 4;
@@ -730,11 +735,11 @@
             <div class="pvfd-menu-title">PIONEER MENU</div>
             <div class="pvfd-menu-main" data-pvfd="menu-main">
               <div class="pvfd-menu-row-split">
-                <div class="pvfd-menu-row" data-pvfd-menu-action="source"><b>SRC</b><span data-pvfd="menu-src">PLAY</span></div>
+                <div class="pvfd-menu-row" data-pvfd-menu-action="lyricsPass" title="Defer the lyrics view to installed lyrics extensions"><b>LYRICS</b><span data-pvfd="menu-lyrics">PVFD</span></div>
                 <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-perf-toggle" type="button" data-pvfd-menu-action="perf" title="Cycle performance mode"><b>PERF</b><span data-pvfd="menu-perf">FULL</span></button>
               </div>
               <div class="pvfd-menu-row-split">
-                <div class="pvfd-menu-row" data-pvfd-menu-action="clip"><b>OEL</b><span data-pvfd="menu-oel">----</span></div>
+                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="ledGlow" title="Toggle transport button LED glow"><b>BUTTON</b><span data-pvfd="menu-led-glow">GLOW</span></button>
                 <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-logo-toggle" type="button" data-pvfd-menu-action="logoGlow" title="Toggle Chromium live audio capture"><b>PULSE</b><span data-pvfd="menu-logo-glow">OFF</span></button>
               </div>
               <div class="pvfd-menu-row-split">
@@ -748,10 +753,6 @@
               <div class="pvfd-menu-row-split">
                 <div class="pvfd-menu-row" data-pvfd-menu-action="type"><b>TYPE</b><span data-pvfd="menu-type">DOT</span></div>
                 <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="chromeMode" title="Toggle dark chrome plastic"><b>DARK</b><span data-pvfd="menu-chrome">OFF</span></button>
-              </div>
-              <div class="pvfd-menu-row-split">
-                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="ledGlow" title="Toggle transport button LED glow"><b>BUTTON</b><span data-pvfd="menu-led-glow">GLOW</span></button>
-                <div></div>
               </div>
             </div>
           </div>
@@ -1369,6 +1370,11 @@
     return saved === "ON" || saved === "TRUE" || saved === "1" || saved === "DARK";
   }
 
+  function readLyricsPassEnabled() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(LYRICS_PASS_STORAGE_KEY), "") || "").toUpperCase();
+    return saved === "ON" || saved === "EXT" || saved === "PASS" || saved === "TRUE" || saved === "1";
+  }
+
   function readEeqTinted() {
     const saved = String(safeReturn(() => window.localStorage.getItem(EEQ_TINT_STORAGE_KEY), "") || "").toUpperCase();
     return saved === "ON" || saved === "TRUE" || saved === "1";
@@ -1556,8 +1562,36 @@
   }
 
   function resolveOelWebmSourceMap() {
-    if (!oelWebmSourceMap) startOelWebmCachePopulation();
+    if (!oelWebmSourceMap) {
+      const injectedMap = OEL_WEBM_SOURCE_MAP;
+      if (
+        injectedMap &&
+        injectedMap !== OEL_WEBM_SOURCE_MAP_PLACEHOLDER &&
+        typeof injectedMap === "object" &&
+        !Array.isArray(injectedMap)
+      ) {
+        oelWebmSourceMap = injectedMap;
+        console.log(`[PVFD] OEL WebM registry ready: clips=${Object.keys(injectedMap).length}`);
+      } else {
+        startOelWebmCachePopulation();
+      }
+    }
     return oelWebmSourceMap;
+  }
+
+  async function logOelWebmSourceCheck(clip, url) {
+    if (!url || url === oelWebmLastCheckedUrl) return;
+    oelWebmLastCheckedUrl = url;
+    const clipKey = clipStorageId(clip);
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const contentType = response.headers.get("content-type") || blob.type || "unknown";
+      console.log(`[PVFD] OEL WebM proof: fetch check clip=${clipKey} status=${response.status} content-type=${contentType} blob-size=${blob.size}`);
+    } catch (err) {
+      const detail = err && err.message ? err.message : err;
+      console.warn(`[PVFD] OEL WebM proof: fetch check failed clip=${clipKey}`, detail);
+    }
   }
 
   function requestOelVideoPlay(video) {
@@ -1702,6 +1736,7 @@
         ? "data"
         : (video.src.startsWith("blob:") ? "blob" : "other");
       console.log(`[PVFD] OEL WebM proof: assigned clip=${clipKey} src-type=${assignedSrcType} length=${video.src.length}`);
+      logOelWebmSourceCheck(activeClip, video.src);
       safe(() => { video.currentTime = 0; });
       safe(() => video.load());
       video.addEventListener("canplay", () => {
@@ -2039,8 +2074,7 @@
       menuPanel: chassis.querySelector("[data-pvfd='menu-panel']"),
       menuMain: chassis.querySelector("[data-pvfd='menu-main']"),
       menu: {
-        src: chassis.querySelector("[data-pvfd='menu-src']"),
-        oel: chassis.querySelector("[data-pvfd='menu-oel']"),
+        lyricsPass: chassis.querySelector("[data-pvfd='menu-lyrics']"),
         demo: chassis.querySelector("[data-pvfd='menu-demo']"),
         tint: chassis.querySelector("[data-pvfd='menu-tint']"),
         type: chassis.querySelector("[data-pvfd='menu-type']"),
@@ -2139,9 +2173,7 @@
       return;
     }
     const dom = getPvfdDom();
-    const source = SOURCE_TARGETS[sourceIdx] || SOURCE_TARGETS[0];
-    setTextIfChanged(dom.menu && dom.menu.src, source.label);
-    setTextIfChanged(dom.menu && dom.menu.oel, activeClipName(12));
+    setTextIfChanged(dom.menu && dom.menu.lyricsPass, lyricsPassEnabled ? "EXT" : "PVFD");
     setTextIfChanged(dom.menu && dom.menu.demo, demoAutoMode ? "AUTO" : "OFF");
     setTextIfChanged(dom.menu && dom.menu.tint, TINT_LABELS[tintIdx]);
     setTextIfChanged(dom.menu && dom.menu.type, FONT_PRESETS[fontPresetIdx].label);
@@ -2225,6 +2257,42 @@
   function toggleLedGlow() {
     ledGlowEnabled = !ledGlowEnabled;
     applyLedGlow(true);
+  }
+
+  // LYRICS PASS mode: when ON, Pioneer stops tagging lyrics surfaces with its
+  // .pvfd-lyrics-* classes and the mutation observer's lyrics branch no-ops.
+  // That lets installed lyrics extensions (Beautiful Lyrics, Simple Beautiful
+  // Lyrics, etc.) own the lyrics view's DOM. When OFF, Pioneer re-tags any
+  // current lyrics surfaces and resumes its native lyrics styling, overriding
+  // whatever the extension was injecting.
+  function applyLyricsPassMode(persist = false) {
+    if (document.body) {
+      if (lyricsPassEnabled) document.body.setAttribute("data-pvfd-lyrics-pass", "on");
+      else document.body.removeAttribute("data-pvfd-lyrics-pass");
+    }
+    if (chassis) {
+      if (lyricsPassEnabled) chassis.setAttribute("data-pvfd-lyrics-pass", "on");
+      else chassis.removeAttribute("data-pvfd-lyrics-pass");
+    }
+    if (lyricsPassEnabled) {
+      untagLyricsSurfaces();
+    } else {
+      // Resume Pioneer's lyrics tagging on whatever's currently rendered.
+      tagLyricsSurfaces(document);
+    }
+    if (persist) safe(() => window.localStorage.setItem(LYRICS_PASS_STORAGE_KEY, lyricsPassEnabled ? "EXT" : "OFF"));
+    updateMenuPanel();
+  }
+
+  function toggleLyricsPassMode() {
+    lyricsPassEnabled = !lyricsPassEnabled;
+    applyLyricsPassMode(true);
+  }
+
+  function untagLyricsSurfaces() {
+    document.querySelectorAll(".pvfd-lyrics-surface, .pvfd-lyrics-background, .pvfd-lyrics-content").forEach((el) => {
+      el.classList.remove("pvfd-lyrics-surface", "pvfd-lyrics-background", "pvfd-lyrics-content");
+    });
   }
 
   function applyBrowseFontPreset(persist = false) {
@@ -2413,8 +2481,7 @@
   }
 
   function activateMenuAction(action) {
-    if (action === "source") cycleSource();
-    else if (action === "clip") cycleClipMode();
+    if (action === "lyricsPass") toggleLyricsPassMode();
     else if (action === "demo") toggleDemoMode();
     else if (action === "tint") openTintMenu();
     else if (action === "type") cycleFontPreset();
@@ -4882,6 +4949,7 @@
   }
 
   function tagLyricsSurfaces(root = document) {
+    if (lyricsPassEnabled) return 0;
     const scope = root && root.querySelectorAll ? root : document;
     let tagged = 0;
     const surfaces = [];
@@ -4917,7 +4985,7 @@
 
   function reconcileLyricsSyncButtons(root = document) {
     const perfAt = pvfdPerfStart();
-    if (!hasLyricsView() || !rootLooksLyricsScoped(root)) {
+    if (lyricsPassEnabled || !hasLyricsView() || !rootLooksLyricsScoped(root)) {
       pvfdPerfEnd("searchReconciliation", perfAt);
       return 0;
     }
@@ -5229,6 +5297,7 @@
     tintIdx = readTintIdx();
     lcdDimmed = readDimEnabled();
     chromeDarkEnabled = readChromeDarkEnabled();
+    lyricsPassEnabled = readLyricsPassEnabled();
     eeqTinted = readEeqTinted();
     ledGlowEnabled = readLedGlowEnabled();
     performanceModeIdx = readPerformanceModeIdx();
@@ -5242,6 +5311,7 @@
     applyTintMode(false);
     applyDimMode(false);
     applyChromeMode(false);
+    applyLyricsPassMode(false);
     applyEeqTint(false);
     applyLedGlow(false);
     applyLogoGlowMode(false);
