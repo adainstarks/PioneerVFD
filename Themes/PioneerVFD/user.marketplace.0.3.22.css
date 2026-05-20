@@ -9470,7 +9470,7 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__globalNav .main-globalN
   fill: currentColor !important;
 }
 
-/* Search input interior — black ink on the white input surface. */
+/* Search input interior — black ink on the white input surface.*/
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer input,
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer .main-globalNav-searchInputText,
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer .e-10451-form-input-icon__icon svg,
