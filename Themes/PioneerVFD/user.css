@@ -425,14 +425,19 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
 
 
 /* CSSOM rule 29 */
-/* Once the extension mounts, the Pioneer unit becomes the player bar.
-   Native Spotify children are hidden instead of stacked above it. */
+/* Once the extension mounts, the Pioneer unit becomes the visible player bar.
+   Keep Spotify's native playbar alive underneath it: Marketplace extensions
+   such as Beautiful Lyrics and Spicy Lyrics attach their controls there. */
 .Root__now-playing-bar.pvfd-mounted > *:not(.pvfd-chassis),
 .main-nowPlayingBar-container.pvfd-mounted > *:not(.pvfd-chassis),
 [data-testid="now-playing-bar"].pvfd-mounted > *:not(.pvfd-chassis) {
-  display: none !important;
-  visibility: hidden !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 0 !important;
   pointer-events: none !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
 }
 
 
@@ -441,8 +446,25 @@ footer[class*="connect"], [class*="ConnectBanner"], [class*="connectBanner"] {
 .Root__now-playing-bar.pvfd-mounted [class*="nowPlayingBar"]:not(.pvfd-chassis),
 .Root__now-playing-bar.pvfd-mounted [data-testid="now-playing-widget"],
 .pvfd-native-player-hidden {
-  display: none !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 0 !important;
   pointer-events: none !important;
+}
+
+/* Make Spotify's narrow-width collapsed search input render at its
+   click-expanded width (238px) at all times. Diagnostic confirmed the only
+   difference between the bug state and the target state is a stock rule:
+     .searchInputCollapsed:not(.forceExpandSearchInput)
+       .main-globalNav-searchInputSection > .main-globalNav-searchInputContainer
+       { width: 48px; transition: width 0.22s ease-out; }
+   Overriding to 238px is exactly what Spotify does when you click the
+   magnifier (which adds .forceExpandSearchInput to bypass that rule).
+   The right cluster (bell/friends/avatar) and surrounding layout stay
+   exactly the same in both states, so nothing else needs to be touched. */
+body.pvfd-theme-active .Root__globalNav.searchInputCollapsed:not(.forceExpandSearchInput)
+  .main-globalNav-searchInputSection > .main-globalNav-searchInputContainer {
+  width: 238px !important;
 }
 
 
@@ -717,6 +739,26 @@ body[data-pvfd-eeq-tint="ON"] .pvfd-silk-eeq {
   width: 4px; height: 16px;
   background: linear-gradient(180deg, var(--pvfd-chrome-text), color-mix(in srgb, var(--pvfd-chrome-text) 55%, var(--pvfd-cyan-deep) 45%));
   box-shadow: 0 1px 0 rgba(255,255,255,0.4), inset 0 1px 1px rgba(0,0,0,0.5);
+}
+
+
+/* ATT (Attenuator) mute state.
+   The pill toggles instant mute (volume → 0); a second press restores.
+   When active, the left LCD's VOL row hides its label and renders the
+   word ATTENUATOR in the value span instead of the percentage. The row's
+   grid collapses to a single column so ATTENUATOR has full width (the
+   default 44px label column would clip it to "ATTENUATO"). */
+.pvfd-chassis[data-pvfd-att="on"] .pvfd-side-readout:has(> [data-pvfd="side-vol"]) b {
+  display: none !important;
+}
+.pvfd-chassis[data-pvfd-att="on"] .pvfd-side-readout > [data-pvfd="side-vol"] {
+  grid-column: 1 / -1;
+  color: var(--pvfd-cyan-mid) !important;
+  font-size: 10.5px !important;
+  letter-spacing: 0.95px !important;
+  font-weight: 700;
+  text-align: left;
+  overflow: visible !important;
 }
 
 
@@ -1930,6 +1972,408 @@ body[data-pvfd-tint="blue"],
     0 0 8px rgba(var(--pvfd-light-mid-rgb), 0.42);
 }
 
+
+/* True GREEN — fills the LIME↔TEAL gap. */
+:root[data-pvfd-tint="green"],
+body[data-pvfd-tint="green"],
+.pvfd-chassis[data-pvfd-tint="green"] {
+  --pvfd-lcd-void: #02090b;
+  --pvfd-lcd-deep: #06160a;
+  --pvfd-lcd-rim: #143018;
+
+  --pvfd-lcd-void-rgb: 2, 9, 11;
+  --pvfd-lcd-deep-rgb: 6, 22, 10;
+  --pvfd-lcd-rim-rgb: 20, 48, 24;
+
+  --pvfd-cyan: #9af8c2;
+  --pvfd-cyan-mid: #6ae08a;
+  --pvfd-cyan-deep: #2e8a3e;
+  --pvfd-cyan-glow: #b6ffce;
+
+  --pvfd-light-rgb: 154, 248, 194;
+  --pvfd-light-mid-rgb: 106, 224, 138;
+  --pvfd-light-deep-rgb: 46, 138, 62;
+  --pvfd-accent-dim-rgb: 22, 64, 32;
+  --pvfd-accent: var(--pvfd-cyan);
+  --pvfd-accent-rgb: var(--pvfd-light-rgb);
+  --pvfd-accent-dim: rgba(var(--pvfd-accent-dim-rgb), 0.72);
+
+  --pvfd-chrome-text: #0e1d12;
+  --pvfd-chrome-text-rgb: 14, 29, 18;
+  --pvfd-chrome-text-shadow: 0 1px 0 rgba(220,255,228,0.45);
+
+  --pvfd-page-glow-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-text-main: var(--pvfd-cyan);
+  --pvfd-text-bright: #effff0;
+  --pvfd-text-bright-rgb: 239, 255, 240;
+  --pvfd-text-muted: rgba(var(--pvfd-light-rgb), 0.72);
+  --pvfd-text-dim: rgba(var(--pvfd-light-rgb), 0.52);
+  --pvfd-text-shadow: 0 0 3px rgba(var(--pvfd-light-rgb), 0.42);
+
+  --pvfd-home-light-rgb: var(--pvfd-light-rgb);
+  --pvfd-home-light-mid-rgb: var(--pvfd-light-mid-rgb);
+  --pvfd-home-light-deep-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-album-light-rgb: var(--pvfd-light-rgb);
+  --pvfd-album-light-mid-rgb: var(--pvfd-light-mid-rgb);
+  --pvfd-album-light-deep-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-glow-cyan:
+    0 0 3px rgba(var(--pvfd-light-rgb), 0.88),
+    0 0 8px rgba(var(--pvfd-light-mid-rgb), 0.42);
+}
+
+/* True YELLOW — fills the LIME↔AMBER gap. */
+:root[data-pvfd-tint="yellow"],
+body[data-pvfd-tint="yellow"],
+.pvfd-chassis[data-pvfd-tint="yellow"] {
+  --pvfd-lcd-void: #0a0904;
+  --pvfd-lcd-deep: #16140a;
+  --pvfd-lcd-rim: #2e2810;
+
+  --pvfd-lcd-void-rgb: 10, 9, 4;
+  --pvfd-lcd-deep-rgb: 22, 20, 10;
+  --pvfd-lcd-rim-rgb: 46, 40, 16;
+
+  --pvfd-cyan: #fff79a;
+  --pvfd-cyan-mid: #ffea66;
+  --pvfd-cyan-deep: #c9a818;
+  --pvfd-cyan-glow: #fffac8;
+
+  --pvfd-light-rgb: 255, 247, 154;
+  --pvfd-light-mid-rgb: 255, 234, 102;
+  --pvfd-light-deep-rgb: 201, 168, 24;
+  --pvfd-accent-dim-rgb: 92, 78, 12;
+  --pvfd-accent: var(--pvfd-cyan);
+  --pvfd-accent-rgb: var(--pvfd-light-rgb);
+  --pvfd-accent-dim: rgba(var(--pvfd-accent-dim-rgb), 0.72);
+
+  --pvfd-chrome-text: #1f1c08;
+  --pvfd-chrome-text-rgb: 31, 28, 8;
+  --pvfd-chrome-text-shadow: 0 1px 0 rgba(255,250,210,0.50);
+
+  --pvfd-page-glow-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-text-main: var(--pvfd-cyan);
+  --pvfd-text-bright: #fffce0;
+  --pvfd-text-bright-rgb: 255, 252, 224;
+  --pvfd-text-muted: rgba(var(--pvfd-light-rgb), 0.72);
+  --pvfd-text-dim: rgba(var(--pvfd-light-rgb), 0.52);
+  --pvfd-text-shadow: 0 0 3px rgba(var(--pvfd-light-rgb), 0.42);
+
+  --pvfd-home-light-rgb: var(--pvfd-light-rgb);
+  --pvfd-home-light-mid-rgb: var(--pvfd-light-mid-rgb);
+  --pvfd-home-light-deep-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-album-light-rgb: var(--pvfd-light-rgb);
+  --pvfd-album-light-mid-rgb: var(--pvfd-light-mid-rgb);
+  --pvfd-album-light-deep-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-glow-cyan:
+    0 0 3px rgba(var(--pvfd-light-rgb), 0.88),
+    0 0 8px rgba(var(--pvfd-light-mid-rgb), 0.42);
+}
+
+/* INDIGO — fills the VIOLET↔BLUE gap. */
+:root[data-pvfd-tint="indigo"],
+body[data-pvfd-tint="indigo"],
+.pvfd-chassis[data-pvfd-tint="indigo"] {
+  --pvfd-lcd-void: #04030c;
+  --pvfd-lcd-deep: #0a0816;
+  --pvfd-lcd-rim: #1c1840;
+
+  --pvfd-lcd-void-rgb: 4, 3, 12;
+  --pvfd-lcd-deep-rgb: 10, 8, 22;
+  --pvfd-lcd-rim-rgb: 28, 24, 64;
+
+  --pvfd-cyan: #c0b0ff;
+  --pvfd-cyan-mid: #8a78f0;
+  --pvfd-cyan-deep: #4a3ab8;
+  --pvfd-cyan-glow: #d6c8ff;
+
+  --pvfd-light-rgb: 192, 176, 255;
+  --pvfd-light-mid-rgb: 138, 120, 240;
+  --pvfd-light-deep-rgb: 74, 58, 184;
+  --pvfd-accent-dim-rgb: 32, 22, 84;
+  --pvfd-accent: var(--pvfd-cyan);
+  --pvfd-accent-rgb: var(--pvfd-light-rgb);
+  --pvfd-accent-dim: rgba(var(--pvfd-accent-dim-rgb), 0.72);
+
+  --pvfd-chrome-text: #14102a;
+  --pvfd-chrome-text-rgb: 20, 16, 42;
+  --pvfd-chrome-text-shadow: 0 1px 0 rgba(220,212,255,0.45);
+
+  --pvfd-page-glow-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-text-main: var(--pvfd-cyan);
+  --pvfd-text-bright: #ece8ff;
+  --pvfd-text-bright-rgb: 236, 232, 255;
+  --pvfd-text-muted: rgba(var(--pvfd-light-rgb), 0.72);
+  --pvfd-text-dim: rgba(var(--pvfd-light-rgb), 0.52);
+  --pvfd-text-shadow: 0 0 3px rgba(var(--pvfd-light-rgb), 0.42);
+
+  --pvfd-home-light-rgb: var(--pvfd-light-rgb);
+  --pvfd-home-light-mid-rgb: var(--pvfd-light-mid-rgb);
+  --pvfd-home-light-deep-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-album-light-rgb: var(--pvfd-light-rgb);
+  --pvfd-album-light-mid-rgb: var(--pvfd-light-mid-rgb);
+  --pvfd-album-light-deep-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-glow-cyan:
+    0 0 3px rgba(var(--pvfd-light-rgb), 0.88),
+    0 0 8px rgba(var(--pvfd-light-mid-rgb), 0.42);
+}
+
+/* MONO — Black on White (page-level).
+   Web-app surfaces (track lists, library, nav) render light with dark
+   ink. The chassis itself overrides these back to "dark housing + light
+   ink" further down — see the .pvfd-chassis[data-pvfd-tint="bow"] block.
+   Splitting page vs chassis is what enforces the "is this on a dark or
+   light surface?" rule: page = light, chassis chrome = dark. */
+:root[data-pvfd-tint="bow"],
+html[data-pvfd-tint="bow"] {
+  --pvfd-lcd-void: #f4f4f4;
+  --pvfd-lcd-deep: #ececec;
+  --pvfd-lcd-rim: #c8c8c8;
+
+  --pvfd-lcd-void-rgb: 244, 244, 244;
+  --pvfd-lcd-deep-rgb: 236, 236, 236;
+  --pvfd-lcd-rim-rgb: 200, 200, 200;
+
+  --pvfd-cyan: #0c0c0c;
+  --pvfd-cyan-mid: #2a2a2a;
+  --pvfd-cyan-deep: #555555;
+  --pvfd-cyan-glow: #000000;
+
+  --pvfd-light-rgb: 12, 12, 12;
+  --pvfd-light-mid-rgb: 42, 42, 42;
+  --pvfd-light-deep-rgb: 85, 85, 85;
+  --pvfd-accent-dim-rgb: 160, 160, 160;
+  --pvfd-accent: var(--pvfd-cyan);
+  --pvfd-accent-rgb: var(--pvfd-light-rgb);
+  --pvfd-accent-dim: rgba(var(--pvfd-accent-dim-rgb), 0.72);
+
+  --pvfd-chrome-text: #0a0a0a;
+  --pvfd-chrome-text-rgb: 10, 10, 10;
+  --pvfd-chrome-text-shadow: none;
+
+  --pvfd-page-glow-rgb: 200, 200, 200;
+
+  --pvfd-text-main: var(--pvfd-cyan);
+  --pvfd-text-bright: #000000;
+  --pvfd-text-bright-rgb: 0, 0, 0;
+  --pvfd-text-muted: rgba(0, 0, 0, 0.62);
+  --pvfd-text-dim: rgba(0, 0, 0, 0.42);
+  --pvfd-text-shadow: none;
+
+  --pvfd-home-light-rgb: var(--pvfd-light-rgb);
+  --pvfd-home-light-mid-rgb: var(--pvfd-light-mid-rgb);
+  --pvfd-home-light-deep-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-album-light-rgb: var(--pvfd-light-rgb);
+  --pvfd-album-light-mid-rgb: var(--pvfd-light-mid-rgb);
+  --pvfd-album-light-deep-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-glow-cyan: none;
+}
+
+/* B-ON-W chassis override.
+   The chassis (and everything inside it) keeps its dark-housing aesthetic
+   with white ink — same shape as W-ON-B, just neutralized to grayscale.
+   Popup panels (Pioneer Menu, Customize, Tint picker) reach back out to
+   the light-ink palette via scoped overrides further down so they read
+   as "printed" surfaces sitting on top of the dark chassis. */
+.pvfd-chassis[data-pvfd-tint="bow"] {
+  --pvfd-lcd-void: #020202;
+  --pvfd-lcd-deep: #080808;
+  --pvfd-lcd-rim: #1c1c1c;
+
+  --pvfd-lcd-void-rgb: 2, 2, 2;
+  --pvfd-lcd-deep-rgb: 8, 8, 8;
+  --pvfd-lcd-rim-rgb: 28, 28, 28;
+
+  --pvfd-cyan: #f4f4f4;
+  --pvfd-cyan-mid: #c8c8c8;
+  --pvfd-cyan-deep: #888888;
+  --pvfd-cyan-glow: #ffffff;
+
+  --pvfd-light-rgb: 244, 244, 244;
+  --pvfd-light-mid-rgb: 200, 200, 200;
+  --pvfd-light-deep-rgb: 136, 136, 136;
+  --pvfd-accent-dim-rgb: 64, 64, 64;
+  --pvfd-accent: var(--pvfd-cyan);
+  --pvfd-accent-rgb: var(--pvfd-light-rgb);
+  --pvfd-accent-dim: rgba(var(--pvfd-accent-dim-rgb), 0.72);
+
+  --pvfd-chrome-text: #e8e8e8;
+  --pvfd-chrome-text-rgb: 232, 232, 232;
+  --pvfd-chrome-text-shadow: none;
+
+  --pvfd-page-glow-rgb: 136, 136, 136;
+
+  --pvfd-text-main: var(--pvfd-cyan);
+  --pvfd-text-bright: #ffffff;
+  --pvfd-text-bright-rgb: 255, 255, 255;
+  --pvfd-text-muted: rgba(255, 255, 255, 0.62);
+  --pvfd-text-dim: rgba(255, 255, 255, 0.42);
+  --pvfd-text-shadow: none;
+
+  --pvfd-home-light-rgb: var(--pvfd-light-rgb);
+  --pvfd-home-light-mid-rgb: var(--pvfd-light-mid-rgb);
+  --pvfd-home-light-deep-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-album-light-rgb: var(--pvfd-light-rgb);
+  --pvfd-album-light-mid-rgb: var(--pvfd-light-mid-rgb);
+  --pvfd-album-light-deep-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-glow-cyan: none;
+}
+
+/* B-ON-W popup panels: light surface, black ink. The three menu/popup
+   overlays inside the chassis are conceptually "printed cards" sitting on
+   the dark chassis — they need the page-level light palette, scoped via
+   nested overrides so we don't disturb chassis chrome. */
+.pvfd-chassis[data-pvfd-tint="bow"] .pvfd-menu-panel,
+.pvfd-chassis[data-pvfd-tint="bow"] .pvfd-tint-menu-panel {
+  --pvfd-lcd-void: #f4f4f4;
+  --pvfd-lcd-deep: #ececec;
+  --pvfd-lcd-rim: #c8c8c8;
+  --pvfd-lcd-void-rgb: 244, 244, 244;
+  --pvfd-lcd-deep-rgb: 236, 236, 236;
+  --pvfd-lcd-rim-rgb: 200, 200, 200;
+
+  --pvfd-cyan: #0c0c0c;
+  --pvfd-cyan-mid: #2a2a2a;
+  --pvfd-cyan-deep: #555555;
+  --pvfd-cyan-glow: #000000;
+
+  --pvfd-light-rgb: 12, 12, 12;
+  --pvfd-light-mid-rgb: 42, 42, 42;
+  --pvfd-light-deep-rgb: 85, 85, 85;
+
+  --pvfd-text-bright: #000000;
+  --pvfd-text-bright-rgb: 0, 0, 0;
+  --pvfd-text-muted: rgba(0, 0, 0, 0.62);
+  --pvfd-text-dim: rgba(0, 0, 0, 0.42);
+
+  --pvfd-green: #1d6b2a;
+  --pvfd-green-rgb: 29, 107, 42;
+
+  color: #0c0c0c;
+}
+.pvfd-chassis[data-pvfd-tint="bow"] .pvfd-menu-panel *,
+.pvfd-chassis[data-pvfd-tint="bow"] .pvfd-tint-menu-panel * {
+  text-shadow: none !important;
+}
+.pvfd-chassis[data-pvfd-tint="bow"] .pvfd-menu-row b,
+.pvfd-chassis[data-pvfd-tint="bow"] .pvfd-menu-title {
+  color: #0c0c0c !important;
+}
+.pvfd-chassis[data-pvfd-tint="bow"] .pvfd-menu-close,
+.pvfd-chassis[data-pvfd-tint="bow"] .pvfd-menu-back {
+  color: #0c0c0c;
+  border-color: rgba(0, 0, 0, 0.35);
+}
+
+/* B-ON-W active-state flips on pills and transport buttons.
+   Inactive: dark housing, white glyph (default chassis palette).
+   Active: cap lights up, glyph flips to dark for contrast. The classes
+   .pvfd-pill.active / [data-pvfd].active mark the "lit" state. */
+.pvfd-chassis[data-pvfd-tint="bow"] .pvfd-pill.active,
+.pvfd-chassis[data-pvfd-tint="bow"] .pvfd-tab-side.active,
+.pvfd-chassis[data-pvfd-tint="bow"] [data-pvfd="shuffle"].active,
+.pvfd-chassis[data-pvfd-tint="bow"] [data-pvfd="repeat"].active,
+.pvfd-chassis[data-pvfd-tint="bow"] [data-pvfd="love"].active,
+.pvfd-chassis[data-pvfd-tint="bow"] [data-pvfd="play"].active {
+  color: #0a0a0a !important;
+}
+.pvfd-chassis[data-pvfd-tint="bow"] .pvfd-pill.active *,
+.pvfd-chassis[data-pvfd-tint="bow"] .pvfd-tab-side.active *,
+.pvfd-chassis[data-pvfd-tint="bow"] [data-pvfd="shuffle"].active *,
+.pvfd-chassis[data-pvfd-tint="bow"] [data-pvfd="repeat"].active *,
+.pvfd-chassis[data-pvfd-tint="bow"] [data-pvfd="love"].active *,
+.pvfd-chassis[data-pvfd-tint="bow"] [data-pvfd="play"].active * {
+  color: #0a0a0a !important;
+  fill: #0a0a0a !important;
+}
+
+/* B-ON-W page-level overrides — moved to end of file (search "BOW page-level
+   overrides") so they win source-order against late chrome capsule and nav
+   rules that share specificity + !important weight. */
+
+/* MONO — White on Black. Pure monochrome reading of the existing dark
+   chassis: identical structure to the cyan default but with neutral
+   grays instead of light blues, and zero glow. */
+:root[data-pvfd-tint="wob"],
+body[data-pvfd-tint="wob"],
+.pvfd-chassis[data-pvfd-tint="wob"] {
+  --pvfd-lcd-void: #020202;
+  --pvfd-lcd-deep: #080808;
+  --pvfd-lcd-rim: #1c1c1c;
+
+  --pvfd-lcd-void-rgb: 2, 2, 2;
+  --pvfd-lcd-deep-rgb: 8, 8, 8;
+  --pvfd-lcd-rim-rgb: 28, 28, 28;
+
+  --pvfd-cyan: #f4f4f4;
+  --pvfd-cyan-mid: #c8c8c8;
+  --pvfd-cyan-deep: #888888;
+  --pvfd-cyan-glow: #ffffff;
+
+  --pvfd-light-rgb: 244, 244, 244;
+  --pvfd-light-mid-rgb: 200, 200, 200;
+  --pvfd-light-deep-rgb: 136, 136, 136;
+  --pvfd-accent-dim-rgb: 64, 64, 64;
+  --pvfd-accent: var(--pvfd-cyan);
+  --pvfd-accent-rgb: var(--pvfd-light-rgb);
+  --pvfd-accent-dim: rgba(var(--pvfd-accent-dim-rgb), 0.72);
+
+  --pvfd-chrome-text: #e8e8e8;
+  --pvfd-chrome-text-rgb: 232, 232, 232;
+  --pvfd-chrome-text-shadow: none;
+
+  --pvfd-page-glow-rgb: 136, 136, 136;
+
+  --pvfd-text-main: var(--pvfd-cyan);
+  --pvfd-text-bright: #ffffff;
+  --pvfd-text-bright-rgb: 255, 255, 255;
+  --pvfd-text-muted: rgba(255, 255, 255, 0.62);
+  --pvfd-text-dim: rgba(255, 255, 255, 0.42);
+  --pvfd-text-shadow: none;
+
+  --pvfd-home-light-rgb: var(--pvfd-light-rgb);
+  --pvfd-home-light-mid-rgb: var(--pvfd-light-mid-rgb);
+  --pvfd-home-light-deep-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-album-light-rgb: var(--pvfd-light-rgb);
+  --pvfd-album-light-mid-rgb: var(--pvfd-light-mid-rgb);
+  --pvfd-album-light-deep-rgb: var(--pvfd-light-deep-rgb);
+
+  --pvfd-glow-cyan: none;
+}
+
+/* Mono-mode overlay suppression.
+   Scanline grain + tint wash are tonal effects designed for the colored
+   tints — in mono modes they read as visual noise. Suppress them
+   globally for both mono modes. Text-shadow suppression is handled
+   per-context: chassis chrome in B-ON-W keeps its white glow (dark
+   surface, white ink wants legibility halo); W-ON-B kills all glow
+   because everything is pure monochrome. */
+.pvfd-chassis[data-pvfd-mono="bow"] .pvfd-menu-panel::before,
+.pvfd-chassis[data-pvfd-mono="wob"] .pvfd-menu-panel::before,
+.pvfd-chassis[data-pvfd-mono="bow"] .pvfd-tint-menu-panel::before,
+.pvfd-chassis[data-pvfd-mono="wob"] .pvfd-tint-menu-panel::before,
+.pvfd-chassis[data-pvfd-mono="bow"] .pvfd-lcd::before,
+.pvfd-chassis[data-pvfd-mono="wob"] .pvfd-lcd::before,
+.pvfd-chassis[data-pvfd-mono="bow"] .pvfd-oel-tint-wash,
+.pvfd-chassis[data-pvfd-mono="wob"] .pvfd-oel-tint-wash {
+  display: none !important;
+}
+.pvfd-chassis[data-pvfd-mono="wob"] * {
+  text-shadow: none !important;
+}
 
 /* CSSOM rule 96 */
 /* Scrub progress rail */
@@ -3457,9 +3901,9 @@ body[data-pvfd-performance="eco"] .pvfd-library-search-box {
 .pvfd-tint-menu-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  grid-template-rows: repeat(2, auto);
-  gap: 8px 6px;
-  padding-top: 4px;
+  grid-template-rows: repeat(3, auto);
+  gap: 4px 4px;
+  padding-top: 3px;
 }
 
 .pvfd-tint-swatch {
@@ -3467,19 +3911,19 @@ body[data-pvfd-performance="eco"] .pvfd-library-search-box {
   -webkit-appearance: none;
   background: transparent;
   border: 0;
-  padding: 2px 0;
+  padding: 1px 0;
   margin: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   cursor: pointer;
   outline: none;
 }
 
 .pvfd-tint-swatch-color {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.55);
   box-shadow:
@@ -3534,6 +3978,11 @@ body[data-pvfd-performance="eco"] .pvfd-library-search-box {
 .pvfd-tint-swatch[data-pvfd-tint-name="magenta"] .pvfd-tint-swatch-color { background: radial-gradient(circle at 35% 28%, #f5b6ff 0%, #f389ff 50%, #a040c8 100%); }
 .pvfd-tint-swatch[data-pvfd-tint-name="violet"] .pvfd-tint-swatch-color  { background: radial-gradient(circle at 35% 28%, #e2ccff 0%, #d7b7ff 50%, #805be0 100%); }
 .pvfd-tint-swatch[data-pvfd-tint-name="blue"] .pvfd-tint-swatch-color    { background: radial-gradient(circle at 35% 28%, #b0bdff 0%, #899eff 50%, #4856c8 100%); }
+.pvfd-tint-swatch[data-pvfd-tint-name="green"] .pvfd-tint-swatch-color   { background: radial-gradient(circle at 35% 28%, #b6f5c5 0%, #6ae08a 50%, #2e8a3e 100%); }
+.pvfd-tint-swatch[data-pvfd-tint-name="yellow"] .pvfd-tint-swatch-color  { background: radial-gradient(circle at 35% 28%, #fff8b6 0%, #ffea66 50%, #c9a818 100%); }
+.pvfd-tint-swatch[data-pvfd-tint-name="indigo"] .pvfd-tint-swatch-color  { background: radial-gradient(circle at 35% 28%, #b8a8ff 0%, #6e5ad9 50%, #3a2a8c 100%); }
+.pvfd-tint-swatch[data-pvfd-tint-name="bow"] .pvfd-tint-swatch-color     { background: radial-gradient(circle at 35% 28%, #ffffff 0%, #d8d8d8 55%, #303030 100%); }
+.pvfd-tint-swatch[data-pvfd-tint-name="wob"] .pvfd-tint-swatch-color     { background: radial-gradient(circle at 35% 28%, #2a2a2a 0%, #0a0a0a 55%, #000000 100%); border: 1px solid rgba(255,255,255,0.35); }
 
 
 /* CSSOM rule 186 */
@@ -3545,6 +3994,72 @@ body[data-pvfd-performance="eco"] .pvfd-library-search-box {
   text-shadow: 0 0 6px rgba(var(--pvfd-light-mid-rgb), 0.84);
   padding-bottom: 3px;
   border-bottom: 1px solid rgba(var(--pvfd-light-deep-rgb), 0.22);
+}
+
+/* Pioneer Menu header: title on the left, X close on the right.
+   The border-bottom moves from the title to the header so the line
+   still spans the full panel width with the X tucked into it. */
+.pvfd-menu-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(var(--pvfd-light-deep-rgb), 0.22);
+}
+.pvfd-menu-header .pvfd-menu-title {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.pvfd-menu-close,
+.pvfd-menu-back {
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(var(--pvfd-light-deep-rgb), 0.35);
+  color: var(--pvfd-cyan);
+  font-family: "Share Tech Mono", "VT323", monospace;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  cursor: pointer;
+  text-shadow: var(--pvfd-glow-cyan);
+  border-radius: 2px;
+  transition: background-color 90ms linear, color 90ms linear;
+}
+.pvfd-menu-close:hover,
+.pvfd-menu-back:hover {
+  background: rgba(var(--pvfd-light-deep-rgb), 0.18);
+  color: var(--pvfd-text-bright);
+}
+.pvfd-menu-close {
+  min-width: 20px;
+  min-height: 16px;
+  padding: 1px 5px 2px;
+}
+
+.pvfd-menu-customize .pvfd-menu-back {
+  min-width: 38px;
+  min-height: 15px;
+  text-align: center;
+  font-size: 12px;
+}
+
+/* Empty right-hand slots in the new layout. They reserve space so the
+   row split grid keeps its existing two-column alignment for future
+   additions without needing to retemplate every row. */
+.pvfd-menu-row-placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Hide the inactive view's body without affecting layout reflow.
+   Using [hidden] (set from JS) is enough; this is a safety net in case
+   the attribute is missing. */
+.pvfd-menu-panel[data-view="main"] .pvfd-menu-customize,
+.pvfd-menu-panel[data-view="customize"] [data-pvfd="menu-main"] {
+  display: none !important;
 }
 
 
@@ -5753,15 +6268,17 @@ body[data-pvfd-performance="eco"] .pvfd-library-search-box {
 }
 
 
-/* CSSOM rule 271 */
+/* CSSOM rule 271
+   Soft-cap top-bar children so nothing pushes the bar past 48px, but DO NOT
+   force min-height:0 or overflow:hidden — Spotify's flex spacer relies on its
+   natural sizing to keep the home/search cluster centered. Clamping it (esp.
+   during BL cinema teardown) collapses the spacer and left-anchors the cluster. */
 .Root__top-bar > *,
 .main-topBar-container > *,
 .main-topBar-container header,
 .main-topBar-container [class*="topBar"],
 .main-topBar-container [class*="TopBar"] {
-  min-height: 0 !important;
   max-height: 48px !important;
-  overflow: hidden !important;
 }
 
 
@@ -6246,12 +6763,12 @@ body[data-pvfd-route="home"] .Root__main-view :is(.main-card-card, [data-encore-
 
 /* CSSOM rule 342 */
 /* Lyrics route LCD treatment, adapted from the older working build. */
-body.pvfd-theme-active .Root__main-view :is(
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   [data-testid*="lyrics" i],
   [class*="lyrics-lyrics" i],
   [class*="LyricsLyrics" i],
-  [class*="lyricsPage" i],
-  [class*="LyricsPage" i]
+  [class*="lyricsPage" i]:not(.BeautifulLyricsPage),
+  [class*="LyricsPage" i]:not(.BeautifulLyricsPage)
 ) {
   --lyrics-color-active: rgb(var(--pvfd-text-bright-rgb)) !important;
   --lyrics-color-passed: rgba(var(--pvfd-light-rgb), 0.58) !important;
@@ -6260,14 +6777,14 @@ body.pvfd-theme-active .Root__main-view :is(
   --lyrics-color-messaging: rgba(var(--pvfd-light-rgb), 0.72) !important;
 }
 
-body.pvfd-theme-active .Root__main-view :is(
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   .pvfd-lyrics-surface:is(.lyrics-lyrics-container, [class*="lyrics-lyrics-container" i], [class*="LyricsLyricsContainer" i]),
   [class*="lyrics-lyrics-container" i],
   [class*="lyrics-lyrics-background" i],
   [class*="LyricsLyricsContainer" i],
   [class*="LyricsLyricsBackground" i],
-  [class*="lyricsPage" i],
-  [class*="LyricsPage" i]
+  [class*="lyricsPage" i]:not(.BeautifulLyricsPage),
+  [class*="LyricsPage" i]:not(.BeautifulLyricsPage)
 ) {
   background:
     linear-gradient(90deg, rgba(var(--pvfd-light-rgb), 0.045), transparent 15%, transparent 85%, rgba(var(--pvfd-light-rgb), 0.035)),
@@ -6285,7 +6802,7 @@ body.pvfd-theme-active .Root__main-view :is(
     inset 0 0 72px rgba(0, 0, 0, 0.42) !important;
 }
 
-body.pvfd-theme-active .Root__main-view :is(
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   [class*="lyrics-lyricsContent" i],
   [class*="LyricsLyricsContent" i],
   [class*="lyrics-lyrics-contentContainer" i],
@@ -6302,13 +6819,13 @@ body.pvfd-theme-active .Root__main-view :is(
   text-shadow: 0 0 4px rgba(var(--pvfd-light-deep-rgb), 0.28) !important;
 }
 
-body.pvfd-theme-active .Root__main-view :is(
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   [class*="lyrics-lyricsContent-highlight" i],
   [class*="LyricsLyricsContentHighlight" i],
   [aria-current="true"],
   [data-highlighted="true"]
 ),
-body.pvfd-theme-active .Root__main-view :is(
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   [class*="lyrics-lyricsContent-highlight" i],
   [class*="LyricsLyricsContentHighlight" i],
   [aria-current="true"],
@@ -6321,7 +6838,7 @@ body.pvfd-theme-active .Root__main-view :is(
     0 0 18px rgba(var(--pvfd-light-deep-rgb), 0.28) !important;
 }
 
-body.pvfd-theme-active .Root__main-view :is(
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   [class*="lyrics-lyricsContent-lyric" i],
   [class*="LyricsLyricsContentLyric" i]
 ) {
@@ -6334,12 +6851,12 @@ body.pvfd-theme-active .Root__main-view :is(
   font-weight: 700 !important;
 }
 
-body.pvfd-theme-active .Root__main-view :is(
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   [data-testid*="lyrics" i],
   [class*="lyrics-lyrics" i],
   [class*="LyricsLyrics" i],
-  [class*="lyricsPage" i],
-  [class*="LyricsPage" i]
+  [class*="lyricsPage" i]:not(.BeautifulLyricsPage),
+  [class*="LyricsPage" i]:not(.BeautifulLyricsPage)
 ) :is(
   button[aria-label*="Sync" i],
   button[title*="Sync" i],
@@ -6349,7 +6866,7 @@ body.pvfd-theme-active .Root__main-view :is(
   [role="button"][class*="sync" i],
   [data-testid*="sync" i]
 ),
-.pvfd-lyrics-sync-button {
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view .pvfd-lyrics-sync-button {
   background:
     linear-gradient(180deg, rgba(var(--pvfd-light-rgb), 0.18), rgba(var(--pvfd-light-deep-rgb), 0.08)),
     linear-gradient(180deg, rgba(var(--pvfd-lcd-deep-rgb), 0.98), rgba(var(--pvfd-lcd-void-rgb), 0.98)) !important;
@@ -6368,7 +6885,7 @@ body.pvfd-theme-active .Root__main-view :is(
     0 8px 18px rgba(0, 0, 0, 0.34) !important;
 }
 
-.pvfd-lyrics-sync-button :is(div, span, svg, path, rect, line, circle) {
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view .pvfd-lyrics-sync-button :is(div, span, svg, path, rect, line, circle) {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
@@ -6379,12 +6896,12 @@ body.pvfd-theme-active .Root__main-view :is(
   filter: none !important;
 }
 
-body.pvfd-theme-active .Root__main-view :is(
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   [data-testid*="lyrics" i],
   [class*="lyrics-lyrics" i],
   [class*="LyricsLyrics" i],
-  [class*="lyricsPage" i],
-  [class*="LyricsPage" i]
+  [class*="lyricsPage" i]:not(.BeautifulLyricsPage),
+  [class*="LyricsPage" i]:not(.BeautifulLyricsPage)
 ) :is(
   button[aria-label*="Sync" i],
   button[title*="Sync" i],
@@ -6400,12 +6917,12 @@ body.pvfd-theme-active .Root__main-view :is(
   filter: drop-shadow(0 0 3px rgba(var(--pvfd-light-rgb), 0.52)) !important;
 }
 
-body.pvfd-theme-active .Root__main-view :is(
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   [data-testid*="lyrics" i],
   [class*="lyrics-lyrics" i],
   [class*="LyricsLyrics" i],
-  [class*="lyricsPage" i],
-  [class*="LyricsPage" i]
+  [class*="lyricsPage" i]:not(.BeautifulLyricsPage),
+  [class*="LyricsPage" i]:not(.BeautifulLyricsPage)
 ) :is(
   button[aria-label*="Sync" i],
   button[title*="Sync" i],
@@ -6415,7 +6932,7 @@ body.pvfd-theme-active .Root__main-view :is(
   [role="button"][class*="sync" i],
   [data-testid*="sync" i]
 ):is(:hover, :focus-visible),
-.pvfd-lyrics-sync-button:is(:hover, :focus-visible) {
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view .pvfd-lyrics-sync-button:is(:hover, :focus-visible) {
   border-color: rgba(var(--pvfd-light-rgb), 0.76) !important;
   color: var(--pvfd-text-bright) !important;
   outline: none !important;
@@ -6425,7 +6942,6 @@ body.pvfd-theme-active .Root__main-view :is(
     0 0 18px rgba(var(--pvfd-light-rgb), 0.28),
     0 8px 18px rgba(0, 0, 0, 0.34) !important;
 }
-
 
 /* CSSOM rule 346 */
 /*ECO reaches the app side panels, which live outside the playbar chassis. */
@@ -8671,12 +9187,12 @@ body.pvfd-theme-active .Root__main-view :is(
 
 /* Lyrics Sync finalizer. This must sit after generic Encore primary-button
    rules so Spotify's Sync icon survives and the button stays one LCD surface. */
-body.pvfd-theme-active .Root__main-view .pvfd-lyrics-sync-button,
-body.pvfd-theme-active .Root__main-view :is(
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view .pvfd-lyrics-sync-button,
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   [class*="lyrics-lyrics" i],
   [class*="LyricsLyrics" i],
-  [class*="lyricsPage" i],
-  [class*="LyricsPage" i]
+  [class*="lyricsPage" i]:not(.BeautifulLyricsPage),
+  [class*="LyricsPage" i]:not(.BeautifulLyricsPage)
 ) :is(
   button[aria-label*="Sync" i],
   button[title*="Sync" i],
@@ -8710,13 +9226,13 @@ body.pvfd-theme-active .Root__main-view :is(
     0 8px 18px rgba(0, 0, 0, 0.34) !important;
 }
 
-body.pvfd-theme-active .Root__main-view button.pvfd-lyrics-sync-button[data-encore-id="buttonPrimary"] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view .pvfd-lyrics-sync-button :is(div, span, svg, path, rect, line, circle),
-body.pvfd-theme-active .Root__main-view :is(
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view button.pvfd-lyrics-sync-button[data-encore-id="buttonPrimary"] .e-10451-button-primary__inner,
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view .pvfd-lyrics-sync-button :is(div, span, svg, path, rect, line, circle),
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   [class*="lyrics-lyrics" i],
   [class*="LyricsLyrics" i],
-  [class*="lyricsPage" i],
-  [class*="LyricsPage" i]
+  [class*="lyricsPage" i]:not(.BeautifulLyricsPage),
+  [class*="LyricsPage" i]:not(.BeautifulLyricsPage)
 ) :is(
   button[aria-label*="Sync" i],
   button[title*="Sync" i],
@@ -8743,12 +9259,12 @@ body.pvfd-theme-active .Root__main-view :is(
   filter: none !important;
 }
 
-body.pvfd-theme-active .Root__main-view .pvfd-lyrics-sync-button :is(svg, path, rect, line, circle),
-body.pvfd-theme-active .Root__main-view :is(
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view .pvfd-lyrics-sync-button :is(svg, path, rect, line, circle),
+body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   [class*="lyrics-lyrics" i],
   [class*="LyricsLyrics" i],
-  [class*="lyricsPage" i],
-  [class*="LyricsPage" i]
+  [class*="lyricsPage" i]:not(.BeautifulLyricsPage),
+  [class*="LyricsPage" i]:not(.BeautifulLyricsPage)
 ) :is(
   button[aria-label*="Sync" i],
   button[title*="Sync" i],
@@ -8920,3 +9436,132 @@ body[data-pvfd-special-profile="habahooney69"] .Root__main-view :is(
   animation: pvfd-habby-text-cycle 12s linear infinite !important;
   text-shadow: 0 0 6px currentColor !important;
 }
+
+
+/* ============================================================
+   BOW page-level overrides
+   ============================================================
+   Placed at end-of-file so they win source-order against
+   late-defined chrome-capsule and nav-bar rules that share the
+   same specificity + !important weight. The B-ON-W tint scheme
+   needs surface-aware ink: dark housings keep white glyphs;
+   white surfaces (search input, page content) keep black ink.
+   ============================================================ */
+
+/* Global nav bar icons — white on dark nav housing.
+   The top header strip is dark in B-ON-W (Spotify renders it
+   over the dark-mode page chrome), so icons must be white to
+   read. Exception: anything inside the white search input
+   container stays black. */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__globalNav button:not([class*="searchInputClear"]) svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__globalNav button:not([class*="searchInputClear"]) path,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active #global-nav-bar button:not([class*="searchInputClear"]) svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active #global-nav-bar button:not([class*="searchInputClear"]) path,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__top-bar button svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__top-bar button path,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__globalNav .encore-internal-color-text-subdued,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active #global-nav-bar .encore-internal-color-text-subdued,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__top-bar .encore-internal-color-text-subdued,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__globalNav .main-globalNav-link-icon svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__globalNav .main-globalNav-link-icon path,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__globalNav .main-globalNav-navLink svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__globalNav .main-globalNav-navLink path {
+  color: #ffffff !important;
+  fill: currentColor !important;
+}
+
+/* Search input interior — black ink on the white input surface. */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer input,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer .main-globalNav-searchInputText,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer .e-10451-form-input-icon__icon svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer .e-10451-form-input-icon__icon path,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer kbd,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputSection .x-searchInput-searchInputClearButton svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputSection .x-searchInput-searchInputClearButton path {
+  color: #0c0c0c !important;
+  fill: currentColor !important;
+}
+
+/* Chrome capsule play buttons — white glyph on chrome housing.
+   These selectors match the existing chrome-capsule rules (which set
+   color: var(--pvfd-accent) — resolves to black in B-ON-W). We re-target
+   the same selectors and force white so chrome reads correctly.
+   Scoped to album/playlist header capsules and album cards only;
+   quicklink shortcuts have a different class path and stay simple. */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label^="Play" i],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label*="Pause" i],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label^="Play" i],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label*="Pause" i],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label^="Play" i],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label*="Pause" i] {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label^="Play" i] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label*="Pause" i] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label^="Play" i] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label*="Pause" i] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label^="Play" i] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label*="Pause" i] * {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Right sidebar Now Playing — TOP region only.
+   The top region (above "RELATED MUSIC VIDEOS") overlays the album
+   cover image: the small header strip with close/expand/share/menu
+   icons sits ON the cover, and the track title / artist name sit
+   directly under (visually fused with) the cover.
+
+   Spotify uses `.cover-art` for the cover image. The action-button
+   overlay strip uses `.main-nowPlayingView-actionButton*`. The track
+   title block lives in the area just under the cover, before the
+   first `.main-nowPlayingView-section` (which is where "RELATED
+   MUSIC VIDEOS" / "ABOUT THE ARTIST" / etc. sections begin).
+
+   We force white + shadow ONLY on:
+     - cover-art container and its overlays (header buttons, gradient)
+     - actionButton family (the floating buttons over the cover)
+     - the track-title/artist text immediately under the cover
+       (anything inside the sidebar that is a direct sibling of, or
+       comes BEFORE, the first main-nowPlayingView-section)
+
+   Everything inside .main-nowPlayingView-section (including all
+   sectionHeader text and section bodies) stays default page ink
+   (black) because those panels live on the white sidebar surface. */
+
+/* (1) Cover art container + overlay buttons (the floating header
+   strip with close/expand/share/menu, which sits on top of the
+   cover image). Real classes: main-nowPlayingView-coverArt,
+   main-nowPlayingView-coverArtContainer,
+   main-nowPlayingView-coverArtVisualEnhancement,
+   main-nowPlayingView-actionButton*. */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArt,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArt *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArtContainer .main-nowPlayingView-coverArt,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArtContainer .main-nowPlayingView-coverArt *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-actionButtonContainer,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-actionButtonContainer *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i] * {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.78), 0 0 6px rgba(0, 0, 0, 0.50) !important;
+}
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArt button svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArt button path,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArtContainer button svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArtContainer button path,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i] button svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i] button path,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i] svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i] path {
+  color: #ffffff !important;
+  fill: currentColor !important;
+}
+
+/* (2) Track title + artist text under the cover — selectors TBD.
+   The probe will give me the actual class name. Placeholder removed
+   until the user confirms the title block class. */

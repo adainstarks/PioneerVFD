@@ -5,41 +5,6 @@
 // =====================================================================
 
 
-(function installPvfdSpicetifyWaitForChunksGuard() {
-  if (window.__pvfdSpicetifyWaitForChunksGuard) return;
-
-  const originalSetTimeout = window.setTimeout;
-
-  window.__pvfdSpicetifyWaitForChunksGuard = {
-    blocked: 0,
-    restore() {
-      window.setTimeout = originalSetTimeout;
-      delete window.__pvfdSpicetifyWaitForChunksGuard;
-    }
-  };
-
-  window.setTimeout = function(callback, delay, ...args) {
-    const source = typeof callback === "function" ? String(callback) : "";
-
-    const isBadSpicetifyWaitLoop =
-      delay === 100 &&
-      typeof callback === "function" &&
-      callback.name === "waitForChunks" &&
-      source.includes("listOfComponents") &&
-      source.includes("require.m") &&
-      source.includes("Cards.Audiobook") &&
-      source.includes("Cards.Track");
-
-    if (isBadSpicetifyWaitLoop) {
-      window.__pvfdSpicetifyWaitForChunksGuard.blocked++;
-      return 0;
-    }
-
-    return originalSetTimeout.call(this, callback, delay, ...args);
-  };
-})();
-
-
 (function PioneerVFD() {
   const bootStartedAt = window.__PVFD_BOOT_STARTED_AT || Date.now();
   window.__PVFD_BOOT_STARTED_AT = bootStartedAt;
@@ -302,9 +267,17 @@
   // TINT cycle: full-color OEL/video keeps the old LCD hue-rotate path.
   // One-color WebM tint uses the CSS RGB tint wash directly so it is not
   // hue-rotated a second time.
-  const TINT_LABELS = ["CYAN", "TEAL", "LIME", "AMBER", "ORANGE", "RED", "PINK", "MAGENTA", "VIOLET", "BLUE"];
-  const TINT_LABELS_SHORT = ["CYAN", "TEAL", "LIME", "AMBER", "ORNGE", "RED", "PINK", "MGNTA", "VIOLET", "BLUE"];
-  const TINT_HUE_DEG = [0, 335, 270, 225, 195, 170, 145, 115, 100, 25];
+  const TINT_LABELS = ["CYAN", "TEAL", "LIME", "AMBER", "ORANGE", "RED", "PINK", "MAGENTA", "VIOLET", "BLUE", "GREEN", "YELLOW", "INDIGO", "B ON W", "W ON B"];
+  const TINT_LABELS_SHORT = ["CYAN", "TEAL", "LIME", "AMBER", "ORNGE", "RED", "PINK", "MGNTA", "VIOLET", "BLUE", "GREEN", "YELLW", "INDGO", "B ONW", "W ONB"];
+  const TINT_HUE_DEG = [0, 335, 270, 225, 195, 170, 145, 115, 100, 25, 300, 250, 65, 0, 0];
+  // Mono modes apply grayscale + an inverted chrome palette; the chassis attribute
+  // data-pvfd-mono="bow"|"wob" drives the CSS. Color modes leave it unset.
+  const TINT_MONO_MODE = ["", "", "", "", "", "", "", "", "", "", "", "", "", "bow", "wob"];
+  function mapTintNameForCss(idx) {
+    const mono = TINT_MONO_MODE[idx];
+    if (mono) return mono;
+    return TINT_LABELS[idx].toLowerCase();
+  }
   const TINT_STORAGE_KEY = "pvfd-tint-mode";
   const DIM_STORAGE_KEY = "pvfd-dim-mode";
   const FONT_STORAGE_KEY = "pvfd-font-preset";
@@ -315,7 +288,6 @@
   const RACING_COLOR_STORAGE_KEY = "pvfd-racing-color-mode";
   const LEGACY_RACING_COLOR_STORAGE_KEY = "pvfd-racing-color-breakout";
   const CHROME_STORAGE_KEY = "pvfd-chrome-mode";
-  const LYRICS_PASS_STORAGE_KEY = "pvfd-lyrics-pass";
   const EEQ_TINT_STORAGE_KEY = "pvfd-eeq-tint";
   const LED_GLOW_STORAGE_KEY = "pvfd-led-glow";
   const SPECIAL_PROFILE_USERNAME = "habahooney69";
@@ -366,6 +338,7 @@
   const DEMO_CYCLE_INTERVAL_MS = 15000;
   let menuOpen = false;
   let tintMenuOpen = false;
+  let customizeMenuOpen = false;
   let pvfdSpecialProfileActive = false;
   let pvfdSpecialProfileSavedTintIdx = null;
   let pvfdSpecialProfileSweepEl = null;
@@ -468,7 +441,6 @@
   let canvas = null, ctx = null;
   let lcdDimmed = false;
   let chromeDarkEnabled = false;
-  let lyricsPassEnabled = false;
   let eeqTinted = false;
   let ledGlowEnabled = true;
   let chassis = null;
@@ -620,7 +592,7 @@
     Array.from(bar.children).forEach((child) => {
       if (!child.classList || !child.classList.contains("pvfd-chassis")) {
         child.classList.add("pvfd-native-player-hidden");
-        child.setAttribute("aria-hidden", "true");
+        child.removeAttribute("aria-hidden");
       }
     });
   }
@@ -678,7 +650,7 @@
         </div>
 
         <div class="pvfd-flank">
-          <div class="pvfd-pill" data-pvfd="scan" title="Cycle Spotify source view">SRC</div>
+          <div class="pvfd-pill" data-pvfd="att" title="Attenuator: instant mute toggle">ATT</div>
           <div class="pvfd-pill" data-pvfd="dim"  title="Toggle LCD brightness">DIM</div>
           <div class="pvfd-pill" data-pvfd="clip" title="Next OEL/LKD animation">OEL</div>
         </div>
@@ -731,28 +703,49 @@
             <div class="pvfd-tint-menu-grid" data-pvfd="tint-menu-grid"></div>
           </div>
 
-          <div class="pvfd-menu-panel" data-pvfd="menu-panel" aria-hidden="true">
-            <div class="pvfd-menu-title">PIONEER MENU</div>
-            <div class="pvfd-menu-main" data-pvfd="menu-main">
+          <div class="pvfd-menu-panel" data-pvfd="menu-panel" data-view="main" aria-hidden="true">
+            <div class="pvfd-menu-header">
+              <div class="pvfd-menu-title" data-pvfd="menu-title">PIONEER MENU</div>
+              <button class="pvfd-menu-close" type="button" data-pvfd-menu-action="close" title="Close menu" aria-label="Close menu">&#x2715;</button>
+            </div>
+            <div class="pvfd-menu-main" data-pvfd="menu-main" data-pvfd-menu-view="main">
               <div class="pvfd-menu-row-split">
-                <div class="pvfd-menu-row" data-pvfd-menu-action="lyricsPass" title="Defer the lyrics view to installed lyrics extensions"><b>LYRICS</b><span data-pvfd="menu-lyrics">PVFD</span></div>
-                <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-perf-toggle" type="button" data-pvfd-menu-action="perf" title="Cycle performance mode"><b>PERF</b><span data-pvfd="menu-perf">FULL</span></button>
-              </div>
-              <div class="pvfd-menu-row-split">
-                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="ledGlow" title="Toggle transport button LED glow"><b>BUTTON</b><span data-pvfd="menu-led-glow">GLOW</span></button>
-                <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-logo-toggle" type="button" data-pvfd-menu-action="logoGlow" title="Toggle Chromium live audio capture"><b>PULSE</b><span data-pvfd="menu-logo-glow">OFF</span></button>
-              </div>
-              <div class="pvfd-menu-row-split">
+                <div class="pvfd-menu-row" data-pvfd-menu-action="clip" title="Next OEL/LKD animation"><b>OEL</b><span data-pvfd="menu-oel">----</span></div>
                 <div class="pvfd-menu-row" data-pvfd-menu-action="demo"><b>DEMO</b><span data-pvfd="menu-demo">OFF</span></div>
+              </div>
+              <div class="pvfd-menu-row-split">
+                <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-perf-toggle" type="button" data-pvfd-menu-action="perf" title="Cycle performance mode"><b>PERF</b><span data-pvfd="menu-perf">FULL</span></button>
+                <div class="pvfd-menu-row pvfd-menu-row-placeholder" aria-hidden="true"></div>
+              </div>
+              <div class="pvfd-menu-row-split">
+                <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-logo-toggle" type="button" data-pvfd-menu-action="logoGlow" title="Toggle Chromium live audio capture"><b>PULSE</b><span data-pvfd="menu-logo-glow">OFF</span></button>
+                <div class="pvfd-menu-row pvfd-menu-row-placeholder" aria-hidden="true"></div>
+              </div>
+              <div class="pvfd-menu-row-split">
+                <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-logo-toggle" type="button" data-pvfd-menu-action="oelDisplay" title="Toggle large OEL display"><b>VFD</b><span data-pvfd="menu-oel-display">ON</span></button>
+                <div class="pvfd-menu-row pvfd-menu-row-placeholder" aria-hidden="true"></div>
+              </div>
+              <div class="pvfd-menu-row-split">
+                <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-row-customize" type="button" data-pvfd-menu-action="openCustomize" title="Appearance & customization"><b>CUSTOMIZE</b><span></span></button>
+                <div class="pvfd-menu-row pvfd-menu-row-placeholder" aria-hidden="true"></div>
+              </div>
+            </div>
+            <div class="pvfd-menu-main pvfd-menu-customize" data-pvfd="menu-customize" data-pvfd-menu-view="customize" hidden>
+              <div class="pvfd-menu-row-split">
+                <div class="pvfd-menu-row" data-pvfd-menu-action="tint"><b>TINT</b><span data-pvfd="menu-tint">CYAN</span></div>
                 <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="racingColor" title="Racing only: TINT forces one-color VFD; COLOR keeps full range while still hue-shifting with the current tint"><b>RACING</b><span data-pvfd="menu-racing-color">TINT</span></button>
               </div>
               <div class="pvfd-menu-row-split">
-                <div class="pvfd-menu-row" data-pvfd-menu-action="tint"><b>TINT</b><span data-pvfd="menu-tint">CYAN</span></div>
-                <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-logo-toggle" type="button" data-pvfd-menu-action="oelDisplay" title="Toggle large OEL display"><b>VFD</b><span data-pvfd="menu-oel-display">ON</span></button>
+                <div class="pvfd-menu-row" data-pvfd-menu-action="type"><b>TYPE</b><span data-pvfd="menu-type">DOT</span></div>
+                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="ledGlow" title="Toggle transport button LED glow"><b>BUTTON</b><span data-pvfd="menu-led-glow">GLOW</span></button>
               </div>
               <div class="pvfd-menu-row-split">
-                <div class="pvfd-menu-row" data-pvfd-menu-action="type"><b>TYPE</b><span data-pvfd="menu-type">DOT</span></div>
                 <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="chromeMode" title="Toggle dark chrome plastic"><b>DARK</b><span data-pvfd="menu-chrome">OFF</span></button>
+                <div class="pvfd-menu-row pvfd-menu-row-placeholder" aria-hidden="true"></div>
+              </div>
+              <div class="pvfd-menu-row-split pvfd-menu-row-split-back">
+                <button class="pvfd-menu-row pvfd-menu-back" type="button" data-pvfd-menu-action="backToMain" title="Back to Pioneer Menu" aria-label="Back to Pioneer Menu"><span>&#x2190;</span></button>
+                <div class="pvfd-menu-row pvfd-menu-row-placeholder" aria-hidden="true"></div>
               </div>
             </div>
           </div>
@@ -780,7 +773,7 @@
       </div>
 
       <div class="pvfd-transport">
-        <div class="pvfd-tab-side" data-pvfd="queue" title="Queue">QUE<div class="pvfd-led-strip"></div></div>
+        <div class="pvfd-tab-side" data-pvfd="queue" title="List (queue)">LST<div class="pvfd-led-strip"></div></div>
         <div class="pvfd-preset-row">
           <div class="pvfd-tab-preset" data-pvfd="shuffle" title="Shuffle">&#8646;<div class="pvfd-led-strip"></div></div>
           <div class="pvfd-tab-preset" data-pvfd="prev"    title="Previous">&#9198;&#xFE0E;<div class="pvfd-led-strip"></div></div>
@@ -1021,6 +1014,33 @@
   function bind(el, fn) { if (el) el.addEventListener("click", fn); }
   function safe(fn) { try { fn(); } catch (e) { console.warn("[PVFD]", e); } }
   function safeReturn(fn, fallback) { try { return fn(); } catch (e) { return fallback; } }
+  function safePlayerIsPlaying(fallback = false) {
+    return safeReturn(() => {
+      if (!window.Spicetify || !Spicetify.Player || !Spicetify.Player.data) return fallback;
+      return !!Spicetify.Player.isPlaying();
+    }, fallback);
+  }
+
+  // Case-preserving variant. Spotify album/artist/playlist IDs are case-
+  // sensitive base62 — lowercasing them breaks navigation back to that page
+  // ("couldn't find that album"). Use this when storing a path to navigate
+  // BACK to. Use currentSpotifyPath() only for prefix-matching route detection.
+  function currentSpotifyPathRaw() {
+    let spotifyPath = "";
+    try {
+      const hist = window.Spicetify && Spicetify.Platform && Spicetify.Platform.History;
+      const loc = hist && hist.location;
+      spotifyPath = String((loc && (loc.pathname || loc.href)) || "");
+    } catch {
+      spotifyPath = "";
+    }
+    return spotifyPath || String(window.location && window.location.pathname || "");
+  }
+
+  function currentSpotifyPath() {
+    return currentSpotifyPathRaw().toLowerCase();
+  }
+
   function refreshPvfdPerfEnabled() {
     pvfdPerfEnabled = safeReturn(() => window.localStorage.getItem(PVFD_PROF_STORAGE_KEY) === "1", false);
     return pvfdPerfEnabled;
@@ -1254,17 +1274,7 @@
     const mainView = document.querySelector(".Root__main-view");
     const entityHeader = mainView && mainView.querySelector(".main-entityHeader-container");
 
-    let spotifyPath = "";
-    try {
-      const hist = window.Spicetify && Spicetify.Platform && Spicetify.Platform.History;
-      const loc = hist && hist.location;
-      spotifyPath = String((loc && (loc.pathname || loc.href)) || "").toLowerCase();
-    } catch {
-      spotifyPath = "";
-    }
-
-    const fallbackPath = String(window.location && window.location.pathname || "").toLowerCase();
-    const path = spotifyPath || fallbackPath;
+    const path = currentSpotifyPath();
 
     const allRouteHints = mainView
       ? Array.from(mainView.querySelectorAll("[data-test-uri], [data-uri], a[href]"))
@@ -1305,6 +1315,7 @@
     if (path.includes("/search")) return "search";
     if (path.includes("/collection")) return "library";
     if (path.includes("/queue")) return "queue";
+    if (path.includes("/beautifullyrics") || path.includes("/spicylyrics")) return "external-lyrics";
     if (path.includes("/lyrics")) return "lyrics";
     if (path.includes("/user/")) return "profile";
 
@@ -1368,11 +1379,6 @@
   function readChromeDarkEnabled() {
     const saved = String(safeReturn(() => window.localStorage.getItem(CHROME_STORAGE_KEY), "") || "").toUpperCase();
     return saved === "ON" || saved === "TRUE" || saved === "1" || saved === "DARK";
-  }
-
-  function readLyricsPassEnabled() {
-    const saved = String(safeReturn(() => window.localStorage.getItem(LYRICS_PASS_STORAGE_KEY), "") || "").toUpperCase();
-    return saved === "ON" || saved === "EXT" || saved === "PASS" || saved === "TRUE" || saved === "1";
   }
 
   function readEeqTinted() {
@@ -1865,16 +1871,29 @@
     return false;
   }
 
-  function clickFirstOutsideChassis(selectors) {
+  function clickFirstOutsideChassis(selectors, reject = null) {
     for (const selector of selectors) {
       const els = safeReturn(() => Array.from(document.querySelectorAll(selector)), []);
-      const el = els.find((candidate) => !candidate.closest || !candidate.closest(".pvfd-chassis"));
+      const el = els.find((candidate) => (
+        (!candidate.closest || !candidate.closest(".pvfd-chassis")) &&
+        !(reject && reject(candidate))
+      ));
       if (el && typeof el.click === "function") {
         el.click();
         return true;
       }
     }
     return false;
+  }
+
+  function buttonLabelText(el) {
+    return [
+      el && el.id,
+      el && el.getAttribute && el.getAttribute("aria-label"),
+      el && el.getAttribute && el.getAttribute("title"),
+      el && el.getAttribute && el.getAttribute("data-tippy-content"),
+      el && el.textContent
+    ].map((value) => String(value || "").replace(/\s+/g, " ").trim().toLowerCase()).filter(Boolean).join(" ");
   }
 
   function pushSpotifyPath(path) {
@@ -1954,6 +1973,9 @@
     ]);
   }
 
+  // Silk Lyrics button: routes to / toggles Spotify native lyrics. Clicking
+  // Spotify's own lyrics-button is a toggle (Show/Hide), so calling this
+  // function while already on /lyrics closes the view back to the song.
   function openLyrics() {
     let opened = clickFirstOutsideChassis([
       "button[data-testid='lyrics-button']",
@@ -1971,7 +1993,6 @@
     const lyrics = chassis && chassis.querySelector("[data-pvfd='lyrics']");
     if (lyrics) {
       lyrics.classList.add("active");
-      lyrics.title = opened ? "Open lyrics" : "Lyrics unavailable";
       setTimeout(() => lyrics.classList.remove("active"), 850);
     }
     if (!opened) console.warn("[PVFD] lyrics control unavailable");
@@ -2010,7 +2031,24 @@
     const menuBtn = chassis.querySelector("[data-pvfd='menu']");
     if (menuBtn) menuBtn.classList.toggle("active", menuOpen);
     if (menuOpen && tintMenuOpen) setTintMenuOpen(false);
+    if (!menuOpen) setCustomizeMenuView(false);
     updateMenuPanel();
+  }
+
+  // Pioneer Menu has two views: "main" and "customize". A single panel swaps
+  // its body via data-view; the X in the header always closes the panel
+  // entirely, BACK returns to main.
+  function setCustomizeMenuView(next) {
+    customizeMenuOpen = !!next;
+    if (!chassis) return;
+    const panel = chassis.querySelector("[data-pvfd='menu-panel']");
+    const title = chassis.querySelector("[data-pvfd='menu-title']");
+    const mainView = chassis.querySelector("[data-pvfd='menu-main']");
+    const customizeView = chassis.querySelector("[data-pvfd='menu-customize']");
+    if (panel) panel.setAttribute("data-view", customizeMenuOpen ? "customize" : "main");
+    if (title) title.textContent = customizeMenuOpen ? "CUSTOMIZE MENU" : "PIONEER MENU";
+    if (mainView) mainView.hidden = customizeMenuOpen;
+    if (customizeView) customizeView.hidden = !customizeMenuOpen;
   }
 
   function setTintMenuOpen(next) {
@@ -2040,7 +2078,7 @@
     const grid = chassis.querySelector("[data-pvfd='tint-menu-grid']");
     if (!grid || grid.dataset.pvfdPopulated === "1") return;
     grid.innerHTML = TINT_LABELS.map((label, idx) => {
-      const name = label.toLowerCase();
+      const name = mapTintNameForCss(idx);
       return `<button class="pvfd-tint-swatch" type="button" data-pvfd-tint-idx="${idx}" data-pvfd-tint-name="${name}" title="Set tint: ${label}" aria-label="Set tint: ${label}"><span class="pvfd-tint-swatch-color" data-pvfd-tint-name="${name}"></span><span class="pvfd-tint-swatch-label">${label}</span></button>`;
     }).join("");
     grid.dataset.pvfdPopulated = "1";
@@ -2062,6 +2100,12 @@
   const playerStateCache = { at: -Infinity, playing: false, shuffle: false, repeat: "OFF" };
   const playerTimingCache = { at: -Infinity, progressMs: 0, durationMs: 0, playing: false };
   const volumeStateCache = { at: -Infinity, value: 0.5 };
+  // ATT (Attenuator) state. Dedicated ATT pill on the chassis flank toggles
+  // mute (volume → 0); pressing again restores the snapshotted prior volume.
+  // Matches the real Pioneer DEH-P7600MP ATT button behavior — a rapid
+  // single-button safety mute, not a long-press gesture.
+  let attActive = false;
+  let attPriorVolume = 0;
   let browseFontPresetKey = "";
   let staticReadoutsDirty = true;
   let knobLedDirty = true;
@@ -2074,7 +2118,7 @@
       menuPanel: chassis.querySelector("[data-pvfd='menu-panel']"),
       menuMain: chassis.querySelector("[data-pvfd='menu-main']"),
       menu: {
-        lyricsPass: chassis.querySelector("[data-pvfd='menu-lyrics']"),
+        oel: chassis.querySelector("[data-pvfd='menu-oel']"),
         demo: chassis.querySelector("[data-pvfd='menu-demo']"),
         tint: chassis.querySelector("[data-pvfd='menu-tint']"),
         type: chassis.querySelector("[data-pvfd='menu-type']"),
@@ -2086,6 +2130,7 @@
         ledGlow: chassis.querySelector("[data-pvfd='menu-led-glow']"),
       },
       buttons: {
+        lyrics: chassis.querySelector("[data-pvfd='lyrics']"),
         play: chassis.querySelector("[data-pvfd='play']"),
         shuffle: chassis.querySelector("[data-pvfd='shuffle']"),
         repeat: chassis.querySelector("[data-pvfd='repeat']"),
@@ -2140,7 +2185,7 @@
   function getSampledPlayerState(now = performance.now()) {
     if (now - playerStateCache.at > PLAYER_STATE_SAMPLE_MS) {
       playerStateCache.at = now;
-      playerStateCache.playing = Spicetify.Player.isPlaying();
+      playerStateCache.playing = safePlayerIsPlaying(playerStateCache.playing);
       playerStateCache.shuffle = getShuffleState();
       playerStateCache.repeat = getRepeatState();
     }
@@ -2173,7 +2218,9 @@
       return;
     }
     const dom = getPvfdDom();
-    setTextIfChanged(dom.menu && dom.menu.lyricsPass, lyricsPassEnabled ? "EXT" : "PVFD");
+    setTextIfChanged(dom.menu && dom.menu.oel, activeClipName(12));
+    setAttrIfChanged(dom.buttons && dom.buttons.lyrics, "title", "Open lyrics");
+    setAttrIfChanged(dom.buttons && dom.buttons.lyrics, "aria-label", "Open lyrics");
     setTextIfChanged(dom.menu && dom.menu.demo, demoAutoMode ? "AUTO" : "OFF");
     setTextIfChanged(dom.menu && dom.menu.tint, TINT_LABELS[tintIdx]);
     setTextIfChanged(dom.menu && dom.menu.type, FONT_PRESETS[fontPresetIdx].label);
@@ -2195,6 +2242,23 @@
     if (desktopCaptureActive) return "LIVE";
     return "...";
   }
+
+  window.pvfdPulseProbe = function pvfdPulseProbe() {
+    return {
+      enabled: logoGlowEnabled,
+      label: currentPulseModeLabel(),
+      liveAudioActive: logoLiveAudioActive,
+      liveAudioPending: logoLiveAudioPending,
+      desktopCaptureActive,
+      desktopCapturePending,
+      hasAnalyser: !!logoLiveAudioAnalyser,
+      hasBins: !!(logoLiveAudioBins && logoLiveAudioBins.length),
+      playerDataReady: !!safeReturn(() => Spicetify.Player && Spicetify.Player.data, null),
+      playerPlaying: safePlayerIsPlaying(false),
+      failure: pulseLiveFailureReason || "",
+      lastLiveAudioUpdateAt: Number.isFinite(lastLogoLiveAudioUpdateAt) ? Math.round(lastLogoLiveAudioUpdateAt) : null
+    };
+  };
 
   function updateRoleButtonStates() {
     if (!chassis) return;
@@ -2259,48 +2323,17 @@
     applyLedGlow(true);
   }
 
-  // LYRICS PASS mode: when ON, Pioneer stops tagging lyrics surfaces with its
-  // .pvfd-lyrics-* classes and the mutation observer's lyrics branch no-ops.
-  // That lets installed lyrics extensions (Beautiful Lyrics, Simple Beautiful
-  // Lyrics, etc.) own the lyrics view's DOM. When OFF, Pioneer re-tags any
-  // current lyrics surfaces and resumes its native lyrics styling, overriding
-  // whatever the extension was injecting.
-  function applyLyricsPassMode(persist = false) {
-    if (document.body) {
-      if (lyricsPassEnabled) document.body.setAttribute("data-pvfd-lyrics-pass", "on");
-      else document.body.removeAttribute("data-pvfd-lyrics-pass");
-    }
-    if (chassis) {
-      if (lyricsPassEnabled) chassis.setAttribute("data-pvfd-lyrics-pass", "on");
-      else chassis.removeAttribute("data-pvfd-lyrics-pass");
-    }
-    if (lyricsPassEnabled) {
-      untagLyricsSurfaces();
-    } else {
-      // Resume Pioneer's lyrics tagging on whatever's currently rendered.
-      tagLyricsSurfaces(document);
-    }
-    if (persist) safe(() => window.localStorage.setItem(LYRICS_PASS_STORAGE_KEY, lyricsPassEnabled ? "EXT" : "OFF"));
-    updateMenuPanel();
-  }
-
-  function toggleLyricsPassMode() {
-    lyricsPassEnabled = !lyricsPassEnabled;
-    applyLyricsPassMode(true);
-  }
-
-  function untagLyricsSurfaces() {
-    document.querySelectorAll(".pvfd-lyrics-surface, .pvfd-lyrics-background, .pvfd-lyrics-content").forEach((el) => {
-      el.classList.remove("pvfd-lyrics-surface", "pvfd-lyrics-background", "pvfd-lyrics-content");
-    });
-  }
-
   function applyBrowseFontPreset(persist = false) {
     fontPresetIdx = ((fontPresetIdx % FONT_PRESETS.length) + FONT_PRESETS.length) % FONT_PRESETS.length;
     const preset = FONT_PRESETS[fontPresetIdx];
     const key = `${preset.label}:${preset.stack}`;
     let applied = false;
-    document.querySelectorAll(".Root__main-view, .main-view-container, .main-view-container__scroll-node").forEach((el) => {
+    const fontTargets = [
+      document.documentElement,
+      document.body,
+      ...document.querySelectorAll(".Root__main-view, .main-view-container, .main-view-container__scroll-node, .BeautifulLyricsPage, #SpicyLyricsPage")
+    ].filter(Boolean);
+    fontTargets.forEach((el) => {
       const pixelCurrent = el.style.getPropertyValue("--pvfd-font-pixel");
       const vfdCurrent = el.style.getPropertyValue("--pvfd-font-vfd");
       if (pixelCurrent !== preset.stack) {
@@ -2481,7 +2514,7 @@
   }
 
   function activateMenuAction(action) {
-    if (action === "lyricsPass") toggleLyricsPassMode();
+    if (action === "clip") cycleClipMode();
     else if (action === "demo") toggleDemoMode();
     else if (action === "tint") openTintMenu();
     else if (action === "type") cycleFontPreset();
@@ -2491,6 +2524,9 @@
     else if (action === "racingColor") toggleRacingColorMode();
     else if (action === "chromeMode") toggleChromeMode();
     else if (action === "ledGlow") toggleLedGlow();
+    else if (action === "openCustomize") setCustomizeMenuView(true);
+    else if (action === "backToMain") setCustomizeMenuView(false);
+    else if (action === "close") setMenuOpen(false);
   }
 
   function getPlayerVolume(now = performance.now(), force = false) {
@@ -2519,6 +2555,45 @@
     }, 35);
   }
 
+  // Called from the volume knob's user-input paths (scroll wheel, drag).
+  // If the user touches the volume while ATT is active, we cancel ATT
+  // without restoring the snapshot — their fresh adjustment becomes the
+  // new volume. Matches period radios where any volume input dismissed ATT.
+  function exitAttOnUserVolumeInput() {
+    if (!attActive) return;
+    attActive = false;
+    const attPill = chassis && chassis.querySelector("[data-pvfd='att']");
+    if (attPill) attPill.classList.remove("active");
+    if (chassis) chassis.removeAttribute("data-pvfd-att");
+    markStaticReadoutsDirty();
+  }
+
+  // ATT toggle. Snapshots current volume and mutes (volume → 0); a second
+  // press restores the snapshot. Mirrors the real Pioneer ATT button:
+  // instant on, instant off, no UX edge cases around mid-mute knob drag
+  // because the user's natural reaction (just press ATT again) is the
+  // happy path.
+  function toggleAttMode() {
+    if (attActive) {
+      attActive = false;
+      setVolumeSmooth(attPriorVolume);
+    } else {
+      attPriorVolume = getPlayerVolume();
+      attActive = true;
+      setVolumeSmooth(0);
+    }
+    const attPill = chassis && chassis.querySelector("[data-pvfd='att']");
+    if (attPill) attPill.classList.toggle("active", attActive);
+    // Mirror onto the chassis so CSS can re-skin the left LCD VOL readout.
+    if (chassis) {
+      if (attActive) chassis.setAttribute("data-pvfd-att", "on");
+      else chassis.removeAttribute("data-pvfd-att");
+    }
+    // Force the side-readout pass to redraw immediately so the VOL row
+    // swaps to ATTENUATOR without waiting for the next sample tick.
+    markStaticReadoutsDirty();
+  }
+
   function activePlayerTimingSampleMs() {
     return PLAYER_TIMING_SAMPLE_MS;
   }
@@ -2536,7 +2611,7 @@
       const projectedProgressMs = projectedPlayerProgressMs(ts);
       const sampledProgressMs = safeReturn(() => Spicetify.Player.getProgress(), projectedProgressMs) || 0;
       const durationMs = getCurrentDurationMs();
-      const playing = safeReturn(() => Spicetify.Player.isPlaying(), false);
+      const playing = safePlayerIsPlaying(playerTimingCache.playing);
       let progressMs = sampledProgressMs;
 
       if (logoGlowEnabled && !force && playing && playerTimingCache.playing && Number.isFinite(playerTimingCache.at)) {
@@ -2689,6 +2764,7 @@
       };
       lknob.addEventListener("wheel", (e) => {
         e.preventDefault();
+        exitAttOnUserVolumeInput();
         const step = clamp(-e.deltaY / 1200, -0.04, 0.04);
         setVolumeSmooth(getPlayerVolume() + step);
       }, { passive: false });
@@ -2713,6 +2789,9 @@
         if (d < -180) d += 360;
         volumeDrag.accumDeg += d;
         volumeDrag.lastAngle = a;
+        // Only exit ATT once the user has actually MOVED the knob, not on
+        // pointerdown — a stray click on the knob shouldn't clear ATT.
+        if (Math.abs(volumeDrag.accumDeg) > 2) exitAttOnUserVolumeInput();
         setVolumeSmooth(volumeDrag.startVolume + volumeDrag.accumDeg / 360);
         e.preventDefault();
       });
@@ -2762,7 +2841,7 @@
     bind($("[data-pvfd='navleft']"),  () => invokePlayerAction(() => Spicetify.Player.back(), 300));
     bind($("[data-pvfd='navright']"), () => invokePlayerAction(() => Spicetify.Player.next(), 300));
 
-    bind($("[data-pvfd='scan']"), cycleSource);
+    bind($("[data-pvfd='att']"), toggleAttMode);
     bind($("[data-pvfd='eeq']"), toggleEeqTint);
     bind($("[data-pvfd='lyrics']"), openLyrics);
     bind($("[data-pvfd='dim']"), toggleDimMode);
@@ -2790,6 +2869,15 @@
       activateMenuAction(row.dataset.pvfdMenuAction);
     });
   });
+
+    // ESC: customize → main; main → closed. Tint submenu closes itself.
+    window.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if (tintMenuOpen) { setTintMenuOpen(false); return; }
+      if (!menuOpen) return;
+      if (customizeMenuOpen) setCustomizeMenuView(false);
+      else setMenuOpen(false);
+    });
 
     bind($("[data-pvfd='shuffle']"), () => invokePlayerAction(() => Spicetify.Player.toggleShuffle()));
     bind($("[data-pvfd='prev']"),    () => invokePlayerAction(() => Spicetify.Player.back(), 300));
@@ -3890,11 +3978,19 @@
   function applyLcdFilter() {
     if (!chassis) return;
 
-    const tintName = TINT_LABELS[tintIdx].toLowerCase();
+    const tintName = mapTintNameForCss(tintIdx);
+    const monoMode = TINT_MONO_MODE[tintIdx] || "";
     const perf = activePerformanceConfig();
 
     chassis.setAttribute("data-pvfd-tint", tintName);
     document.documentElement.setAttribute("data-pvfd-tint", tintName);
+    if (monoMode) {
+      chassis.setAttribute("data-pvfd-mono", monoMode);
+      document.documentElement.setAttribute("data-pvfd-mono", monoMode);
+    } else {
+      chassis.removeAttribute("data-pvfd-mono");
+      document.documentElement.removeAttribute("data-pvfd-mono");
+    }
     refreshPvfdCssPalette();
 
     const deg = TINT_HUE_DEG[tintIdx];
@@ -3914,6 +4010,13 @@
       const cssTintedWebm = colorMode === "tint" && (videoState === "active" || videoState === "loading");
       const parts = [];
       if (deg !== 0 && !cssTintedWebm) parts.push(`hue-rotate(${deg}deg)`);
+      // Mono modes: grayscale the LCD canvas + video. Racing clip in COLOR
+      // mode keeps full color (colorMode === "color") so racing remains
+      // expressive even when the rest of the chassis is monochrome.
+      // Both B-ON-W and W-ON-B keep the chassis LCD dark with light ink
+      // (the LCD is a "screen inside a dark housing" in both modes), so
+      // grayscale alone is enough — no invert.
+      if (monoMode && colorMode !== "color") parts.push("grayscale(1)");
       parts.push(...baseLcdParts);
       const nextFilter = parts.join(" ");
       if (lcd.style.filter !== nextFilter) lcd.style.filter = nextFilter;
@@ -4468,7 +4571,7 @@
     const side = dom.side || {};
     const perf = activePerformanceConfig();
     if (!perf.sideReadouts) {
-      setTextIfChanged(side.vol, Math.round(getPlayerVolume() * 100) + "%");
+      setTextIfChanged(side.vol, attActive ? "ATTENUATOR" : (Math.round(getPlayerVolume() * 100) + "%"));
       setTextIfChanged(side.mode, "WEBM");
       setTextIfChanged(side.tint, TINT_LABELS[tintIdx]);
       setTextIfChanged(side.dim, lcdDimmed ? "DIM" : "FULL");
@@ -4486,7 +4589,7 @@
     const source = SOURCE_TARGETS[sourceIdx] || SOURCE_TARGETS[0];
     const sourceFlash = performance.now() < sourceFlashUntil;
     if (side.ecoModel) side.ecoModel.hidden = true;
-    setTextIfChanged(side.vol, Math.round(getPlayerVolume() * 100) + "%");
+    setTextIfChanged(side.vol, attActive ? "ATTENUATOR" : (Math.round(getPlayerVolume() * 100) + "%"));
     setTextIfChanged(side.mode, demoAutoMode ? "DEMO" : (oelDisplayEnabled ? "WEBM" : "----"));
     setTextIfChanged(side.tint, TINT_LABELS[tintIdx]);
     setTextIfChanged(side.dim, perf.label === "ECO" ? (lcdDimmed ? "ECO DIM" : "ECO") : (lcdDimmed ? "DIM" : "FULL"));
@@ -4577,7 +4680,7 @@
     if (!logoLiveAudioActive && !logoLiveAudioPending && !logoLiveAudioResumeTimer) {
       logoLiveAudioResumeTimer = window.setTimeout(() => {
         logoLiveAudioResumeTimer = 0;
-        if (logoGlowEnabled && !logoLiveAudioActive && !logoLiveAudioPending && safeReturn(() => Spicetify.Player.isPlaying(), false)) {
+        if (logoGlowEnabled && !logoLiveAudioActive && !logoLiveAudioPending && safePlayerIsPlaying(false)) {
           startLogoLiveAudioCapture();
         }
       }, 250);
@@ -4716,7 +4819,7 @@
     lastTrackSyncAt = -Infinity;
     syncCurrentTrackFromPlayer(true);
     const playBtn = chassis && chassis.querySelector("[data-pvfd='play']");
-    if (playBtn) playBtn.textContent = Spicetify.Player.isPlaying() ? PVFD_PAUSE_GLYPH : PVFD_PLAY_GLYPH;
+    if (playBtn) playBtn.textContent = safePlayerIsPlaying(false) ? PVFD_PAUSE_GLYPH : PVFD_PLAY_GLYPH;
   }
 
   const LIBRARY_RECENTS_SELECTOR = [
@@ -4903,8 +5006,8 @@
     "[data-testid*='lyrics' i]",
     "[class*='lyrics-lyrics' i]",
     "[class*='LyricsLyrics' i]",
-    "[class*='lyricsPage' i]",
-    "[class*='LyricsPage' i]",
+    "[class*='lyricsPage' i]:not(.BeautifulLyricsPage)",
+    "[class*='LyricsPage' i]:not(.BeautifulLyricsPage)",
     ".lyrics-lyrics-container",
     ".lyrics-lyrics-background",
     ".lyrics-lyrics-contentContainer"
@@ -4949,7 +5052,6 @@
   }
 
   function tagLyricsSurfaces(root = document) {
-    if (lyricsPassEnabled) return 0;
     const scope = root && root.querySelectorAll ? root : document;
     let tagged = 0;
     const surfaces = [];
@@ -4985,7 +5087,7 @@
 
   function reconcileLyricsSyncButtons(root = document) {
     const perfAt = pvfdPerfStart();
-    if (lyricsPassEnabled || !hasLyricsView() || !rootLooksLyricsScoped(root)) {
+    if (!hasLyricsView() || !rootLooksLyricsScoped(root)) {
       pvfdPerfEnd("searchReconciliation", perfAt);
       return 0;
     }
@@ -5127,7 +5229,7 @@
 
   function recoverNativePlayerAfterFatal() {
     try {
-      stopLogoGlowScheduler();
+      if (typeof stopLogoLiveAudioScheduler === "function") stopLogoLiveAudioScheduler();
       if (chassis && chassis.parentNode) chassis.parentNode.removeChild(chassis);
       const bar = findPlayerBar();
       if (bar) {
@@ -5297,7 +5399,6 @@
     tintIdx = readTintIdx();
     lcdDimmed = readDimEnabled();
     chromeDarkEnabled = readChromeDarkEnabled();
-    lyricsPassEnabled = readLyricsPassEnabled();
     eeqTinted = readEeqTinted();
     ledGlowEnabled = readLedGlowEnabled();
     performanceModeIdx = readPerformanceModeIdx();
@@ -5311,7 +5412,6 @@
     applyTintMode(false);
     applyDimMode(false);
     applyChromeMode(false);
-    applyLyricsPassMode(false);
     applyEeqTint(false);
     applyLedGlow(false);
     applyLogoGlowMode(false);
@@ -5326,7 +5426,7 @@
       Spicetify.Player.addEventListener("songchange", onTrackChange);
       Spicetify.Player.addEventListener("onplaypause", () => {
         markPlayerStateDirty();
-        const playing = safeReturn(() => Spicetify.Player.isPlaying(), false);
+        const playing = safePlayerIsPlaying(false);
         const playBtn = chassis && chassis.querySelector("[data-pvfd='play']");
         if (playBtn) playBtn.textContent = playing ? PVFD_PAUSE_GLYPH : PVFD_PLAY_GLYPH;
       });
