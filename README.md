@@ -25,7 +25,7 @@ PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 
 ## What It Does
 
 - Replaces Spotify's lower player area with a custom chrome Pioneer-style head-unit panel.
-- Uses real WebM OEL clips for the center animation display.
+- Uses real 2000s Pioneer OEL clips for the center animation display.
 - Streams OEL media from the published project assets and caches clips in the browser when available.
 - Adds metadata LCDs for artist, title, playtime, ATT state, tint, dim, mode, clip, and playback readouts.
 - Adds an `ATT` button for instant mute/restore behavior.
@@ -71,7 +71,7 @@ The `CUSTOMIZE MENU` contains:
 - `DARK` toggles dark chrome plastic.
 
 Faceplate and transport controls include:
-
+- `OEL`, `DEMO`, `TINT`, `MENU`, with the above-mentioned functionality.
 - `ATT` mutes instantly and restores the previous volume on the next press.
 - Volume wheel/drag exits `ATT` when the user starts adjusting volume.
 - `DIM` toggles LCD brightness from the faceplate control row.
