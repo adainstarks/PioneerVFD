@@ -1,13 +1,13 @@
 <img width="2000" height="668" alt="PioneerVFD logo" src="https://github.com/user-attachments/assets/d84f1508-fee8-4ebd-b3b5-8600e1bec88e" />
 
 > Unofficial fan-made Spicetify theme. Not affiliated with Pioneer Corporation.
-> The Marketplace Install will ONLY fetch WEBM for the VFD if you have Wi-Fi! If you want to have animations without Wi-Fi: use the local installer on Github!
+> The Marketplace and script installs fetch the OEL/WebM clips over the network on first use. For the most reliable offline animation behavior, open the theme once while online so the clips can cache.
 
 Miss the old 2000s Pioneer head units? Wish you could still have those dolphins swimming while you bump tunes? Maybe you never got to experience it and want to? Well, now you can.
 
-PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 2000s Pioneer DEH-P7600MP-style VFD/LCD stereo interface. It replaces the stock lower player area with a chrome head-unit panel, WebM OEL animations, RGB-tinted display modes, hardware-style readouts, and live audio spectrum bars around the Pioneer logo.
+PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 2000s Pioneer DEH-P7600MP-style VFD/LCD stereo interface. It replaces the stock lower player area with a chrome head-unit panel, WebM OEL animations, expanded RGB and mono display modes, hardware-style readouts, ATT-style muting, and live audio spectrum bars around the Pioneer logo.
 
-**Latest Build** — Dark Mode, 10-color tint picker, profile page theming, lyrics button fix, polished knob/centerpiece look, compact-viewport touch-ups.
+**Latest Build** — Experimental 0.3.22 marketplace build, ATT mute/restore, LST queue label, expanded 15-mode tint picker, Black-on-White / White-on-Black mono modes, CUSTOMIZE menu split, external lyrics compatibility work, search/top-bar fixes, and continued performance tuning.
 
 ## Preview
 
@@ -25,11 +25,15 @@ PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 
 ## What It Does
 
 - Replaces Spotify's lower player area with a custom chrome Pioneer-style head-unit panel.
-- Uses real WebM OEL clips for the center animation display
-- Ships the OEL media assets in `Themes/PioneerVFD/assets`.
-- Adds metadata LCDs for artist, title, playtime, source state, tint, dim, mode, and playback readouts.
+- Uses real WebM OEL clips for the center animation display.
+- Streams OEL media from the published project assets and caches clips in the browser when available.
+- Adds metadata LCDs for artist, title, playtime, ATT state, tint, dim, mode, clip, and playback readouts.
+- Adds an `ATT` button for instant mute/restore behavior.
+- Uses `LST` for the queue/list control, matching the classic head-unit feel more closely than `QUE`.
 - Adds mirrored live spectrum bars around the Pioneer logo.
 - Uses Chromium desktop audio capture for the `PULSE` live visualizer.
+- Adds a two-page `PIONEER MENU` / `CUSTOMIZE MENU` layout so runtime controls fit better.
+- Includes 15 tint modes: cyan, teal, lime, amber, orange, red, pink, magenta, violet, blue, green, yellow, indigo, black-on-white, and white-on-black.
 - Includes `FULL` and `ECO` performance modes for different machines.
 
 ## OEL And Media
@@ -43,26 +47,41 @@ The center OEL/VFD display is WebM-based. The current clip set includes:
 - `diverdolphins_longloop.webm`
 - `6_Racing_Cart_longloop.webm`
 
-The installer builds the installed extension by injecting a WebM source map into `pioneerVFD.js`.
+Marketplace builds load these clips from jsDelivr. Script/local builds load from the published GitHub Pages asset paths. PioneerVFD stores successful clip fetches in IndexedDB, so clips can continue working from cache when the browser has already seen them.
+
+The racing clip has its own `RACING` color mode. By default it follows the current VFD tint; switching `RACING` to `COLOR` lets that clip keep its full-color look while the rest of the theme stays tint-aware.
 
 ## Controls
 
-The Pioneer `MENU` button exposes the main runtime controls:
+The Pioneer `MENU` button opens the main runtime controls:
 
-- `SRC` cycles the Spotify source view.
 - `OEL` cycles the WebM OEL clip.
 - `DEMO` auto-cycles OEL clips without changing the saved startup clip.
-- `TINT` cycles 10-color display treatment.
-- `TYPE` switches the Spotify content font preset.
 - `PERF` switches between `FULL` and `ECO`.
 - `PULSE` toggles Chromium live audio capture for the logo spectrum.
-- `RACING` switches the racing clip between one-color tint mode and full-color mode.
 - `VFD` toggles the large OEL display on and off.
+- `CUSTOMIZE` opens the appearance controls.
+
+The `CUSTOMIZE MENU` contains:
+
+- `TINT` opens the 15-mode tint picker.
+- `TYPE` switches the Spotify content font preset.
+- `RACING` switches the racing clip between one-color tint mode and full-color mode.
+- `BUTTON` toggles transport button LED glow.
+- `DARK` toggles dark chrome plastic.
+
+Faceplate and transport controls include:
+
+- `ATT` mutes instantly and restores the previous volume on the next press.
+- Volume wheel/drag exits `ATT` when the user starts adjusting volume.
 - `DIM` toggles LCD brightness from the faceplate control row.
+- `LST` opens Spotify's queue/list control.
+- The `EEQ` silk label can tint-match its logo accent.
+- The lyrics button opens Spotify lyrics while avoiding Beautiful Lyrics / Spicy Lyrics takeover routes.
 
 `PULSE` starts from `OFF` on launch so Spotify does not reopen desktop/system audio capture by itself. Turn it on from the menu when you want live bars, then select a capture source with audio when Chromium asks.
 
-Saved preferences include `PERF`, `TINT`, `DIM`, `TYPE`, selected `OEL` clip, `VFD`, and racing color mode.
+Saved preferences include `PERF`, `TINT`, `DIM`, `TYPE`, selected `OEL` clip, `VFD`, racing color mode, dark chrome, EEQ tint, and transport button glow. `PULSE` intentionally boots idle even if it was previously enabled.
 
 ## Performance
 
@@ -83,7 +102,9 @@ Saved preferences include `PERF`, `TINT`, `DIM`, `TYPE`, selected `OEL` clip, `V
 
 If the Spicetify Marketplace package is available and up to date, install `PioneerVFD` from Marketplace.
 
-If the OEL screen is blank or clips do not play, use one of the script installs below. The script installs are the reference path for the WebM build because they inject the installed WebM source map.
+Marketplace currently points at the versioned marketplace CSS/JS files published through this repository. The marketplace path fetches WebM clips from the CDN and caches them after successful playback.
+
+If the OEL screen is blank, clips do not play, or Spotify/Spicetify does not expose the APIs the extension needs, use one of the script installs below. The script installs are the reference path for setting the correct Spicetify config and preserving any existing extensions already enabled.
 
 ### Windows Quick Install
 
@@ -138,12 +159,9 @@ The Windows, Linux, and macOS installers:
 
 - Locate the Spicetify config root.
 - Copy the PioneerVFD theme files.
-- Copy the WebM assets.
-- Build the installed extension with injected WebM data URLs.
-- Verify the installed extension contains WebM data URLs.
-- Verify the source-map placeholder is gone.
+- Copy the PioneerVFD extension.
 - Configure Spicetify with `current_theme PioneerVFD`, `color_scheme PioneerVFD`, CSS injection, theme JS injection, color replacement, asset overwrite, and `expose_apis 1`.
-- Enable `pioneerVFD.js`.
+- Preserve existing enabled Spicetify extensions where possible, then add `pioneerVFD.js`.
 - Run `spicetify apply`.
 
 ## Remove
@@ -169,12 +187,12 @@ PioneerVFD/
 │       │   ├── diverdolphins_longloop.webm
 │       │   ├── movie10_f_longloop.webm
 │       │   ├── movie1_longloop.webm
-│       │   ├── movie5.webm
 │       │   ├── movie5_longloop.webm
 │       │   └── movie6_longloop.webm
 │       ├── fonts/
 │       ├── color.ini
 │       └── user.css
+├── manifest.json
 ├── install-windows.ps1
 ├── install-linux.sh
 ├── install-macos.sh
@@ -183,13 +201,14 @@ PioneerVFD/
 
 ## Notes
 
-- The Marketplace Install will ONLY fetch WEBM for the VFD if you have Wi-Fi! If you want to have animations without Wi-Fi: use the local installer on Github!
-- `Extensions/pioneerVFD.js` owns the head-unit runtime, menu behavior, WebM OEL state, Chromium live audio capture, route state, and visualizer logic.
-- `Themes/PioneerVFD/user.css` owns the chrome body, LCD/OEL styling, RGB tint variables, app-wide Spotify styling, route-specific layout, and performance gates.
+- The Marketplace and script installs fetch OEL/WebM clips over the network on first use. Once a clip has loaded successfully, PioneerVFD attempts to reuse the cached IndexedDB copy.
+- `Extensions/pioneerVFD.js` owns the head-unit runtime, ATT state, menu behavior, WebM OEL state, Chromium live audio capture, route state, and visualizer logic.
+- `Themes/PioneerVFD/user.css` owns the chrome body, LCD/OEL styling, tint and mono palettes, app-wide Spotify styling, route-specific layout, and performance gates.
 - `Themes/PioneerVFD/color.ini` defines the `PioneerVFD` Spicetify color scheme.
-- Manual raw-copy installs are not recommended for this build because the extension must be installed with the WebM source map injected.
+- Manual raw-copy installs are not recommended because the theme depends on several Spicetify config flags and exposed APIs.
 - If `PULSE` has no signal, turn it off and on again, then pick a capture source that includes audio.
-- If the OEL screen is blank after a manual copy, rerun the platform installer.
+- If the OEL screen is blank after a manual copy, rerun the platform installer and open Spotify once while online.
+- The `DISP` idea is intentionally still future work. `ATT` and `LST` are implemented first while broader alternate display modes continue to be explored.
 - If macOS opens Spotify to a black screen or the Pioneer player appears without working JavaScript, fully quit Spotify and rerun:
 
 ```bash
