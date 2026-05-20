@@ -9509,59 +9509,200 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-card-Pl
   -webkit-text-fill-color: #ffffff !important;
 }
 
-/* Right sidebar Now Playing — TOP region only.
-   The top region (above "RELATED MUSIC VIDEOS") overlays the album
-   cover image: the small header strip with close/expand/share/menu
-   icons sits ON the cover, and the track title / artist name sit
-   directly under (visually fused with) the cover.
+/* Right sidebar Now Playing — TOP region only
+   Forces the cover/top now-playing area white + readable glow,
+   then resets the lower white content sections back to dark text. */
 
-   Spotify uses `.cover-art` for the cover image. The action-button
-   overlay strip uses `.main-nowPlayingView-actionButton*`. The track
-   title block lives in the area just under the cover, before the
-   first `.main-nowPlayingView-section` (which is where "RELATED
-   MUSIC VIDEOS" / "ABOUT THE ARTIST" / etc. sections begin).
+/* TOP NOW-PLAYING AREA */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget, 
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    fill: currentColor !important;
 
-   We force white + shadow ONLY on:
-     - cover-art container and its overlays (header buttons, gradient)
-     - actionButton family (the floating buttons over the cover)
-     - the track-title/artist text immediately under the cover
-       (anything inside the sidebar that is a direct sibling of, or
-       comes BEFORE, the first main-nowPlayingView-section)
+    text-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.95),
+        0 0 4px rgba(255, 255, 255, 0.90),
+        0 0 9px rgba(255, 255, 255, 0.70),
+        0 0 16px rgba(255, 255, 255, 0.42) !important;
+}
 
-   Everything inside .main-nowPlayingView-section (including all
-   sectionHeader text and section bodies) stays default page ink
-   (black) because those panels live on the white sidebar surface. */
-
-/* (1) Cover art container + overlay buttons (the floating header
-   strip with close/expand/share/menu, which sits on top of the
-   cover image). Real classes: main-nowPlayingView-coverArt,
-   main-nowPlayingView-coverArtContainer,
-   main-nowPlayingView-coverArtVisualEnhancement,
-   main-nowPlayingView-actionButton*. */
+/* COVER ART + FLOATING ACTION BUTTONS */
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArt,
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArt *,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArtContainer .main-nowPlayingView-coverArt,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArtContainer .main-nowPlayingView-coverArt *,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-actionButtonContainer,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-actionButtonContainer *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArtContainer,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArtContainer *,
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i],
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i] * {
-  color: #ffffff !important;
-  fill: #ffffff !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.78), 0 0 6px rgba(0, 0, 0, 0.50) !important;
-}
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArt button svg,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArt button path,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArtContainer button svg,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArtContainer button path,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i] button svg,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i] button path,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i] svg,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i] path {
-  color: #ffffff !important;
-  fill: currentColor !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    fill: currentColor !important;
 }
 
-/* (2) Track title + artist text under the cover — selectors TBD.
-   The probe will give me the actual class name. Placeholder removed
-   until the user confirms the title block class. */
+/* SVG ICON GLOW */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget svg {
+    color: #ffffff !important;
+    fill: currentColor !important;
+
+    filter:
+        drop-shadow(0 1px 2px rgba(0, 0, 0, 0.95))
+        drop-shadow(0 0 4px rgba(255, 255, 255, 0.75))
+        drop-shadow(0 0 9px rgba(255, 255, 255, 0.45)) !important;
+}
+
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget svg path {
+    fill: currentColor !important;
+}
+
+/* LOWER CONTENT SECTIONS: RELATED MUSIC VIDEOS / ABOUT ARTIST / ETC.
+   Reset them back to dark text because they sit on white panels. */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-section,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-section * {
+    color: #111111 !important;
+    -webkit-text-fill-color: #111111 !important;
+    fill: currentColor !important;
+    text-shadow: none !important;
+    filter: none !important;
+}
+
+/* Section SVGs should stay dark too */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-section svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-section svg path {
+    color: #111111 !important;
+    fill: currentColor !important;
+    filter: none !important;
+}
+
+
+/* FORCE TOP NOW-PLAYING TEXT: black text with white glow outline
+   Put this AFTER the white now-playing/icon rules. */
+
+/* Album name at the tippy top */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-headerTextWrapper" i],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-headerTextWrapper" i] * {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    fill: currentColor !important;
+
+    text-shadow:
+        -1px -1px 0 rgba(255, 255, 255, 0.95),
+         1px -1px 0 rgba(255, 255, 255, 0.95),
+        -1px  1px 0 rgba(255, 255, 255, 0.95),
+         1px  1px 0 rgba(255, 255, 255, 0.95),
+         0 0 4px rgba(255, 255, 255, 0.95),
+         0 0 9px rgba(255, 255, 255, 0.75),
+         0 0 16px rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Song title + artist directly under cover */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget [class*="trackInfo" i],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget [class*="trackInfo" i] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget [class*="contextItemInfo" i],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget [class*="contextItemInfo" i] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget [class*="title" i],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget [class*="title" i] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget [class*="artist" i],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget [class*="artist" i] * {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    fill: currentColor !important;
+
+    text-shadow:
+        -1px -1px 0 rgba(255, 255, 255, 0.95),
+         1px -1px 0 rgba(255, 255, 255, 0.95),
+        -1px  1px 0 rgba(255, 255, 255, 0.95),
+         1px  1px 0 rgba(255, 255, 255, 0.95),
+         0 0 4px rgba(255, 255, 255, 0.95),
+         0 0 9px rgba(255, 255, 255, 0.75),
+         0 0 16px rgba(255, 255, 255, 0.45) !important;
+}
+
+/* ============================================================
+   BOW TINT: Search trailing icons
+   - Clear search X
+   - Browse icon
+   Black icons with controlled white glow.
+   ============================================================ */
+
+html[data-pvfd-tint="bow"] body.pvfd-theme-active {
+    --pvfd-search-icon-fill: #000000;
+    --pvfd-search-icon-glow-strong: rgba(255, 255, 255, 1);
+    --pvfd-search-icon-glow-soft: rgba(255, 255, 255, 0.85);
+}
+
+/* 
+   Shared target:
+   - X button is simple.
+   - Browse button needs specificity boosting because Spotify/Encore is stubborn.
+*/
+html[data-pvfd-tint="bow"] body.pvfd-theme-active
+:is(
+    button.x-searchInput-searchInputClearButton[data-encore-id="buttonTertiary"],
+    .main-globalNav-browseButtonWrapper:not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
+    button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f)
+),
+html[data-pvfd-tint="bow"] body.pvfd-theme-active
+:is(
+    button.x-searchInput-searchInputClearButton[data-encore-id="buttonTertiary"],
+    .main-globalNav-browseButtonWrapper:not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
+    button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f)
+)
+.e-10451-button__icon-wrapper {
+    color: var(--pvfd-search-icon-fill) !important;
+    -webkit-text-fill-color: var(--pvfd-search-icon-fill) !important;
+
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+
+    opacity: 1 !important;
+    visibility: visible !important;
+
+    --encore-icon-fill: var(--pvfd-search-icon-fill) !important;
+    --encore-text-base: var(--pvfd-search-icon-fill) !important;
+    --encore-text-subdued: var(--pvfd-search-icon-fill) !important;
+    --text-base: var(--pvfd-search-icon-fill) !important;
+    --text-subdued: var(--pvfd-search-icon-fill) !important;
+}
+
+/* Glow ONLY the SVG, not the button/wrapper */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active
+:is(
+    button.x-searchInput-searchInputClearButton[data-encore-id="buttonTertiary"],
+    .main-globalNav-browseButtonWrapper:not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
+    button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f)
+)
+svg[data-encore-id="icon"] {
+    color: var(--pvfd-search-icon-fill) !important;
+    fill: var(--pvfd-search-icon-fill) !important;
+    stroke: none !important;
+
+    opacity: 1 !important;
+    visibility: visible !important;
+
+    filter:
+        drop-shadow(0 0 1px var(--pvfd-search-icon-glow-strong))
+        drop-shadow(0 0 3px var(--pvfd-search-icon-glow-soft)) !important;
+}
+
+/* Path stays black. No stacked glow on the path. */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active
+:is(
+    button.x-searchInput-searchInputClearButton[data-encore-id="buttonTertiary"],
+    .main-globalNav-browseButtonWrapper:not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
+    button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f)
+)
+svg[data-encore-id="icon"] path {
+    color: var(--pvfd-search-icon-fill) !important;
+    fill: var(--pvfd-search-icon-fill) !important;
+    stroke: none !important;
+
+    opacity: 1 !important;
+    visibility: visible !important;
+
+    filter: none !important;
+}
