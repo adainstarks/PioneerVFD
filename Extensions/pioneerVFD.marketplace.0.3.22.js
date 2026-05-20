@@ -1490,7 +1490,7 @@
   const OEL_WEBM_CACHE_STORE = "clips";
   // Bump when a webm's bytes change at the same filename — invalidates IndexedDB.
   const OEL_WEBM_CACHE_VERSION = 1;
-  const OEL_WEBM_GITHUB_BASE = "https://adainstarks.github.io/PioneerVFD/Themes/PioneerVFD/assets/";
+  const OEL_WEBM_CDN_BASE = "https://cdn.jsdelivr.net/gh/adainstarks/PioneerVFD@main/Themes/PioneerVFD/assets/";
 
   function oelWebmCacheKey(assetName) {
     return `${assetName}@v${OEL_WEBM_CACHE_VERSION}`;
@@ -1525,7 +1525,7 @@
 
   async function resolveClipUrlViaCache(clip) {
     const assetName = clip.assetName;
-    const githubUrl = OEL_WEBM_GITHUB_BASE + assetName;
+    const cdnUrl = OEL_WEBM_CDN_BASE + assetName;
 
     try {
       const cachedBlob = await readOelWebmFromCache(assetName);
@@ -1537,7 +1537,7 @@
       console.warn(`[PVFD] OEL WebM cache read failed for ${assetName}:`, err);
     }
 
-    fetch(githubUrl)
+    fetch(cdnUrl)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.blob();
@@ -1546,7 +1546,7 @@
         .then(() => console.log(`[PVFD] OEL WebM cached: ${assetName} (${blob.size} bytes)`)))
       .catch((err) => console.warn(`[PVFD] OEL WebM cache populate failed for ${assetName}:`, err && err.message || err));
 
-    return githubUrl;
+    return cdnUrl;
   }
 
   function startOelWebmCachePopulation() {
@@ -1560,7 +1560,7 @@
       resolveClipUrlViaCache(clip)
         .then((url) => {
           oelWebmSourceMap[clip.assetName] = url;
-          console.log(`[PVFD] OEL WebM ready: ${clip.assetName} → ${url.startsWith("blob:") ? "blob" : "github"}`);
+          console.log(`[PVFD] OEL WebM ready: ${clip.assetName} → ${url.startsWith("blob:") ? "blob" : "cdn"}`);
           safe(() => syncOelVideoPlayback(true));
         })
         .catch((err) => console.warn(`[PVFD] OEL WebM resolve failed: ${clip.assetName}`, err && err.message || err));
