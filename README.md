@@ -76,7 +76,7 @@ Faceplate and transport controls include:
 - Volume wheel/drag exits `ATT` when the user starts adjusting volume.
 - `DIM` toggles LCD brightness from the faceplate control row.
 - `LST` opens Spotify's queue/list control.
-- The `EEQ` silk label can tint-match its logo accent.
+- The `EEQ` silk label can tint-match now by clicking it.
 - The lyrics button opens Spotify lyrics while avoiding Beautiful Lyrics / Spicy Lyrics takeover routes.
 
 `PULSE` starts from `OFF` on launch so Spotify does not reopen desktop/system audio capture by itself. Turn it on from the menu when you want live bars, then select a capture source with audio when Chromium asks.
