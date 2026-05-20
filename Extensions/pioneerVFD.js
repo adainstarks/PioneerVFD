@@ -304,6 +304,32 @@
     { id: "diverdolphins-longloop-webm", label: "DOLPHIN", name: "DIVER DOLPHINS", assetName: "diverdolphins_longloop.webm" },
     { id: "racing-cart-longloop-webm", label: "RACING", name: "RACING CART", assetName: "6_Racing_Cart_longloop.webm" }
   ];
+  const DEVICE_PICKER_SELECTORS = [
+    "button[data-testid='control-button-connect-picker']",
+    "[data-testid='control-button-connect-picker']",
+    "button[data-testid*='connect-picker' i]",
+    "[data-testid*='connect-picker' i]",
+    "button[data-testid*='device-picker' i]",
+    "[data-testid*='device-picker' i]",
+    "button[data-testid*='connect-device' i]",
+    "[data-testid*='connect-device' i]",
+    "button[aria-label*='Connect to a device' i]",
+    "button[aria-label*='Devices Available' i]",
+    "button[aria-label*='device picker' i]",
+    "button[aria-label*='device' i]",
+    "[role='button'][aria-label*='device' i]",
+    "[role='button'][aria-label*='connect' i]",
+    "button[title*='device' i]",
+    "button[title*='connect' i]"
+  ];
+  const DEVICE_PICKER_SCAN_SELECTOR = "button, [role='button'], [data-testid], [aria-label], [title]";
+  const DEVICE_PICKER_SCOPE_SELECTOR = [
+    "[data-testid='now-playing-bar']",
+    ".Root__now-playing-bar",
+    ".main-nowPlayingBar-container",
+    "[class*='nowPlayingBar']",
+    "footer"
+  ].join(",");
   const PVFD_PLAY_GLYPH = "\u25B6\uFE0E";
   const PVFD_PAUSE_GLYPH = "\u23F8\uFE0E";
   const PVFD_META_IDLE_GLYPH = "\u2014";
@@ -1860,6 +1886,11 @@
     console.log("[PVFD] hard-disabled old LKD canvas renderer");
   }
 
+  function notifyPvfd(message) {
+    console.warn("[PVFD]", message);
+    safe(() => Spicetify.showNotification && Spicetify.showNotification(message));
+  }
+
   function clickFirst(selectors) {
     for (const selector of selectors) {
       const el = safeReturn(() => document.querySelector(selector), null);
@@ -1894,6 +1925,116 @@
       el && el.getAttribute && el.getAttribute("data-tippy-content"),
       el && el.textContent
     ].map((value) => String(value || "").replace(/\s+/g, " ").trim().toLowerCase()).filter(Boolean).join(" ");
+  }
+
+  function pvfdButtonDescriptor(el) {
+    if (!el) return null;
+    const rect = safeReturn(() => el.getBoundingClientRect(), null);
+    const style = safeReturn(() => window.getComputedStyle(el), null);
+    return {
+      tag: String(el.tagName || "").toLowerCase(),
+      id: el.id || "",
+      testid: el.getAttribute && el.getAttribute("data-testid") || "",
+      role: el.getAttribute && el.getAttribute("role") || "",
+      aria: el.getAttribute && el.getAttribute("aria-label") || "",
+      title: el.getAttribute && el.getAttribute("title") || "",
+      text: String(el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80),
+      disabled: !!(el.disabled || el.getAttribute && el.getAttribute("aria-disabled") === "true"),
+      display: style && style.display || "",
+      visibility: style && style.visibility || "",
+      rect: rect ? {
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        w: Math.round(rect.width),
+        h: Math.round(rect.height)
+      } : null
+    };
+  }
+
+  function pvfdElementIsDisplayHidden(el) {
+    const style = safeReturn(() => window.getComputedStyle(el), null);
+    if (style && (style.display === "none" || style.visibility === "hidden")) return true;
+    const rect = safeReturn(() => el.getBoundingClientRect(), null);
+    return !!(rect && (!rect.width || !rect.height));
+  }
+
+  function scoreDevicePickerCandidate(el) {
+    if (!el || el.closest && el.closest(".pvfd-chassis")) return -1000;
+    const desc = pvfdButtonDescriptor(el) || {};
+    const testid = String(desc.testid || "").toLowerCase();
+    const label = buttonLabelText(el);
+    let score = 0;
+
+    if (testid === "control-button-connect-picker") score += 100;
+    if (testid.includes("connect-picker")) score += 80;
+    if (testid.includes("device-picker")) score += 75;
+    if (testid.includes("connect-device")) score += 70;
+    if (testid.includes("connect") && testid.includes("button")) score += 45;
+    if (/connect to a device|devices available|device picker|connect picker|select a device/.test(label)) score += 80;
+    if (/\bdevices?\b/.test(label)) score += 20;
+    if (/\bconnect\b/.test(label)) score += 18;
+    if (/speaker|speakers|spotify connect|cast/.test(label)) score += 8;
+    if (el.closest && safeReturn(() => el.closest(DEVICE_PICKER_SCOPE_SELECTOR), null)) score += 12;
+    if (desc.disabled) score -= 80;
+    if (pvfdElementIsDisplayHidden(el)) score -= 80;
+
+    return score;
+  }
+
+  function uniqueElements(elements) {
+    const seen = new Set();
+    const out = [];
+    elements.forEach((el) => {
+      if (!el || seen.has(el)) return;
+      seen.add(el);
+      out.push(el);
+    });
+    return out;
+  }
+
+  function findDevicePickerCandidates() {
+    const elements = [];
+    DEVICE_PICKER_SELECTORS.forEach((selector) => {
+      elements.push(...safeReturn(() => Array.from(document.querySelectorAll(selector)), []));
+    });
+    elements.push(...safeReturn(() => Array.from(document.querySelectorAll(DEVICE_PICKER_SCAN_SELECTOR)), []));
+
+    return uniqueElements(elements)
+      .map((el) => ({ el, score: scoreDevicePickerCandidate(el) }))
+      .filter((item) => item.score >= 30)
+      .sort((a, b) => b.score - a.score);
+  }
+
+  function activateDevicePickerCandidate(el) {
+    if (!el || typeof el.click !== "function") return false;
+    safe(() => el.focus && el.focus({ preventScroll: true }));
+    const eventOptions = { bubbles: true, cancelable: true, composed: true, view: window };
+    ["pointerdown", "mousedown", "pointerup", "mouseup"].forEach((type) => {
+      const EventCtor = type.indexOf("pointer") === 0 && typeof PointerEvent === "function" ? PointerEvent : MouseEvent;
+      safe(() => el.dispatchEvent(new EventCtor(type, eventOptions)));
+    });
+    el.click();
+    return true;
+  }
+
+  function tryOpenDevicePicker() {
+    const candidate = findDevicePickerCandidates()[0];
+    if (!candidate) return false;
+    window.__PVFD_LAST_DEVICE_PICKER_TARGET__ = {
+      score: candidate.score,
+      target: pvfdButtonDescriptor(candidate.el)
+    };
+    return activateDevicePickerCandidate(candidate.el);
+  }
+
+  function diagnoseDevicePickerTargets(limit = 12) {
+    const candidates = findDevicePickerCandidates().slice(0, limit).map((candidate) => ({
+      score: candidate.score,
+      ...pvfdButtonDescriptor(candidate.el)
+    }));
+    if (console.table) console.table(candidates);
+    else console.log("[PVFD] device picker candidates", candidates);
+    return candidates;
   }
 
   function pushSpotifyPath(path) {
@@ -1962,16 +2103,24 @@
   }
 
   function openDevicePicker() {
-    return clickFirst([
-      "button[data-testid='control-button-connect-picker']",
-      "[data-testid='control-button-connect-picker']",
-      "button[aria-label*='Connect to a device' i]",
-      "button[aria-label*='Devices Available' i]",
-      "button[aria-label*='device' i]",
-      "[role='button'][aria-label*='device' i]",
-      "[role='button'][aria-label*='connect' i]"
-    ]);
+    if (tryOpenDevicePicker()) return true;
+
+    window.setTimeout(() => {
+      if (tryOpenDevicePicker()) return;
+      window.setTimeout(() => {
+        if (tryOpenDevicePicker()) return;
+        const candidates = diagnoseDevicePickerTargets(8);
+        notifyPvfd(`DEV: Spotify device picker not found. Diagnostics found ${candidates.length} candidate(s).`);
+      }, 240);
+    }, 90);
+
+    return false;
   }
+
+  const pioneerVfdDebugApi = typeof window.PioneerVFD === "object" && window.PioneerVFD ? window.PioneerVFD : {};
+  pioneerVfdDebugApi.openDevicePicker = openDevicePicker;
+  pioneerVfdDebugApi.diagnoseDevicePicker = diagnoseDevicePickerTargets;
+  window.PioneerVFD = pioneerVfdDebugApi;
 
   // Silk Lyrics button: routes to / toggles Spotify native lyrics. Clicking
   // Spotify's own lyrics-button is a toggle (Show/Hide), so calling this
