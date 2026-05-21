@@ -231,6 +231,7 @@ This project is for educational and personal use only. It is not affiliated with
 
 ## Special Thanks
 > A thank you to any user who opens an issue / creates a PR with meaningful suggestions.
+
 @syzyxy - ATT (Attenuator), LST instead of QUE (for authenticity), and special DISP mode (soon to come)
 
 ## License
