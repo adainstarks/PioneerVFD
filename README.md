@@ -225,7 +225,7 @@ spicetify config always_enable_devtools 1
 spicetify apply
 ```
 
-### Special Thanks
+## Special Thanks
 A thank you to any user who opens an issue / creates a PR with meaningful suggestions.
 
 * [@syzyxy](https://github.com) - ATT (Attenuator) LST instead of QUE (for authenticity), and special DISP mode (soon to come)
