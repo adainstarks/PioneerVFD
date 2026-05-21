@@ -2014,9 +2014,15 @@
 
     if (inScope) score += 12;
 
-    // Soft penalty for disabled — Spotify disables the connect button briefly
-    // while devices enumerate, but it re-enables and click() still works once
-    // the picker opens. A −80 here previously killed valid candidates.
+    // Soft penalty for disabled. Spotify can disable the connect button briefly
+    // (a few hundred ms) while it enumerates devices on first mount. Our retry
+    // loop in openDevicePicker() tries again at +90ms and +330ms, by which point
+    // the button is usually re-enabled. Old code used -80 here which permanently
+    // disqualified the candidate, so the retry loop had nothing to click on
+    // the second/third attempt. -15 keeps it as the top scored candidate across
+    // all three attempts. (Note: a persistently-disabled button — no Connect
+    // devices on the network — still won't open anything, since browsers no-op
+    // click() on disabled elements. The picker requires devices to exist.)
     if (desc.disabled) score -= 15;
     if (pvfdElementIsDisplayHidden(el)) score -= 80;
 
