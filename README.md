@@ -230,7 +230,7 @@ spicetify apply
 This project is for educational and personal use only. It is not affiliated with, endorsed by, or associated with Pioneer Corporation.
 
 ## Special Thanks
-> A special thank you to any user who opens an issue / creates a PR with meaningful suggestions.
+> A thank you to any user who opens an issue / creates a PR with meaningful suggestions.
 @syzyxy - ATT (Attenuator), LST instead of QUE (for authenticity), and special DISP mode (soon to come)
 
 ## License
