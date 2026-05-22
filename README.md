@@ -5,7 +5,7 @@
 
 Miss the old 2000s Pioneer head units? Wish you could still have those dolphins swimming while you bump tunes? Maybe you never got to experience it and want to? Well, now you can.
 
-PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 2000s Pioneer-style VFD/LCD stereo interface. It replaces the stock lower player area with a chrome head-unit panel, WebM OEL animations, expanded RGB and mono display modes, hardware-style readouts, ATT-style muting, and live audio spectrum bars around the Pioneer logo.
+PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 2000s Pioneer-style VFD/LCD stereo interface. It replaces the stock lower player area with a chrome head-unit panel, WebM OEL animations, expanded RGB and mono display modes, hardware-style readouts, ATT-style muting, and live audio spectrum bars around the center badge.
 
 **Latest Build🐬** — Experimental 0.3.22 marketplace build, ATT mute/restore, LST queue label, expanded 15-mode tint picker, Black-on-White / White-on-Black mono modes, CUSTOMIZE menu split, external lyrics compatibility work(incomplete), search/top-bar fixes, and continued performance tuning.
 
@@ -25,12 +25,12 @@ PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 
 ## What It Does
 
 - Replaces Spotify's lower player area with a custom chrome Pioneer-style head-unit panel.
-- Uses real 2000s Pioneer OEL clips for the center animation display.
+- Uses authentic Pioneer OEL clips for the center animation display.
 - Streams OEL media from the published project assets and caches clips in the browser when available.
 - Adds metadata LCDs for artist, title, playtime, ATT state, tint, dim, mode, clip, and playback readouts.
 - Adds an `ATT` button for instant mute/restore behavior.
 - Uses `LST` for the queue/list control, matching the classic head-unit feel more closely than `QUE`.
-- Adds mirrored live spectrum bars around the Pioneer logo.
+- Adds mirrored live spectrum bars around the center badge logo.
 - Uses Chromium desktop audio capture for the `PULSE` live visualizer.
 - Adds a two-page `PIONEER MENU` / `CUSTOMIZE MENU` layout so runtime controls fit better.
 - Includes 15 tint modes: cyan, teal, lime, amber, orange, red, pink, magenta, violet, blue, green, yellow, indigo, black-on-white, and white-on-black.
