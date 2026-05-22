@@ -232,7 +232,11 @@ A thank you to any user who opens an issue / creates a PR with meaningful sugges
 
 ## Disclaimer
 
-This project is for educational and personal use only. It is not affiliated with, endorsed by, or associated with Pioneer Corporation.
+PioneerVFD is an unofficial, fan-made Spicetify theme inspired by early-2000s car stereo VFD/LCD interfaces. It is not affiliated with, endorsed by, sponsored by, or associated with Pioneer Corporation, Spotify, or Spicetify.
+
+Pioneer and the Pioneer logo are trademarks of Pioneer Corporation. Spotify is a trademark of Spotify AB. All trademarks belong to their respective owners.
+
+This project is free and open source under the MIT License. Optional donations, if enabled, support continued development and do not purchase access, licensing rights, official support, or affiliation with any trademark holder.
 
 ## License
 
