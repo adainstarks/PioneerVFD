@@ -35,12 +35,14 @@ PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 
 - Streams OEL media from the published project assets and caches clips in the browser when available.
 - Adds metadata LCDs for artist, title, playtime, ATT state, tint, dim, mode, clip, and playback readouts.
 - Adds an `ATT` button for instant mute/restore behavior.
-- Uses `LST` for the queue/list control, matching the classic head-unit feel more closely than `QUE`.
+- Uses `LST` for the queue/list control.
 - Adds mirrored live spectrum bars around the center badge logo.
 - Uses Chromium desktop audio capture for the `PULSE` live visualizer.
-- Adds a two-page `PIONEER MENU` / `CUSTOMIZE MENU` layout so runtime controls fit better.
+- Adds a two-page `PIONEER MENU` / `CUSTOMIZE MENU` layout.
 - Includes 15 tint modes: cyan, teal, lime, amber, orange, red, pink, magenta, violet, blue, green, yellow, indigo, black-on-white, and white-on-black.
 - Includes `FULL` and `ECO` performance modes for different machines.
+- Includes period-correct BAND button to cycle through old archive.org radio broadcasts.
+- Includes a full screen display mode. Click on the center pioneer wordmark to access.
 
 ## OEL And Media
 
@@ -52,6 +54,7 @@ The center OEL/VFD display is WebM-based. The current clip set includes:
 - `movie10_f_longloop.webm`
 - `diverdolphins_longloop.webm`
 - `6_Racing_Cart_longloop.webm`
+- `EJECTING.webm`
 
 Marketplace builds load these clips from jsDelivr. Script/local builds load from the published GitHub Pages asset paths. PioneerVFD stores successful clip fetches in IndexedDB, so clips can continue working from cache when the browser has already seen them.
 
