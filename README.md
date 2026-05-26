@@ -5,7 +5,7 @@
 
 <p align="center">
   <a href="https://ko-fi.com/adainstarks">
-    <img src="https://img.shields.io/badge/Support-PioneerVFD-00e5ff?style=for-the-badge&logo=ko-fi&logoColor=white&labelColor=101010" alt="Support PioneerVFD on Ko-fi">
+    <img src="https://img.shields.io/badge/Support-PioneerVFD-00e5ff?style=for-the-badge&logo=ko-fi&logoColor=gray&labelColor=101010" alt="Support PioneerVFD on Ko-fi">
   </a>
 </p>
 
