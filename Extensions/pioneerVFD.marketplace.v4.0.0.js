@@ -361,10 +361,12 @@
         { label: "Fusebox #357 (Apr 14, 2010)", path: "Fuseboxradio-FuseBoxRadioBroadcastForWeekOfApril142010357/Fuseboxradio-FuseBoxRadioBroadcastForWeekOfApril142010357.mp3", cutInRange: [180, 3600] }
       ]
     },
-    // 105.7 — Howard Stern 2006 (179 episodes, 4-5hr each, cut into first half).
+    // 105.7 — Howard Stern 2006. Limit marketplace randomization to the
+    // earliest vetted MP3s instead of the full 179-file archive.
     6: {
       archiveCollection: "howard-stern-24k-complete-2006",
       fileExtensions: ["mp3"],
+      archiveFileLimit: 10,
       cutInRange: null
     },
     // 107.9 — Ice Cream Pirate Show 5: Psych-A-Rocky-Road (74min).
@@ -3496,7 +3498,8 @@
             const lower = name.toLowerCase();
             if (!exts.some((ext) => lower.endsWith("." + ext))) return false;
             return !isBlockedArchiveFile(collectionId, name);
-          });
+          })
+          .sort((a, b) => a.localeCompare(b));
         archiveFilesCache.set(collectionId, matches);
         return matches;
       });
@@ -3567,7 +3570,9 @@
       fetchArchiveCollectionFiles(preset.archiveCollection, preset.fileExtensions)
         .then((files) => {
           if (bandPresetIdx !== requestedIdx) return;          // user cycled away
-          const safeFiles = (files || []).filter((filename) => !isBlockedArchiveFile(preset.archiveCollection, filename));
+          const limit = Number(preset.archiveFileLimit);
+          const candidates = Number.isFinite(limit) && limit > 0 ? (files || []).slice(0, limit) : (files || []);
+          const safeFiles = candidates.filter((filename) => !isBlockedArchiveFile(preset.archiveCollection, filename));
           if (!safeFiles.length) return;
           const filename = safeFiles[Math.floor(Math.random() * safeFiles.length)];
           const path = `${preset.archiveCollection}/${encodeURIComponent(filename)}`;
