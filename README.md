@@ -3,6 +3,12 @@
 > Unofficial fan-made Spicetify theme. Not affiliated with Pioneer Corporation.
 > The Marketplace and script installs fetch the OEL/WebM clips over the network on first use. For the most reliable offline animation behavior, open the theme once while online so the clips can cache.
 
+<p align="center">
+  <a href="https://ko-fi.com/adainstarks">
+    <img src="https://img.shields.io/badge/Support-PioneerVFD-00e5ff?style=for-the-badge&logo=ko-fi&logoColor=white&labelColor=101010" alt="Support PioneerVFD on Ko-fi">
+  </a>
+</p>
+
 Miss the old 2000s Pioneer head units? Wish you could still have those dolphins swimming while you bump tunes? Maybe you never got to experience it and want to? Well, now you can.
 
 PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 2000s Pioneer-style VFD/LCD stereo interface. It replaces the stock lower player area with a chrome head-unit panel, WebM OEL animations, expanded RGB and mono display modes, hardware-style readouts, ATT-style muting, and live audio spectrum bars around the center badge.
@@ -228,7 +234,7 @@ spicetify apply
 ## Special Thanks
 A thank you to any user who opens an issue / creates a PR with meaningful suggestions.
 
-* [@syzyxy](https://github.com/syzyxy) - ATT (Attenuator) | LST instead of QUE (for authenticity) | special DISP mode
+* [@syzyxy](https://github.com/syzyxy)
 
 ## Disclaimer
 
