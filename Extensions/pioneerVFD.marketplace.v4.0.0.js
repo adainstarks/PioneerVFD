@@ -315,6 +315,11 @@
   //                     179 episodes — hardcoding is absurd).
   const ARCHIVE_DL_BASE = "https://archive.org/download/";
   const ARCHIVE_META_BASE = "https://archive.org/metadata/";
+  const BLOCKED_ARCHIVE_FILES = {
+    "howard-stern-24k-complete-2006": new Set([
+      "Howard_Stern_24k_09-13-06_cf.mp3"
+    ])
+  };
   const BAND_AUDIO_PRESETS = {
     // 88.1 — WLCE Big Ron classic hits (1h14m). Skip 2min cold-open intro.
     0: {
@@ -371,6 +376,7 @@
   };
   // collectionId → [filename, ...]  in-memory cache of archive.org file lists.
   const archiveFilesCache = new Map();
+  const blockedArchiveWarned = new Set();
   const MC_HOLD_MS = 700;
   const MC_HOLD_MOVE_THRESHOLD_PX = 3;
   // Fraction of knob radius that counts as the "center hot zone" for M.C. hold.
@@ -3488,14 +3494,49 @@
           .filter((name) => {
             if (typeof name !== "string") return false;
             const lower = name.toLowerCase();
-            return exts.some((ext) => lower.endsWith("." + ext));
+            if (!exts.some((ext) => lower.endsWith("." + ext))) return false;
+            return !isBlockedArchiveFile(collectionId, name);
           });
         archiveFilesCache.set(collectionId, matches);
         return matches;
       });
   }
 
+  function archivePathInfo(path) {
+    const parts = String(path || "").split("/");
+    const collectionId = parts.shift() || "";
+    return {
+      collectionId,
+      filename: parts.length ? decodeURIComponent(parts.join("/")) : ""
+    };
+  }
+
+  function isBlockedArchiveFile(collectionId, filename) {
+    const blocked = BLOCKED_ARCHIVE_FILES[collectionId];
+    return !!(blocked && blocked.has(filename));
+  }
+
+  function isBlockedArchivePath(path) {
+    const info = archivePathInfo(path);
+    return isBlockedArchiveFile(info.collectionId, info.filename);
+  }
+
+  function warnBlockedArchivePath(path) {
+    const info = archivePathInfo(path);
+    const key = `${info.collectionId}/${info.filename}`;
+    if (blockedArchiveWarned.has(key)) return;
+    blockedArchiveWarned.add(key);
+    console.warn("[PVFD] BAND blocked archive file:", key);
+  }
+
   function playEpisodeOnAudio(audio, path, cutInRange, gain, allowAudioContextResume = false) {
+    if (isBlockedArchivePath(path)) {
+      warnBlockedArchivePath(path);
+      safe(() => audio.pause());
+      audio.removeAttribute("src");
+      audio.load();
+      return;
+    }
     audio.dataset.pvfdCutInRange = cutInRange ? `${cutInRange[0]},${cutInRange[1]}` : "auto";
     audio.crossOrigin = "anonymous";
     applyFmVolume(getActiveHardwareVolume());
@@ -3512,7 +3553,9 @@
     if (!audio) return false;
 
     if (Array.isArray(preset.episodes) && preset.episodes.length) {
-      const pick = preset.episodes[Math.floor(Math.random() * preset.episodes.length)];
+      const episodes = preset.episodes.filter((episode) => episode && !isBlockedArchivePath(episode.path));
+      if (!episodes.length) return false;
+      const pick = episodes[Math.floor(Math.random() * episodes.length)];
       playEpisodeOnAudio(audio, pick.path, pick.cutInRange, preset.gain, allowAudioContextResume);
       return true;
     }
@@ -3524,8 +3567,9 @@
       fetchArchiveCollectionFiles(preset.archiveCollection, preset.fileExtensions)
         .then((files) => {
           if (bandPresetIdx !== requestedIdx) return;          // user cycled away
-          if (!files || !files.length) return;
-          const filename = files[Math.floor(Math.random() * files.length)];
+          const safeFiles = (files || []).filter((filename) => !isBlockedArchiveFile(preset.archiveCollection, filename));
+          if (!safeFiles.length) return;
+          const filename = safeFiles[Math.floor(Math.random() * safeFiles.length)];
           const path = `${preset.archiveCollection}/${encodeURIComponent(filename)}`;
           playEpisodeOnAudio(audio, path, preset.cutInRange, preset.gain, allowAudioContextResume);
         })
