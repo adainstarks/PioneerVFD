@@ -17,7 +17,7 @@ PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 
 
 ## Preview
 
-<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/cd8c5f0d-08bf-4a4c-b534-11d8e4ba860f" />
+<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/3895b650-c57a-4059-82ff-46b044c00e97" />
 
 ##
 
