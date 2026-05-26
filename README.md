@@ -13,7 +13,7 @@ Miss the old 2000s Pioneer head units? Wish you could still have those dolphins 
 
 PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 2000s Pioneer-style VFD/LCD stereo interface. It replaces the stock lower player area with a chrome head-unit panel, WebM OEL animations, expanded RGB and mono display modes, hardware-style readouts, ATT-style muting, and live audio spectrum bars around the center badge.
 
-**Latest Build🐬** — Experimental 0.3.22 marketplace build, ATT mute/restore, LST queue label, expanded 15-mode tint picker, Black-on-White / White-on-Black mono modes, CUSTOMIZE menu split, external lyrics compatibility work(incomplete), search/top-bar fixes, and continued performance tuning.
+**Latest Build** - v4.0.0 marketplace build, ATT attenuator/readout behavior, LST queue label, SRC/EJECT hardware controls, DSEG14 LCD font option, DISP fullscreen display prompt, BAND/FM archive playback with hardware volume integration, and marketplace contrast/popup polish.
 
 ## Preview
 
@@ -214,7 +214,7 @@ PioneerVFD/
 - Manual raw-copy installs are not recommended because the theme depends on several Spicetify config flags and exposed APIs.
 - If `PULSE` has no signal, turn it off and on again, then pick a capture source that includes audio.
 - If the OEL screen is blank after a manual copy, rerun the platform installer and open Spotify once while online.
-- The `DISP` idea is intentionally still future work. `ATT` and `LST` are implemented first while broader alternate display modes continue to be explored.
+- `DISP` is implemented as the Pioneer-logo fullscreen display prompt. `ATT`, `LST`, `SRC`, `EJECT`, and `BAND/FM` behavior live in the extension runtime.
 - If macOS opens Spotify to a black screen or the Pioneer player appears without working JavaScript, fully quit Spotify and rerun:
 
 ```bash
