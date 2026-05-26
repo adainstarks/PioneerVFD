@@ -234,12 +234,7 @@ spicetify apply
 ## Special Thanks
 A thank you to any user who opens an issue / creates a PR with meaningful suggestions.
 
-* [@syzyxy](https://github.com/syzyxy) - Helpful Suggestions: ATT (Attenuator) | LST instead of QUE (for authenticity) | special DISP mode (soon to come)
-
-## Support Me!
-I work full time, and as such, spend my afternoons debugging and working on user suggestions. This theme has been hard to make, so anything helps :)
-
-https://ko-fi.com/adainstarks
+* [@syzyxy](https://github.com/syzyxy)
 
 ## Disclaimer
 
