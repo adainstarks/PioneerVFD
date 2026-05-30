@@ -88,6 +88,7 @@ Faceplate and transport controls include:
 - The `EEQ` silk label can tint-match now by clicking it.
 - The lyrics button opens Spotify lyrics while avoiding Beautiful Lyrics / Spicy Lyrics takeover routes.
 
+`PULSE` in current state only works for Mac and Windows.
 `PULSE` starts from `OFF` on launch so Spotify does not reopen desktop/system audio capture by itself. Turn it on from the menu when you want live bars, then select a capture source with audio when Chromium asks.
 
 Saved preferences include `PERF`, `TINT`, `DIM`, `TYPE`, selected `OEL` clip, `VFD`, racing color mode, dark chrome, EEQ tint, and transport button glow. `PULSE` intentionally boots idle even if it was previously enabled.
