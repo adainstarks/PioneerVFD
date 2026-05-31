@@ -585,33 +585,67 @@ h1, h2, h3,
 ::-webkit-scrollbar-thumb:hover { background: var(--pvfd-cyan-glow); }
 
 
-/* BOW / WOB scrollbar contrast fix (issue #9).
-   Spotify uses OverlayScrollbars (.os-scrollbar / .os-scrollbar-handle)
-   to paint a custom div-based scrollbar over the native one; the native
-   ::-webkit-scrollbar-* pseudos do nothing.
+/* BOW / WOB OverlayScrollbar contrast (issue #9).
+   Spotify renders div-based scrollbars via OverlayScrollbars
+   (.os-scrollbar / .os-scrollbar-handle); the native ::-webkit-
+   scrollbar-* pseudos do nothing on those. Default handle is white
+   at 30% opacity which is invisible on BOW's white surface and
+   washed out on WOB's black surface.
 
-   Match each tint's SURFACE color (the dominant visual identity), not
-   the ink ramp. The colored tints land naturally — the accent IS the
-   theme color. BOW/WOB don't carry a "surface" in the accent ramp, so
-   hardcode: BOW = white surface = white handle; WOB = black surface =
-   black handle. Slightly off-pure on hover so the affordance still
-   registers. */
+   Two-layer approach:
+     - Global (app-wide): grey ramp that contrasts against each tint's
+       surface — BOW dark thumb on light, WOB light thumb on dark.
+     - #context-menu override (add-to-playlist popover): match the
+       surface color exactly so the scrollbar reads as "the white
+       theme has a white scrollbar / the black theme has a black
+       scrollbar" inside the menu, while the rest of the app keeps
+       the contrast-first treatment. */
+
+/* Global BOW: dark thumb on light surface */
 html[data-pvfd-tint="bow"] .os-theme-spotify > .os-scrollbar-handle,
 html[data-pvfd-tint="bow"] .os-scrollbar.os-theme-spotify .os-scrollbar-handle {
-  background-color: #ffffff !important;
+  background-color: #5a5a5a !important;
 }
 html[data-pvfd-tint="bow"] .os-theme-spotify:hover > .os-scrollbar-handle,
 html[data-pvfd-tint="bow"] .os-theme-spotify.os-scrollbar-interaction > .os-scrollbar-handle {
-  background-color: #e8e8e8 !important;
+  background-color: #2a2a2a !important;
 }
 
+/* Global WOB: light thumb on dark surface */
 html[data-pvfd-tint="wob"] .os-theme-spotify > .os-scrollbar-handle,
 html[data-pvfd-tint="wob"] .os-scrollbar.os-theme-spotify .os-scrollbar-handle {
-  background-color: #000000 !important;
+  background-color: #c8c8c8 !important;
 }
 html[data-pvfd-tint="wob"] .os-theme-spotify:hover > .os-scrollbar-handle,
 html[data-pvfd-tint="wob"] .os-theme-spotify.os-scrollbar-interaction > .os-scrollbar-handle {
+  background-color: #f0f0f0 !important;
+}
+
+/* #context-menu (add-to-playlist popover) surface-match override */
+html[data-pvfd-tint="bow"] #context-menu .os-theme-spotify > .os-scrollbar-handle,
+html[data-pvfd-tint="bow"] #context-menu .os-scrollbar.os-theme-spotify .os-scrollbar-handle {
+  background-color: #ffffff !important;
+}
+html[data-pvfd-tint="bow"] #context-menu .os-theme-spotify:hover > .os-scrollbar-handle,
+html[data-pvfd-tint="bow"] #context-menu .os-theme-spotify.os-scrollbar-interaction > .os-scrollbar-handle {
+  background-color: #e8e8e8 !important;
+}
+html[data-pvfd-tint="wob"] #context-menu .os-theme-spotify > .os-scrollbar-handle,
+html[data-pvfd-tint="wob"] #context-menu .os-scrollbar.os-theme-spotify .os-scrollbar-handle {
+  background-color: #000000 !important;
+}
+html[data-pvfd-tint="wob"] #context-menu .os-theme-spotify:hover > .os-scrollbar-handle,
+html[data-pvfd-tint="wob"] #context-menu .os-theme-spotify.os-scrollbar-interaction > .os-scrollbar-handle {
   background-color: #181818 !important;
+}
+
+/* Native scrollbar surface-match inside the context-menu (covers a
+   fallback render path if the popover doesn't use OverlayScrollbars). */
+html[data-pvfd-tint="bow"] #context-menu {
+  scrollbar-color: #ffffff var(--pvfd-chrome-4);
+}
+html[data-pvfd-tint="wob"] #context-menu {
+  scrollbar-color: #000000 var(--pvfd-chrome-4);
 }
 
 /* Right-sidebar "About the artist" panel: Spotify's Encore panel-button
@@ -9117,24 +9151,21 @@ body.pvfd-theme-active #global-nav-bar
 
 /* CSSOM rule 469 */
 /* Native browser scrollbar (Firefox / WebKit native widget) thumb +
-   track. Colored tints ride --pvfd-cyan-deep so the thumb tracks the
-   active theme color. BOW/WOB match their SURFACE (not the ink ramp,
-   which resolves to grey for both) so the scrollbar reads as "the
-   white theme has a white scrollbar, the black theme has a black
-   scrollbar" — same intent as the OverlayScrollbar handle override
-   at user.css:588. */
+   track. Colored tints ride --pvfd-cyan-deep. BOW gets a hardcoded
+   dark thumb so the native scrollbar reads against the cream surface
+   on the add-to-playlist sidebar (and anywhere else the native widget
+   leaks through). WOB falls through to the cyan-deep #888888 grey
+   which is readable on its black surface. The "surface-matching"
+   white/black scrollbar pattern is intentionally NOT global — see the
+   #context-menu-scoped overrides at user.css:588 and below for where
+   it actually applies. */
 :root {
   scrollbar-color: var(--pvfd-cyan-deep) var(--pvfd-chrome-4);
 }
 
 html[data-pvfd-tint="bow"]:root,
 html[data-pvfd-tint="bow"] {
-  scrollbar-color: #ffffff var(--pvfd-chrome-4);
-}
-
-html[data-pvfd-tint="wob"]:root,
-html[data-pvfd-tint="wob"] {
-  scrollbar-color: #000000 var(--pvfd-chrome-4);
+  scrollbar-color: #141414 var(--pvfd-chrome-4);
 }
 
 
