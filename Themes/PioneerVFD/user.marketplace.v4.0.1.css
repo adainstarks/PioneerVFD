@@ -588,25 +588,30 @@ h1, h2, h3,
 /* BOW / WOB scrollbar contrast fix (issue #9).
    Spotify uses OverlayScrollbars (.os-scrollbar / .os-scrollbar-handle)
    to paint a custom div-based scrollbar over the native one; the native
-   ::-webkit-scrollbar-* pseudos do nothing. Default handle is white at
-   30% opacity, which is invisible on bow's white surface.
+   ::-webkit-scrollbar-* pseudos do nothing.
 
-   Match the colored-tint pattern (which uses --pvfd-cyan-deep on the
-   webkit scrollbar thumb) — BOW/WOB redefine these vars to their own
-   ink ramp, so the handle picks up the active theme color naturally:
-     BOW  -> #555555 thumb, #000000 hover (black ink theme)
-     WOB  -> #888888 thumb, #ffffff hover (white ink theme) */
+   Match each tint's SURFACE color (the dominant visual identity), not
+   the ink ramp. The colored tints land naturally — the accent IS the
+   theme color. BOW/WOB don't carry a "surface" in the accent ramp, so
+   hardcode: BOW = white surface = white handle; WOB = black surface =
+   black handle. Slightly off-pure on hover so the affordance still
+   registers. */
 html[data-pvfd-tint="bow"] .os-theme-spotify > .os-scrollbar-handle,
-html[data-pvfd-tint="bow"] .os-scrollbar.os-theme-spotify .os-scrollbar-handle,
-html[data-pvfd-tint="wob"] .os-theme-spotify > .os-scrollbar-handle,
-html[data-pvfd-tint="wob"] .os-scrollbar.os-theme-spotify .os-scrollbar-handle {
-  background-color: var(--pvfd-cyan-deep) !important;
+html[data-pvfd-tint="bow"] .os-scrollbar.os-theme-spotify .os-scrollbar-handle {
+  background-color: #ffffff !important;
 }
 html[data-pvfd-tint="bow"] .os-theme-spotify:hover > .os-scrollbar-handle,
-html[data-pvfd-tint="bow"] .os-theme-spotify.os-scrollbar-interaction > .os-scrollbar-handle,
+html[data-pvfd-tint="bow"] .os-theme-spotify.os-scrollbar-interaction > .os-scrollbar-handle {
+  background-color: #e8e8e8 !important;
+}
+
+html[data-pvfd-tint="wob"] .os-theme-spotify > .os-scrollbar-handle,
+html[data-pvfd-tint="wob"] .os-scrollbar.os-theme-spotify .os-scrollbar-handle {
+  background-color: #000000 !important;
+}
 html[data-pvfd-tint="wob"] .os-theme-spotify:hover > .os-scrollbar-handle,
 html[data-pvfd-tint="wob"] .os-theme-spotify.os-scrollbar-interaction > .os-scrollbar-handle {
-  background-color: var(--pvfd-cyan-glow) !important;
+  background-color: #181818 !important;
 }
 
 /* Right-sidebar "About the artist" panel: Spotify's Encore panel-button
@@ -9111,19 +9116,25 @@ body.pvfd-theme-active #global-nav-bar
 
 
 /* CSSOM rule 469 */
-/* Native browser scrollbar fallback colors for WebKit's native widget.
-   The cyan-deep thumb resolves to #555555 in BOW (the BOW tint remaps
-   --pvfd-cyan-deep to a mid-grey), which is too dim against the cream
-   chassis for the add-to-playlist sidebar's native scrollbar — it ends
-   up nearly invisible. BOW gets a dark hard-coded thumb so the
-   scrollbar reads. */
+/* Native browser scrollbar (Firefox / WebKit native widget) thumb +
+   track. Colored tints ride --pvfd-cyan-deep so the thumb tracks the
+   active theme color. BOW/WOB match their SURFACE (not the ink ramp,
+   which resolves to grey for both) so the scrollbar reads as "the
+   white theme has a white scrollbar, the black theme has a black
+   scrollbar" — same intent as the OverlayScrollbar handle override
+   at user.css:588. */
 :root {
   scrollbar-color: var(--pvfd-cyan-deep) var(--pvfd-chrome-4);
 }
 
 html[data-pvfd-tint="bow"]:root,
 html[data-pvfd-tint="bow"] {
-  scrollbar-color: #141414 var(--pvfd-chrome-4);
+  scrollbar-color: #ffffff var(--pvfd-chrome-4);
+}
+
+html[data-pvfd-tint="wob"]:root,
+html[data-pvfd-tint="wob"] {
+  scrollbar-color: #000000 var(--pvfd-chrome-4);
 }
 
 
