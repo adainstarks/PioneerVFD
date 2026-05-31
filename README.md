@@ -1,7 +1,6 @@
 <img width="2000" height="668" alt="PioneerVFD logo" src="https://github.com/user-attachments/assets/d84f1508-fee8-4ebd-b3b5-8600e1bec88e" />
 
 > Unofficial fan-made Spicetify theme. Not affiliated with Pioneer Corporation.
-> The Marketplace and script installs fetch the OEL/WebM clips over the network on first use. For the most reliable offline animation behavior, open the theme once while online so the clips can cache.
 > ENGLISH Spotify Only! Will break on other languages!
 
 <p align="center">
