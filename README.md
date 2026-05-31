@@ -13,7 +13,7 @@ Miss the old 2000s Pioneer head units? Wish you could still have those dolphins 
 
 PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 2000s Pioneer-style VFD/LCD stereo interface. It replaces the stock lower player area with a chrome head-unit panel, WebM OEL animations, expanded RGB and mono display modes, hardware-style readouts, ATT-style muting, and live audio spectrum bars around the center badge.
 
-**Latest Build** - v4.0.1 marketplace build, right-click now-playing context menu, LCD divider with clickable play/pause glyph in the meta track, smoother Ever Scroll cycle (ONCE returns instead of snapping back, end-guard so the final character clears the clip edge on ONCE/BOUNCE), classic Pioneer logo font (Musieer) option, italic hardware silk labels with smaller W&times;4, and contrast polish for add-to-playlist scrollbars. Fixes unreadable tint in certain areas.
+**Latest Build** - v4.0.1 marketplace build, right-click now-playing context menu for track data in skinny LCD, LCD divider with clickable play/pause glyph in the meta track, Ever Scroll for long track data in skinny LCD, classic Pioneer logo font (Musieer) option, italic hardware silk labels with smaller W&times;4, and contrast polish for add-to-playlist scrollbars. Fixes unreadable tint in certain areas.
 
 ## Preview
 
