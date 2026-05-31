@@ -2040,6 +2040,16 @@ body[data-pvfd-scroll="bounce"] .pvfd-meta-track[data-pvfd-overflow="yes"] .pvfd
   padding-left: 3px;
 }
 
+/* Optical vertical centering for the default LCD font (Share Tech Mono).
+   Its ascent-heavy metrics paint the glyph cluster biased toward the top
+   of the line-box, so the title visually sits ~2px high inside the meta
+   track even though the line-box is centered. Bias the window down to
+   compensate. DSEG14 already has its own line-height/ink-guard tuning
+   at user.css:11815, so scope this to non-DSEG14 mode. */
+body:not([data-pvfd-lcd="dseg14"]) .pvfd-meta-title-window {
+  padding-top: 2px;
+}
+
 /* LCD faceplate divider — etched seam between the centered glyph bezel
    and the title window. Reads as a recessed groove in the LCD glass:
    a dark void notch with a 1px catch-light on its right edge, matching
