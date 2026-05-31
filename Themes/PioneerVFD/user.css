@@ -588,24 +588,25 @@ h1, h2, h3,
 /* BOW / WOB scrollbar contrast fix (issue #9).
    Spotify uses OverlayScrollbars (.os-scrollbar / .os-scrollbar-handle)
    to paint a custom div-based scrollbar over the native one; the native
-   ::-webkit-scrollbar-* pseudos do nothing. Handle default is white at
-   30% opacity, which is invisible on bow's white home page surface. */
-html[data-pvfd-tint="bow"] .os-theme-spotify > .os-scrollbar-handle,
-html[data-pvfd-tint="bow"] .os-scrollbar.os-theme-spotify .os-scrollbar-handle {
-  background-color: #5a5a5a !important;
-}
-html[data-pvfd-tint="bow"] .os-theme-spotify:hover > .os-scrollbar-handle,
-html[data-pvfd-tint="bow"] .os-theme-spotify.os-scrollbar-interaction > .os-scrollbar-handle {
-  background-color: #2a2a2a !important;
-}
+   ::-webkit-scrollbar-* pseudos do nothing. Default handle is white at
+   30% opacity, which is invisible on bow's white surface.
 
+   Match the colored-tint pattern (which uses --pvfd-cyan-deep on the
+   webkit scrollbar thumb) — BOW/WOB redefine these vars to their own
+   ink ramp, so the handle picks up the active theme color naturally:
+     BOW  -> #555555 thumb, #000000 hover (black ink theme)
+     WOB  -> #888888 thumb, #ffffff hover (white ink theme) */
+html[data-pvfd-tint="bow"] .os-theme-spotify > .os-scrollbar-handle,
+html[data-pvfd-tint="bow"] .os-scrollbar.os-theme-spotify .os-scrollbar-handle,
 html[data-pvfd-tint="wob"] .os-theme-spotify > .os-scrollbar-handle,
 html[data-pvfd-tint="wob"] .os-scrollbar.os-theme-spotify .os-scrollbar-handle {
-  background-color: #c8c8c8 !important;
+  background-color: var(--pvfd-cyan-deep) !important;
 }
+html[data-pvfd-tint="bow"] .os-theme-spotify:hover > .os-scrollbar-handle,
+html[data-pvfd-tint="bow"] .os-theme-spotify.os-scrollbar-interaction > .os-scrollbar-handle,
 html[data-pvfd-tint="wob"] .os-theme-spotify:hover > .os-scrollbar-handle,
 html[data-pvfd-tint="wob"] .os-theme-spotify.os-scrollbar-interaction > .os-scrollbar-handle {
-  background-color: #f0f0f0 !important;
+  background-color: var(--pvfd-cyan-glow) !important;
 }
 
 /* Right-sidebar "About the artist" panel: Spotify's Encore panel-button
