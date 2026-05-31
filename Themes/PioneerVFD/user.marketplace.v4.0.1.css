@@ -13196,6 +13196,27 @@ html[data-pvfd-tint="wob"] body.pvfd-theme-active
    chrome bleeds through the topbar gradient.
    ============================================================ */
 
+/* Hardcoded LCD treatment for the sticky topbar background. Spotify
+   writes --background-base inline from the album-art palette, which
+   the .main-topBar-background div consumes via background-color:
+   var(--background-base). Override the resolved bg directly (inline
+   --background-base would also need !important to lose). Same LCD
+   pill recipe as the snackbar/toast pills at user.css:10667 — void
+   surface + rim border + inset bloom — minus the color/font work so
+   the title text and play button keep their default treatment.
+   The play button is a sibling under .main-topBar-topbarContentContainer,
+   not a descendant of .main-topBar-background, so it's untouched. */
+body.pvfd-theme-active .main-topBar-container .main-topBar-background {
+  background-color: var(--pvfd-lcd-void) !important;
+  background-image: none !important;
+  border-bottom: 1px solid var(--pvfd-lcd-rim) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.9),
+    inset 0 0 20px rgba(var(--pvfd-light-deep-rgb), 0.6),
+    0 4px 14px rgba(0, 0, 0, 0.42),
+    0 0 12px rgba(var(--pvfd-accent-rgb), 0.22) !important;
+}
+
 /* BOW — text outline */
 html[data-pvfd-tint="bow"] body.pvfd-theme-active.pvfd-theme-active
   .main-topBar-container .main-entityHeader-topbarTitle {
