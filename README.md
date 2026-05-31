@@ -13,7 +13,7 @@ Miss the old 2000s Pioneer head units? Wish you could still have those dolphins 
 
 PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 2000s Pioneer-style VFD/LCD stereo interface. It replaces the stock lower player area with a chrome head-unit panel, WebM OEL animations, expanded RGB and mono display modes, hardware-style readouts, ATT-style muting, and live audio spectrum bars around the center badge.
 
-**Latest Build** - v4.0.0 marketplace build, ATT attenuator/readout behavior, LST queue label, SRC/EJECT hardware controls, DSEG14 LCD font option, DISP fullscreen display prompt, BAND/FM archive playback with hardware volume integration, and marketplace contrast/popup polish.
+**Latest Build** - v4.0.1 marketplace build, right-click now-playing context menu, LCD divider with clickable play/pause glyph in the meta track, smoother Ever Scroll cycle (ONCE returns instead of snapping back, end-guard so the final character clears the clip edge on ONCE/BOUNCE), classic Pioneer logo font (Musieer) option, italic hardware silk labels with smaller W&times;4, and contrast polish for add-to-playlist scrollbars. Fixes unreadable tint in certain areas.
 
 ## Preview
 
@@ -236,7 +236,7 @@ spicetify apply
 ```
 
 ## Special Thanks
-A thank you to any user who opens an issue / creates a PR with meaningful suggestions.
+A thank you to any user who opens an issue / creates a PR with significant enhancements.
 
 * [@syzyxy](https://github.com/syzyxy)
 
@@ -246,7 +246,7 @@ PioneerVFD is an unofficial, fan-made Spicetify theme inspired by early-2000s ca
 
 Pioneer and the Pioneer logo are trademarks of Pioneer Corporation. Spotify is a trademark of Spotify AB. All trademarks belong to their respective owners.
 
-This project is free and open source under the MIT License. Optional donations, if enabled, support continued development and do not purchase access, licensing rights, official support, or affiliation with any trademark holder.
+This project is free and open source under the MIT License. Optional donations support continued development and do not purchase access, licensing rights, official support, or affiliation with any trademark holder.
 
 ## License
 
