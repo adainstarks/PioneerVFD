@@ -250,4 +250,4 @@ This project is free and open source under the MIT License. Optional donations s
 
 ## License
 
-MIT
+MIT, Check LICENSE.
