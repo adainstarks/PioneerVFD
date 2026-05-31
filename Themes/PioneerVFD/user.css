@@ -12949,6 +12949,19 @@ body.pvfd-theme-active:not([data-pvfd-tint="bow"]):not([data-pvfd-tint="wob"])
     0 1px 2px rgba(0, 0, 0, 0.85) !important;
 }
 
+/* Artist "About" chart-rank badge — Spotify paints a hardcoded #0d72ea
+   blue square in the top-right of the artist card with "#N / in the world"
+   text inside. The blue clashes with every PVFD tint. Transparent the
+   badge so the rank text floats over the artist hero image; the parent
+   button's linear-gradient overlay already provides legibility. Scoped
+   to `main button[style*="background-image"]` so only inline-styled hero
+   cards match — narrow enough to avoid touching artist/album carousel
+   tiles, which don't carry a positioned first-child badge div. */
+body.pvfd-theme-active main button[style*="background-image"] > div:first-child {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
 /* "Verified by Spotify" pill text + badge glyph on colored tints. */
 body.pvfd-theme-active:not([data-pvfd-tint="bow"]):not([data-pvfd-tint="wob"])
   .Root__main-view .main-entityHeader-container
