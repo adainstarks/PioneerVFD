@@ -236,7 +236,7 @@ spicetify apply
 ```
 
 ## Special Thanks
-A thank you to any user who opens an issue / creates a PR with meaningful suggestions.
+A thank you to any user who opens an issue / creates a PR with significant enhancements.
 
 * [@syzyxy](https://github.com/syzyxy)
 
