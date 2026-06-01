@@ -20,7 +20,11 @@ jobs:
 
       - name: Fetch traffic snapshots
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GitHub's traffic endpoints reject the default GITHUB_TOKEN
+          # (Administration:read isn't grantable via workflow `permissions:`).
+          # TRAFFIC_PAT is a fine-grained PAT scoped to this repo with that
+          # permission. Rotate via repo Settings -> Secrets.
+          GH_TOKEN: ${{ secrets.TRAFFIC_PAT }}
           REPO: ${{ github.repository }}
         run: |
           mkdir -p traffic
