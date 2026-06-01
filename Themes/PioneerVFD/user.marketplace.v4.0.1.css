@@ -1923,38 +1923,18 @@ body[data-pvfd-led-glow="OFF"] .pvfd-led-strip {
   line-height: inherit;
 }
 
+/* Ever Scroll active state: the only thing we change on the inner span
+   is display:inline-block, because CSS `transform` doesn't apply to
+   non-replaced inline elements and the keyframe animation drives
+   transform:translateX. Every other "helper" (ink-guard padding/margin,
+   will-change, translateZ, contain, backface-visibility) caused visual
+   drift — the title would shift upward and the LCD divider would
+   visually grow during animation. Stripped to bare minimum: layout
+   mode + animation, nothing else. */
 body[data-pvfd-scroll="once"]   .pvfd-meta-track[data-pvfd-overflow="yes"] .pvfd-meta-track-inner,
 body[data-pvfd-scroll="loop"]   .pvfd-meta-track[data-pvfd-overflow="yes"] .pvfd-meta-track-inner,
 body[data-pvfd-scroll="bounce"] .pvfd-meta-track[data-pvfd-overflow="yes"] .pvfd-meta-track-inner {
   display: inline-block;
-  padding-top: var(--pvfd-meta-ink-guard-y, 2px);
-  padding-bottom: var(--pvfd-meta-ink-guard-y, 2px);
-  margin-top: calc(var(--pvfd-meta-ink-guard-y, 2px) * -1);
-  margin-bottom: calc(var(--pvfd-meta-ink-guard-y, 2px) * -1);
-  will-change: transform;
-  backface-visibility: hidden;
-}
-
-/* Scroll-active compositor isolation. Gated on body[data-pvfd-scroll] —
-   the attribute only exists when Ever Scroll mode is non-OFF (JS removes
-   it when mode is OFF). Without this gate, will-change/translateZ/contain
-   would stick around even after the user turns scroll OFF, because the
-   overflow="yes" attr is set based on text width alone (independent of
-   scroll mode). Lingering will-change on a non-animating element forces
-   it onto an unused compositor layer, and Spotify's pointer-event reflow
-   chain pays an ongoing cost for that layer — visible as drag lag that
-   persists across an OFF toggle until the next song change. */
-body[data-pvfd-scroll] .pvfd-meta-track[data-pvfd-overflow="yes"] {
-  will-change: transform;
-  transform: translateZ(0);
-  /* contain: layout (NOT paint) isolates the scroll subtree's layout
-     invalidations from ancestors. Layout-only containment avoids the paint
-     clipping that was previously truncating LCD glyph tops/bottoms in
-     DSEG14 mode. */
-  contain: layout;
-}
-body[data-pvfd-scroll] .pvfd-meta-track[data-pvfd-overflow="yes"] .pvfd-meta-track-inner {
-  contain: layout;
 }
 
 /* Animation durations are distance-proportional, set by JS via
@@ -2050,7 +2030,13 @@ body[data-pvfd-scroll="bounce"] .pvfd-meta-track[data-pvfd-overflow="yes"] .pvfd
    of the line-box, so the title visually sits ~2px high inside the meta
    track even though the line-box is centered. Bias the window down to
    compensate. DSEG14 already has its own line-height/ink-guard tuning
-   at user.css:11815, so scope this to non-DSEG14 mode. */
+   at user.css:11815, so scope this to non-DSEG14 mode.
+   This applies only when Ever Scroll is OFF or the title fits — when
+   the inner span is actively animating its position drifts upward
+   independently (compositor layer rasterization), and stacking either
+   extra padding-top here or a standalone translate on the inner both
+   caused divider/layout artifacts. Live with the active-scroll shift
+   for now; the static case (vast majority of UI time) reads correct. */
 body:not([data-pvfd-lcd="dseg14"]) .pvfd-meta-title-window {
   padding-top: 2px;
 }
