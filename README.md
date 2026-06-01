@@ -2,6 +2,7 @@
 
 > Unofficial fan-made Spicetify theme. Not affiliated with Pioneer Corporation.
 > ENGLISH Spotify Only! Will break on other languages!
+> If you enjoy PioneerVFD, starring the repo helps more people find it.
 
 <p align="center">
   <a href="https://ko-fi.com/adainstarks">
