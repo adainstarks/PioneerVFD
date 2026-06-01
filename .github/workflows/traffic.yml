@@ -1,0 +1,72 @@
+name: Track traffic
+
+# Snapshots GitHub's 14-day traffic data into the repo so we keep
+# indefinite history. Runs weekly + on-demand.
+on:
+  schedule:
+    # Mondays at 03:30 UTC. Cadence < 14 days so daily entries never
+    # fall out of the API window before we record them.
+    - cron: "30 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch traffic snapshots
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir -p traffic
+
+          # Latest 14-day windows — overwrite each run.
+          gh api "repos/$REPO/traffic/views"             > traffic/views-latest.json
+          gh api "repos/$REPO/traffic/clones"            > traffic/clones-latest.json
+          gh api "repos/$REPO/traffic/popular/paths"     > traffic/paths-latest.json
+          gh api "repos/$REPO/traffic/popular/referrers" > traffic/referrers-latest.json
+
+          # Append daily entries to long-term CSVs (the actual extended history).
+          python <<'PY'
+          import json, csv, os
+          for kind in ("views", "clones"):
+              with open(f"traffic/{kind}-latest.json") as f:
+                  data = json.load(f)
+              csv_path = f"traffic/{kind}-history.csv"
+              seen = set()
+              if os.path.exists(csv_path):
+                  with open(csv_path) as f:
+                      for row in csv.DictReader(f):
+                          seen.add(row["timestamp"])
+              new_rows = [
+                  {"timestamp": e["timestamp"], "count": e["count"], "uniques": e["uniques"]}
+                  for e in data.get(kind, [])
+                  if e["timestamp"] not in seen
+              ]
+              if new_rows:
+                  write_header = not os.path.exists(csv_path)
+                  with open(csv_path, "a", newline="") as f:
+                      w = csv.DictWriter(f, fieldnames=["timestamp", "count", "uniques"])
+                      if write_header: w.writeheader()
+                      w.writerows(sorted(new_rows, key=lambda r: r["timestamp"]))
+                  print(f"{kind}: appended {len(new_rows)} new daily rows")
+              else:
+                  print(f"{kind}: no new rows")
+          PY
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add traffic/
+          if git diff --cached --quiet; then
+            echo "No traffic changes to commit."
+          else
+            git commit -m "Update traffic snapshots ($(date -u +%Y-%m-%d))"
+            git push
+          fi
