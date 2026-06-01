@@ -56,7 +56,7 @@ The center OEL/VFD display is WebM-based. The current clip set includes:
 - `6_Racing_Cart_longloop.webm`
 - `EJECTING.webm`
 
-Marketplace builds load these clips from jsDelivr. Script/local builds load from the published GitHub Pages asset paths. PioneerVFD stores successful clip fetches in IndexedDB, so clips can continue working from cache when the browser has already seen them.
+All builds load the clips from the published GitHub Pages asset paths. PioneerVFD stores successful clip fetches in IndexedDB, so clips can continue working from cache when the browser has already seen them.
 
 The racing clip has its own `RACING` color mode. By default it follows the current VFD tint; switching `RACING` to `COLOR` lets that clip keep its full-color look while the rest of the theme stays tint-aware.
 
@@ -112,7 +112,7 @@ Saved preferences include `PERF`, `TINT`, `DIM`, `TYPE`, selected `OEL` clip, `V
 
 If the Spicetify Marketplace package is available and up to date, install `PioneerVFD` from Marketplace.
 
-Marketplace currently points at the versioned marketplace CSS/JS files published through this repository. The marketplace path fetches WebM clips from the CDN and caches them after successful playback.
+Marketplace currently points at the versioned marketplace CSS/JS files published through this repository. The marketplace path fetches WebM clips from the GitHub Pages asset paths and caches them in IndexedDB after successful playback.
 
 If the OEL screen is blank, clips do not play, or Spotify/Spicetify does not expose the APIs the extension needs, use one of the script installs below. The script installs are the reference path for setting the correct Spicetify config and preserving any existing extensions already enabled.
 
