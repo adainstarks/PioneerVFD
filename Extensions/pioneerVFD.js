@@ -534,6 +534,18 @@
   let logoLiveAudioResumeTimer = 0;
   let desktopCaptureActive = false;
   let desktopCapturePending = false;
+  // HLPR bridge state. hlprBridgeActive distinguishes Linux-helper streams
+  // from native getDisplayMedia so the menu can show HLPR vs LIVE.
+  let hlprBridgeActive = false;
+  let hlprBridgePending = false;
+  let hlprSocket = null;
+  let hlprReconnectTimer = 0;
+  let hlprReconnectDelayMs = HLPR_RECONNECT_MIN_MS;
+  let hlprFirstConnectNotifyTimer = 0;
+  let hlprConsentInFlight = false;
+  let hlprLatestBins = null;
+  let hlprHelloInfo = null;
+  let hlprProtocolMismatched = false;
   let logoLivePrevBins = null;
   let logoLiveLastPulseMs = 0;
   let logoLiveDebugLastMs = 0;
@@ -683,6 +695,25 @@
   // 2048 gives ~23 Hz/bin at 48 kHz — coarser sizes (e.g. 256 → 187 Hz/bin) collapse
   // the 28–70 Hz SUB band and 70–160 Hz BASS band into the same bin.
   const DESKTOP_CAPTURE_FFT_SIZE = 2048;
+
+  // HLPR (Linux audio helper) bridge — see issue #16 and the Reddit thread
+  // with IpegFemboys. On Linux, xdg-desktop-portal often hides Spotify or
+  // omits the "Share system audio" checkbox, AND picking Spotify in the
+  // picker yields a silent track because Spotify outputs to PipeWire, not
+  // the renderer media element. pvfd-hlpr taps PipeWire directly and streams
+  // getByteFrequencyData-shaped bins over a localhost WebSocket. The bridge
+  // stubs logoLiveAudioAnalyser/Ctx/Bins so the existing
+  // readLogoLiveAudioMetrics pipeline works unchanged.
+  const HLPR_PROTOCOL_VERSION = 1;
+  const HLPR_DEFAULT_PORT = 17455;
+  const HLPR_WS_URL = `ws://127.0.0.1:${HLPR_DEFAULT_PORT}`;
+  const HLPR_OPT_OUT_STORAGE_KEY = "pvfd-hlpr-opt-out";
+  const HLPR_RELEASES_URL = "https://github.com/adainstarks/PVFD-Linux-Helper/releases/latest";
+  const HLPR_PROJECT_URL = "https://github.com/adainstarks/PVFD-Linux-Helper";
+  const HLPR_RECONNECT_MIN_MS = 250;
+  const HLPR_RECONNECT_MAX_MS = 4000;
+  const HLPR_FIRST_CONNECT_NOTIFY_MS = 8000;
+  const HLPR_VIRTUAL_SAMPLE_RATE = 48000;
   const TRACK_SYNC_INTERVAL_MS = 600;
   const BAR_UPDATE_INTERVAL_MS = 140;
   const PROGRESS_READOUT_INTERVAL_MS = 220;
@@ -1236,6 +1267,12 @@
   function bind(el, fn) { if (el) el.addEventListener("click", fn); }
   function safe(fn) { try { fn(); } catch (e) { console.warn("[PVFD]", e); } }
   function safeReturn(fn, fallback) { try { return fn(); } catch (e) { return fallback; } }
+  function safeErrorSummary(err) {
+    if (!err) return "";
+    const name = err.name ? String(err.name) : "";
+    const message = err.message ? String(err.message) : String(err);
+    return name && message && message !== name ? `${name}: ${message}` : (message || name || String(err));
+  }
   function safePlayerIsPlaying(fallback = false) {
     return safeReturn(() => {
       if (!window.Spicetify || !Spicetify.Player || !Spicetify.Player.data) return fallback;
@@ -1648,6 +1685,13 @@
     if (!Number.isFinite(n)) return -1;
     if (n < 0 || n >= BAND_PRESETS.length) return -1;
     return n;
+  }
+
+  function isLinuxLikePlatform() {
+    const ua = String(safeReturn(() => navigator.userAgent, "") || "").toLowerCase();
+    const platform = String(safeReturn(() => navigator.platform, "") || "").toLowerCase();
+    const uaPlatform = String(safeReturn(() => navigator.userAgentData && navigator.userAgentData.platform, "") || "").toLowerCase();
+    return ua.includes("linux") || ua.includes("x11") || platform.includes("linux") || uaPlatform.includes("linux");
   }
 
   function clipStorageId(clip, idx = 0) {
@@ -3641,12 +3685,14 @@
   // pulse loop is trying to use.
   function currentPulseModeLabel() {
     if (!logoGlowEnabled) return "OFF";
+    if (hlprBridgeActive) return "HLPR";
+    if (hlprBridgePending || (desktopCapturePending && isLinuxLikePlatform())) return "WAIT";
     if (desktopCapturePending || logoLiveAudioPending) return "...";
     if (desktopCaptureActive) return "LIVE";
     return "...";
   }
 
-  window.pvfdPulseProbe = function pvfdPulseProbe() {
+  function buildPulseProbeSnapshot() {
     return {
       enabled: logoGlowEnabled,
       label: currentPulseModeLabel(),
@@ -3654,6 +3700,12 @@
       liveAudioPending: logoLiveAudioPending,
       desktopCaptureActive,
       desktopCapturePending,
+      linuxLike: isLinuxLikePlatform(),
+      hlprBridgeActive,
+      hlprBridgePending,
+      hlprSocketReady: !!(hlprSocket && hlprSocket.readyState === 1),
+      hlprProtocolMismatched,
+      hlprHelperVersion: (hlprHelloInfo && hlprHelloInfo.version) || "",
       hasAnalyser: !!logoLiveAudioAnalyser,
       hasBins: !!(logoLiveAudioBins && logoLiveAudioBins.length),
       playerDataReady: !!safeReturn(() => Spicetify.Player && Spicetify.Player.data, null),
@@ -3661,6 +3713,83 @@
       failure: pulseLiveFailureReason || "",
       lastLiveAudioUpdateAt: Number.isFinite(lastLogoLiveAudioUpdateAt) ? Math.round(lastLogoLiveAudioUpdateAt) : null
     };
+  }
+
+  async function diagnosePulseCapture(options = {}) {
+    const attemptPortalCapture = !!(options && options.attemptPortalCapture);
+    const out = {
+      generatedAt: new Date().toISOString(),
+      attemptPortalCapture,
+      ua: String(safeReturn(() => navigator.userAgent, "") || ""),
+      platform: String(safeReturn(() => navigator.platform, "") || ""),
+      href: String(safeReturn(() => location.href, "") || ""),
+      supportedConstraints: safeReturn(() => (
+        navigator.mediaDevices && typeof navigator.mediaDevices.getSupportedConstraints === "function"
+          ? navigator.mediaDevices.getSupportedConstraints()
+          : null
+      ), null),
+      chromeTabCapture: safeReturn(() => (typeof chrome === "undefined" ? "chrome unavailable" : typeof chrome.tabCapture), "unavailable"),
+      pulse: buildPulseProbeSnapshot(),
+      captureOptions: pulseDisplayMediaOptions(),
+      devices: [],
+      devicesError: "",
+      portalCaptureAttempt: attemptPortalCapture ? null : "skipped; pass { diagnose: true, attemptPortalCapture: true } to open the portal picker"
+    };
+
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === "function") {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        out.devices = devices.map((device) => ({
+          kind: device.kind || "",
+          label: device.label || "",
+          deviceId: device.deviceId ? "[present]" : "",
+          groupId: device.groupId ? "[present]" : ""
+        }));
+        if (!out.devices.some((device) => device.label)) {
+          out.note = "enumerateDevices labels may be blank until media permission has been granted.";
+        }
+      } catch (err) {
+        out.devicesError = safeErrorSummary(err);
+      }
+    } else {
+      out.devicesError = "enumerateDevices not available";
+    }
+
+    if (attemptPortalCapture) {
+      let stream = null;
+      let attemptTracks = [];
+      try {
+        stream = await requestPulseDisplayMediaStream();
+        stream.getVideoTracks().forEach((track) => safe(() => track.stop()));
+        attemptTracks = stream.getTracks().map((track) => ({
+          kind: track.kind || "",
+          label: track.label || "",
+          settings: safeReturn(() => track.getSettings && track.getSettings(), null)
+        }));
+        selectPulseAudioTrack(stream);
+        out.portalCaptureAttempt = {
+          ok: true,
+          tracks: attemptTracks
+        };
+      } catch (err) {
+        out.portalCaptureAttempt = {
+          ok: false,
+          error: safeErrorSummary(err),
+          name: err && err.name ? String(err.name) : "",
+          message: err && err.message ? String(err.message) : "",
+          tracks: attemptTracks
+        };
+      } finally {
+        if (stream && stream.getTracks) stream.getTracks().forEach((track) => safe(() => track.stop()));
+      }
+    }
+
+    return out;
+  }
+
+  window.pvfdPulseProbe = function pvfdPulseProbe(options) {
+    if (options && options.diagnose) return diagnosePulseCapture(options);
+    return buildPulseProbeSnapshot();
   };
 
   function updateRoleButtonStates() {
@@ -5623,11 +5752,375 @@
     updateMenuPanel();
   }
 
+  function pulseDisplayMediaOptions() {
+    return {
+      video: { displaySurface: "browser" },
+      audio: { suppressLocalAudioPlayback: false },
+      selfBrowserSurface: "exclude",
+      systemAudio: "include",
+      surfaceSwitching: "exclude",
+      monitorTypeSurfaces: "include",
+    };
+  }
+
+  function requestPulseDisplayMediaStream() {
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function") {
+      throw new Error("getDisplayMedia not available in this Spotify build");
+    }
+    return navigator.mediaDevices.getDisplayMedia(pulseDisplayMediaOptions());
+  }
+
+  function selectPulseAudioTrack(stream) {
+    const audioTracks = stream.getAudioTracks();
+    if (!audioTracks.length) {
+      throw new Error("no system audio in stream — enable 'Also share system audio' in the picker");
+    }
+    const audioTrack = audioTracks[0];
+    // Tab audio comes back silent because Spotify's playback goes to the OS
+    // audio stack, not the renderer media element. Reject it cleanly.
+    if (audioTrack.label && audioTrack.label.toLowerCase().includes("tab")) {
+      throw new Error("tab audio selected; pick a screen/window with system audio enabled");
+    }
+    return audioTrack;
+  }
+
+  function showPulseLiveFailureNotification(message) {
+    const msg = String(message || "live capture failed");
+    const text = isLinuxLikePlatform()
+      ? [
+          "PULSE on Linux: Spotify may be hidden by xdg-desktop-portal.",
+          "Try selecting your monitor and enabling \"Share system audio\".",
+          "See GitHub issue #16.",
+          msg
+        ].join("\n")
+      : "PULSE LIVE: " + msg;
+    safe(() => Spicetify.showNotification && Spicetify.showNotification(text));
+  }
+
+  // -------- HLPR (Linux audio helper) bridge --------
+  //
+  // Consent modal — asks whether the user wants to launch the HLPR helper
+  // instead of going through getDisplayMedia. Returns "yes" | "no" |
+  // "remember-no". "remember-no" persists the opt-out so we never ask again
+  // on this Spotify profile (clear with localStorage.removeItem to re-enable).
+  // Falls back to a confirm() if Spicetify.PopupModal isn't available.
+  function showHlprConsentModal() {
+    return new Promise((resolve) => {
+      const fallback = () => {
+        const ok = safeReturn(() => window.confirm(
+          "PioneerVFD: PULSE on Linux needs the HLPR helper.\n\n" +
+          "Download pvfd-hlpr from:\n" + HLPR_RELEASES_URL + "\n\n" +
+          "Run it in a terminal, then click OK.\n" +
+          "Click Cancel to skip PULSE for this session."
+        ), false);
+        resolve(ok ? "yes" : "no");
+      };
+      if (!window.Spicetify || !Spicetify.PopupModal || typeof Spicetify.PopupModal.display !== "function") {
+        fallback();
+        return;
+      }
+      const container = document.createElement("div");
+      container.className = "pvfd-hlpr-modal";
+      container.innerHTML =
+        '<p style="margin:0 0 12px 0;line-height:1.45">' +
+        "Chromium audio capture on Linux is unreliable — most setups don't list " +
+        "Spotify in the picker, and even when they do, the resulting audio track " +
+        "is silent (Spotify outputs to PipeWire, not the renderer). " +
+        '(<a href="https://github.com/adainstarks/PioneerVFD/issues/16" target="_blank" rel="noopener">issue #16</a>)' +
+        "</p>" +
+        '<p style="margin:0 0 12px 0;line-height:1.45">' +
+        "PVFD ships a small helper, <b>pvfd-hlpr</b>, that taps PipeWire directly. " +
+        "Download it, run it in a terminal, and PULSE will connect automatically." +
+        "</p>" +
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px 0">' +
+        '<button type="button" data-pvfd-hlpr-action="download" style="padding:8px 14px;background:#0a84ff;color:#fff;border:0;border-radius:4px;cursor:pointer;font-weight:600">Download HLPR (Releases)</button>' +
+        '<button type="button" data-pvfd-hlpr-action="yes" style="padding:8px 14px;background:#1db954;color:#000;border:0;border-radius:4px;cursor:pointer;font-weight:600">I\'m running it — connect</button>' +
+        '<button type="button" data-pvfd-hlpr-action="no" style="padding:8px 14px;background:#444;color:#fff;border:0;border-radius:4px;cursor:pointer">Skip PULSE</button>' +
+        "</div>" +
+        '<details style="margin:0 0 10px 0;font-size:12.5px;opacity:0.85">' +
+        '<summary style="cursor:pointer">From source / Arch users</summary>' +
+        '<pre style="background:#111;color:#7CFC7C;padding:10px;margin:8px 0 0 0;border-radius:4px;font-family:Consolas,monospace;font-size:12.5px;white-space:pre-wrap" data-pvfd-hlpr-cmd>pipx install git+https://github.com/adainstarks/PVFD-Linux-Helper.git &amp;&amp; pvfd-hlpr</pre>' +
+        "</details>" +
+        '<label style="display:flex;align-items:center;gap:6px;font-size:12px;opacity:0.8">' +
+        '<input type="checkbox" data-pvfd-hlpr-remember> Don\'t ask again on this profile' +
+        "</label>";
+
+      let settled = false;
+      const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        safe(() => Spicetify.PopupModal.hide && Spicetify.PopupModal.hide());
+        resolve(result);
+      };
+
+      container.addEventListener("click", (ev) => {
+        const target = ev.target;
+        if (!(target instanceof HTMLElement)) return;
+        const action = target.getAttribute("data-pvfd-hlpr-action");
+        if (!action) return;
+        const remember = container.querySelector('[data-pvfd-hlpr-remember]');
+        const wantRemember = !!(remember && remember.checked);
+        if (action === "download") {
+          safe(() => window.open(HLPR_RELEASES_URL, "_blank", "noopener,noreferrer"));
+          target.textContent = "Opened ↗";
+          setTimeout(() => { if (target) target.textContent = "Download HLPR (Releases)"; }, 1600);
+          return;
+        }
+        if (action === "yes") return finish("yes");
+        if (action === "no") return finish(wantRemember ? "remember-no" : "no");
+      });
+
+      safe(() => Spicetify.PopupModal.display({
+        title: "PioneerVFD — Linux PULSE helper",
+        content: container,
+        isLarge: false,
+      }));
+
+      // Spicetify's modal close button fires no callback we can hook, so we
+      // observe DOM removal and treat dismissal as "no".
+      const observer = new MutationObserver(() => {
+        if (!document.body.contains(container)) {
+          observer.disconnect();
+          finish("no");
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    });
+  }
+
+  // Stub analyser/ctx so readLogoLiveAudioMetrics() consumes HLPR bytes
+  // through its existing pipeline. The "analyser" copies the latest received
+  // bin buffer into the caller's output array, mimicking
+  // AnalyserNode.getByteFrequencyData on a real getDisplayMedia stream.
+  function installHlprFakeAnalyser() {
+    const binCount = DESKTOP_CAPTURE_FFT_SIZE / 2;
+    logoLiveAudioBins = new Uint8Array(binCount);
+    logoLivePrevBins = new Uint8Array(binCount);
+    hlprLatestBins = new Uint8Array(binCount);
+    logoLiveAudioCtx = {
+      sampleRate: HLPR_VIRTUAL_SAMPLE_RATE,
+      close: () => {},
+    };
+    logoLiveAudioAnalyser = {
+      fftSize: DESKTOP_CAPTURE_FFT_SIZE,
+      frequencyBinCount: binCount,
+      smoothingTimeConstant: 0.32,
+      getByteFrequencyData: (out) => {
+        if (!out || !hlprLatestBins) return;
+        const n = Math.min(out.length, hlprLatestBins.length);
+        for (let i = 0; i < n; i++) out[i] = hlprLatestBins[i];
+      },
+    };
+  }
+
+  function clearHlprFakeAnalyser() {
+    logoLiveAudioBins = null;
+    logoLivePrevBins = null;
+    logoLiveAudioCtx = null;
+    logoLiveAudioAnalyser = null;
+    hlprLatestBins = null;
+  }
+
+  function applyHlprFrame(data) {
+    if (!hlprLatestBins) return;
+    let view;
+    if (data instanceof ArrayBuffer) view = new Uint8Array(data);
+    else if (ArrayBuffer.isView(data)) view = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    else return;
+    const n = Math.min(view.length, hlprLatestBins.length);
+    for (let i = 0; i < n; i++) hlprLatestBins[i] = view[i];
+    for (let i = n; i < hlprLatestBins.length; i++) hlprLatestBins[i] = 0;
+  }
+
+  function handleHlprHello(text) {
+    let info = null;
+    try { info = JSON.parse(text); } catch (_) { return false; }
+    if (!info || info.type !== "hello") return false;
+    hlprHelloInfo = info;
+    const remoteProto = Number(info.protocol);
+    if (!Number.isFinite(remoteProto) || remoteProto !== HLPR_PROTOCOL_VERSION) {
+      hlprProtocolMismatched = true;
+      const reason =
+        "HLPR protocol mismatch (PVFD expects v" + HLPR_PROTOCOL_VERSION +
+        ", HLPR sent v" + (Number.isFinite(remoteProto) ? remoteProto : "?") +
+        "). Update pvfd-hlpr from " + HLPR_RELEASES_URL;
+      pulseLiveFailureReason = reason;
+      safe(() => Spicetify.showNotification && Spicetify.showNotification(reason));
+      console.warn("[PVFD] " + reason);
+      return false;
+    }
+    hlprProtocolMismatched = false;
+    return true;
+  }
+
+  function connectHlprSocket() {
+    if (hlprSocket) {
+      safe(() => hlprSocket.close());
+      hlprSocket = null;
+    }
+    let ws;
+    try {
+      ws = new WebSocket(HLPR_WS_URL);
+      ws.binaryType = "arraybuffer";
+    } catch (err) {
+      console.warn("[PVFD] HLPR socket construct failed:", err);
+      scheduleHlprReconnect();
+      return;
+    }
+    hlprSocket = ws;
+    ws.addEventListener("message", (ev) => {
+      if (typeof ev.data === "string") {
+        // First text frame is the protocol-v1 hello. If mismatched, the close
+        // handler will run via ws.close() and we won't reconnect this cycle.
+        const ok = handleHlprHello(ev.data);
+        if (!ok) {
+          safe(() => ws.close());
+          return;
+        }
+        if (!hlprLatestBins) installHlprFakeAnalyser();
+        hlprReconnectDelayMs = HLPR_RECONNECT_MIN_MS;
+        if (hlprFirstConnectNotifyTimer) {
+          clearTimeout(hlprFirstConnectNotifyTimer);
+          hlprFirstConnectNotifyTimer = 0;
+        }
+        desktopCaptureActive = true;
+        desktopCapturePending = false;
+        hlprBridgeActive = true;
+        hlprBridgePending = false;
+        pulseLiveFailureReason = "";
+        console.log("[PVFD] HLPR bridge connected (helper v" + (hlprHelloInfo && hlprHelloInfo.version || "?") + ")");
+        updateMenuPanel();
+        return;
+      }
+      applyHlprFrame(ev.data);
+    });
+    ws.addEventListener("close", () => {
+      if (ws === hlprSocket) hlprSocket = null;
+      const wasActive = hlprBridgeActive;
+      hlprBridgeActive = false;
+      if (wasActive) {
+        desktopCaptureActive = false;
+        if (hlprLatestBins) hlprLatestBins.fill(0);
+        if (logoLiveAudioBins) logoLiveAudioBins.fill(0);
+        if (logoLivePrevBins) logoLivePrevBins.fill(0);
+        console.warn("[PVFD] HLPR bridge socket closed");
+        updateMenuPanel();
+      }
+      // Don't auto-reconnect into a known protocol mismatch — that would
+      // spam the notification banner every backoff cycle.
+      if (hlprProtocolMismatched) return;
+      if (hlprBridgePending || logoGlowEnabled) {
+        scheduleHlprReconnect();
+      }
+    });
+    ws.addEventListener("error", () => {
+      // 'close' fires right after; let that drive reconnect.
+    });
+  }
+
+  function scheduleHlprReconnect() {
+    if (hlprReconnectTimer) return;
+    if (hlprProtocolMismatched) return;
+    const delay = hlprReconnectDelayMs;
+    hlprReconnectDelayMs = Math.min(HLPR_RECONNECT_MAX_MS, Math.round(hlprReconnectDelayMs * 1.6));
+    hlprReconnectTimer = setTimeout(() => {
+      hlprReconnectTimer = 0;
+      if (!logoGlowEnabled && !hlprBridgePending) return;
+      connectHlprSocket();
+    }, delay);
+  }
+
+  function armHlprFirstConnectNotify() {
+    if (hlprFirstConnectNotifyTimer) clearTimeout(hlprFirstConnectNotifyTimer);
+    hlprFirstConnectNotifyTimer = setTimeout(() => {
+      hlprFirstConnectNotifyTimer = 0;
+      if (hlprBridgeActive || hlprProtocolMismatched) return;
+      pulseLiveFailureReason = "HLPR not detected on :" + HLPR_DEFAULT_PORT;
+      desktopCapturePending = false;
+      safe(() => Spicetify.showNotification && Spicetify.showNotification(
+        "PULSE: HLPR not detected on :" + HLPR_DEFAULT_PORT + ". Run pvfd-hlpr in a terminal."
+      ));
+      updateMenuPanel();
+    }, HLPR_FIRST_CONNECT_NOTIFY_MS);
+  }
+
+  function stopHlprBridge() {
+    if (hlprReconnectTimer) {
+      clearTimeout(hlprReconnectTimer);
+      hlprReconnectTimer = 0;
+    }
+    if (hlprFirstConnectNotifyTimer) {
+      clearTimeout(hlprFirstConnectNotifyTimer);
+      hlprFirstConnectNotifyTimer = 0;
+    }
+    if (hlprSocket) {
+      safe(() => hlprSocket.close());
+      hlprSocket = null;
+    }
+    hlprBridgeActive = false;
+    hlprBridgePending = false;
+    hlprProtocolMismatched = false;
+    hlprHelloInfo = null;
+    hlprReconnectDelayMs = HLPR_RECONNECT_MIN_MS;
+    clearHlprFakeAnalyser();
+  }
+
+  // Linux PULSE entry point. Asks consent (unless previously opted out),
+  // then kicks the WS reconnect loop. Resolves true if the bridge is
+  // reachable OR pending — false only on outright user-decline.
+  async function startHlprBridge() {
+    if (hlprBridgeActive) return true;
+    if (hlprBridgePending) return true;
+    if (hlprConsentInFlight) return false;
+    desktopCapturePending = false;
+    const persistedOptOutValue = safeReturn(
+      () => window.localStorage.getItem(HLPR_OPT_OUT_STORAGE_KEY),
+      null
+    );
+    const persistedOptOut = persistedOptOutValue === "ON" || persistedOptOutValue === "yes";
+    if (persistedOptOut) {
+      pulseLiveFailureReason =
+        "HLPR opt-out remembered — clear localStorage key " + HLPR_OPT_OUT_STORAGE_KEY + " to re-enable";
+      return false;
+    }
+    hlprConsentInFlight = true;
+    desktopCapturePending = true;
+    updateMenuPanel();
+    let consent;
+    try {
+      consent = await showHlprConsentModal();
+    } finally {
+      hlprConsentInFlight = false;
+    }
+    if (consent === "no" || consent === "remember-no") {
+      if (consent === "remember-no") {
+        safe(() => window.localStorage.setItem(HLPR_OPT_OUT_STORAGE_KEY, "ON"));
+      }
+      desktopCapturePending = false;
+      pulseLiveFailureReason = "HLPR declined";
+      updateMenuPanel();
+      return false;
+    }
+    hlprBridgePending = true;
+    desktopCapturePending = false;
+    pulseLiveFailureReason = "";
+    armHlprFirstConnectNotify();
+    connectHlprSocket();
+    updateMenuPanel();
+    return true;
+  }
+
   async function startDesktopAudioCapture() {
     if (desktopCaptureActive || desktopCapturePending) return desktopCaptureActive;
+    // Linux: skip getDisplayMedia — the portal route doesn't work reliably,
+    // and picking Spotify in the picker yields silence anyway because its
+    // playback goes to PipeWire, not the renderer. Route through HLPR.
+    if (isLinuxLikePlatform()) {
+      return await startHlprBridge();
+    }
     if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function") {
       pulseLiveFailureReason = "getDisplayMedia not available in this Spotify build";
-      safe(() => Spicetify.showNotification && Spicetify.showNotification("PULSE LIVE: getDisplayMedia not available in this Spotify build."));
+      showPulseLiveFailureNotification(pulseLiveFailureReason);
       return false;
     }
     desktopCapturePending = true;
@@ -5635,31 +6128,15 @@
     updateMenuPanel();
     let stream = null;
     try {
-      // selfBrowserSurface:"exclude" is the critical option: it stops the user from
-      // picking Spotify's own window, which avoids the compositor feedback loop that
-      // froze the clock/scrubber/LCD in the previous getDisplayMedia attempt.
-      stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { displaySurface: "browser" },
-        audio: { suppressLocalAudioPlayback: false },
-        selfBrowserSurface: "exclude",
-        systemAudio: "include",
-        surfaceSwitching: "exclude",
-        monitorTypeSurfaces: "include",
-      });
+      // selfBrowserSurface:"exclude" is the critical option: it stops the user
+      // from picking Spotify's own window, which both avoids the historical
+      // compositor feedback loop that froze the clock/scrubber/LCD AND keeps
+      // the picker honest — picking Spotify yields a silent track anyway
+      // (playback goes to the OS audio stack, not through the renderer).
+      stream = await requestPulseDisplayMediaStream();
       // We only want audio. Drop video tracks immediately.
       stream.getVideoTracks().forEach((track) => safe(() => track.stop()));
-      const audioTracks = stream.getAudioTracks();
-      if (!audioTracks.length) {
-        stream.getTracks().forEach((track) => safe(() => track.stop()));
-        throw new Error("no system audio in stream — enable 'Also share system audio' in the picker");
-      }
-      const audioTrack = audioTracks[0];
-      // Heuristic match WMPotify uses: a "tab" share label means the user picked
-      // tab audio instead of system audio — refuse it cleanly.
-      if (audioTrack.label && audioTrack.label.toLowerCase().includes("tab")) {
-        stream.getTracks().forEach((track) => safe(() => track.stop()));
-        throw new Error("tab audio selected; pick a screen/window with system audio enabled");
-      }
+      const audioTrack = selectPulseAudioTrack(stream);
       audioTrack.addEventListener("ended", () => {
         // Fires when user clicks "Stop sharing" in Chrome's banner.
         stopDesktopAudioCapture();
@@ -5689,10 +6166,10 @@
     } catch (err) {
       // Cleanup any partial stream on failure.
       if (stream && stream.getTracks) stream.getTracks().forEach((track) => safe(() => track.stop()));
-      const msg = err && err.name === "NotAllowedError" ? "permission denied" : (err && err.message ? err.message : err);
+      const msg = safeErrorSummary(err);
       pulseLiveFailureReason = String(msg || "live capture failed");
       console.warn("[PVFD] pulse live capture failed:", msg);
-      safe(() => Spicetify.showNotification && Spicetify.showNotification("PULSE LIVE: " + msg));
+      showPulseLiveFailureNotification(pulseLiveFailureReason);
       return false;
     } finally {
       desktopCapturePending = false;
@@ -5701,6 +6178,8 @@
   }
 
   function stopDesktopAudioCapture() {
+    // Tear down HLPR (Linux helper bridge) if active. Safe to call when inactive.
+    stopHlprBridge();
     if (logoLiveAudioStream && logoLiveAudioStream.getTracks) {
       logoLiveAudioStream.getTracks().forEach((track) => safe(() => track.stop()));
     }

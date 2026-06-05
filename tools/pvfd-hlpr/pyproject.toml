@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pvfd-hlpr"
+version = "0.1.0"
+description = "Linux PipeWire audio bridge for the PioneerVFD Spicetify theme."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "adainstarks" }]
+keywords = ["spotify", "spicetify", "pipewire", "visualizer", "linux", "pioneervfd"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Capture/Recording",
+]
+dependencies = [
+    "numpy>=1.24",
+    "websockets>=11",
+]
+
+[project.scripts]
+pvfd-hlpr = "pvfd_hlpr:main"
+
+[project.urls]
+Homepage = "https://github.com/adainstarks/PVFD-Linux-Helper"
+"PioneerVFD theme" = "https://github.com/adainstarks/PioneerVFD"
+Issues = "https://github.com/adainstarks/PVFD-Linux-Helper/issues"
+
+[tool.setuptools]
+py-modules = ["pvfd_hlpr"]

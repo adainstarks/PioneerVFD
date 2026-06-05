@@ -4168,8 +4168,7 @@ html[data-pvfd-state="restoring"] .pvfd-page-blanket {
 
 @media (prefers-reduced-motion: reduce) {
   .pvfd-compact-stage .pvfd-lcd-status.paused {
-    animation: none;
-    opacity: 1;
+    animation: pvfd-lcd-pause-blink 1s steps(1, end) infinite;
   }
 }
 
