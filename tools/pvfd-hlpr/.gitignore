@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.installed.cfg
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Packaging
+build/
+dist/
+*.whl
+*.tar.gz
+*.spec
+
+# PyInstaller
+*.manifest
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Local mock testing
+node_modules/
+package-lock.json
