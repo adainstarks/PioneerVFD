@@ -520,6 +520,25 @@
   let clipVirtualMs = 0;
   let clipLastTsMs = 0;
 
+  // HLPR (Linux audio helper) bridge — see issue #16 and the Reddit thread
+  // with IpegFemboys. On Linux, xdg-desktop-portal often hides Spotify or
+  // omits the "Share system audio" checkbox, AND picking Spotify in the
+  // picker yields a silent track because Spotify outputs to PipeWire, not
+  // the renderer media element. pvfd-hlpr taps PipeWire directly and streams
+  // getByteFrequencyData-shaped bins over a localhost WebSocket. The bridge
+  // stubs logoLiveAudioAnalyser/Ctx/Bins so the existing
+  // readLogoLiveAudioMetrics pipeline works unchanged.
+  const HLPR_PROTOCOL_VERSION = 1;
+  const HLPR_DEFAULT_PORT = 17455;
+  const HLPR_WS_URL = `ws://127.0.0.1:${HLPR_DEFAULT_PORT}`;
+  const HLPR_OPT_OUT_STORAGE_KEY = "pvfd-hlpr-opt-out";
+  const HLPR_RELEASES_URL = "https://github.com/adainstarks/PVFD-Linux-Helper/releases/latest";
+  const HLPR_PROJECT_URL = "https://github.com/adainstarks/PVFD-Linux-Helper";
+  const HLPR_RECONNECT_MIN_MS = 250;
+  const HLPR_RECONNECT_MAX_MS = 4000;
+  const HLPR_FIRST_CONNECT_NOTIFY_MS = 8000;
+  const HLPR_VIRTUAL_SAMPLE_RATE = 48000;
+
   let logoLiveGuitarCentroidPrev = 0;
   let logoLiveGuitarMotionEnv = 0;
   let logoLiveStyleCache = Object.create(null);
@@ -695,25 +714,6 @@
   // 2048 gives ~23 Hz/bin at 48 kHz — coarser sizes (e.g. 256 → 187 Hz/bin) collapse
   // the 28–70 Hz SUB band and 70–160 Hz BASS band into the same bin.
   const DESKTOP_CAPTURE_FFT_SIZE = 2048;
-
-  // HLPR (Linux audio helper) bridge — see issue #16 and the Reddit thread
-  // with IpegFemboys. On Linux, xdg-desktop-portal often hides Spotify or
-  // omits the "Share system audio" checkbox, AND picking Spotify in the
-  // picker yields a silent track because Spotify outputs to PipeWire, not
-  // the renderer media element. pvfd-hlpr taps PipeWire directly and streams
-  // getByteFrequencyData-shaped bins over a localhost WebSocket. The bridge
-  // stubs logoLiveAudioAnalyser/Ctx/Bins so the existing
-  // readLogoLiveAudioMetrics pipeline works unchanged.
-  const HLPR_PROTOCOL_VERSION = 1;
-  const HLPR_DEFAULT_PORT = 17455;
-  const HLPR_WS_URL = `ws://127.0.0.1:${HLPR_DEFAULT_PORT}`;
-  const HLPR_OPT_OUT_STORAGE_KEY = "pvfd-hlpr-opt-out";
-  const HLPR_RELEASES_URL = "https://github.com/adainstarks/PVFD-Linux-Helper/releases/latest";
-  const HLPR_PROJECT_URL = "https://github.com/adainstarks/PVFD-Linux-Helper";
-  const HLPR_RECONNECT_MIN_MS = 250;
-  const HLPR_RECONNECT_MAX_MS = 4000;
-  const HLPR_FIRST_CONNECT_NOTIFY_MS = 8000;
-  const HLPR_VIRTUAL_SAMPLE_RATE = 48000;
   const TRACK_SYNC_INTERVAL_MS = 600;
   const BAR_UPDATE_INTERVAL_MS = 140;
   const PROGRESS_READOUT_INTERVAL_MS = 220;
