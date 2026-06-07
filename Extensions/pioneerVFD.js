@@ -533,7 +533,6 @@
   const HLPR_WS_URL = `ws://127.0.0.1:${HLPR_DEFAULT_PORT}`;
   const HLPR_OPT_OUT_STORAGE_KEY = "pvfd-hlpr-opt-out";
   const HLPR_OPT_IN_STORAGE_KEY = "pvfd-hlpr-opt-in";
-  const HLPR_RELEASES_URL = "https://github.com/adainstarks/PVFD-Linux-Helper/releases/latest";
   const HLPR_PROJECT_URL = "https://github.com/adainstarks/PVFD-Linux-Helper";
   const HLPR_RECONNECT_MIN_MS = 250;
   const HLPR_RECONNECT_MAX_MS = 4000;
@@ -5811,8 +5810,11 @@
       const fallback = () => {
         const ok = safeReturn(() => window.confirm(
           "PioneerVFD: PULSE on Linux needs the HLPR helper.\n\n" +
-          "Download pvfd-hlpr from:\n" + HLPR_RELEASES_URL + "\n\n" +
-          "Run it in a terminal, then click OK.\n" +
+          "Install pvfd-hlpr (one line):\n" +
+          "  pipx install git+" + HLPR_PROJECT_URL + ".git\n\n" +
+          "Then run once to hook it to Spotify launches:\n" +
+          "  pvfd-hlpr --with-spotify\n\n" +
+          "Click OK once it's installed and PULSE will connect.\n" +
           "Click Cancel to skip PULSE for this session."
         ), false);
         resolve(ok ? "yes" : "no");
@@ -5832,17 +5834,18 @@
         "</p>" +
         '<p style="margin:0 0 12px 0;line-height:1.45">' +
         "PVFD ships a small helper, <b>pvfd-hlpr</b>, that taps PipeWire directly. " +
-        "Download it, run it in a terminal, and PULSE will connect automatically." +
+        "Install it once, hook it to Spotify launches, and PULSE will connect automatically " +
+        "from then on — no terminal needed." +
         "</p>" +
+        '<pre style="background:#111;color:#7CFC7C;padding:10px;margin:0 0 12px 0;border-radius:4px;font-family:Consolas,monospace;font-size:12.5px;white-space:pre-wrap" data-pvfd-hlpr-cmd>' +
+        "pipx install git+" + HLPR_PROJECT_URL + ".git\n" +
+        "pvfd-hlpr --with-spotify" +
+        "</pre>" +
         '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px 0">' +
-        '<button type="button" data-pvfd-hlpr-action="download" style="padding:8px 14px;background:#0a84ff;color:#fff;border:0;border-radius:4px;cursor:pointer;font-weight:600">Download HLPR (Releases)</button>' +
+        '<button type="button" data-pvfd-hlpr-action="repo" style="padding:8px 14px;background:#0a84ff;color:#fff;border:0;border-radius:4px;cursor:pointer;font-weight:600">Open pvfd-hlpr on GitHub ↗</button>' +
         '<button type="button" data-pvfd-hlpr-action="yes" style="padding:8px 14px;background:#1db954;color:#000;border:0;border-radius:4px;cursor:pointer;font-weight:600">I\'m running it — connect</button>' +
         '<button type="button" data-pvfd-hlpr-action="no" style="padding:8px 14px;background:#444;color:#fff;border:0;border-radius:4px;cursor:pointer">Skip PULSE</button>' +
         "</div>" +
-        '<details style="margin:0 0 10px 0;font-size:12.5px;opacity:0.85">' +
-        '<summary style="cursor:pointer">From source / Arch users</summary>' +
-        '<pre style="background:#111;color:#7CFC7C;padding:10px;margin:8px 0 0 0;border-radius:4px;font-family:Consolas,monospace;font-size:12.5px;white-space:pre-wrap" data-pvfd-hlpr-cmd>pipx install git+https://github.com/adainstarks/PVFD-Linux-Helper.git &amp;&amp; pvfd-hlpr</pre>' +
-        "</details>" +
         '<label style="display:flex;align-items:center;gap:6px;font-size:12px;opacity:0.8">' +
         '<input type="checkbox" data-pvfd-hlpr-remember> Don\'t ask again on this profile' +
         "</label>";
@@ -5862,10 +5865,10 @@
         if (!action) return;
         const remember = container.querySelector('[data-pvfd-hlpr-remember]');
         const wantRemember = !!(remember && remember.checked);
-        if (action === "download") {
-          safe(() => window.open(HLPR_RELEASES_URL, "_blank", "noopener,noreferrer"));
+        if (action === "repo") {
+          safe(() => window.open(HLPR_PROJECT_URL, "_blank", "noopener,noreferrer"));
           target.textContent = "Opened ↗";
-          setTimeout(() => { if (target) target.textContent = "Download HLPR (Releases)"; }, 1600);
+          setTimeout(() => { if (target) target.textContent = "Open pvfd-hlpr on GitHub ↗"; }, 1600);
           return;
         }
         if (action === "yes") return finish(wantRemember ? "remember-yes" : "yes");
@@ -5945,7 +5948,7 @@
       const reason =
         "HLPR protocol mismatch (PVFD expects v" + HLPR_PROTOCOL_VERSION +
         ", HLPR sent v" + (Number.isFinite(remoteProto) ? remoteProto : "?") +
-        "). Update pvfd-hlpr from " + HLPR_RELEASES_URL;
+        "). Update pvfd-hlpr: pipx install --force git+" + HLPR_PROJECT_URL + ".git";
       pulseLiveFailureReason = reason;
       safe(() => Spicetify.showNotification && Spicetify.showNotification(reason));
       console.warn("[PVFD] " + reason);
