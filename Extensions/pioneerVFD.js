@@ -532,6 +532,7 @@
   const HLPR_DEFAULT_PORT = 17455;
   const HLPR_WS_URL = `ws://127.0.0.1:${HLPR_DEFAULT_PORT}`;
   const HLPR_OPT_OUT_STORAGE_KEY = "pvfd-hlpr-opt-out";
+  const HLPR_OPT_IN_STORAGE_KEY = "pvfd-hlpr-opt-in";
   const HLPR_RELEASES_URL = "https://github.com/adainstarks/PVFD-Linux-Helper/releases/latest";
   const HLPR_PROJECT_URL = "https://github.com/adainstarks/PVFD-Linux-Helper";
   const HLPR_RECONNECT_MIN_MS = 250;
@@ -5801,8 +5802,9 @@
   //
   // Consent modal — asks whether the user wants to launch the HLPR helper
   // instead of going through getDisplayMedia. Returns "yes" | "no" |
-  // "remember-no". "remember-no" persists the opt-out so we never ask again
-  // on this Spotify profile (clear with localStorage.removeItem to re-enable).
+  // "remember-yes" | "remember-no". The remember-* variants persist the
+  // user's choice so we don't ask again on this Spotify profile (clear with
+  // localStorage.removeItem to re-prompt).
   // Falls back to a confirm() if Spicetify.PopupModal isn't available.
   function showHlprConsentModal() {
     return new Promise((resolve) => {
@@ -5866,7 +5868,7 @@
           setTimeout(() => { if (target) target.textContent = "Download HLPR (Releases)"; }, 1600);
           return;
         }
-        if (action === "yes") return finish("yes");
+        if (action === "yes") return finish(wantRemember ? "remember-yes" : "yes");
         if (action === "no") return finish(wantRemember ? "remember-no" : "no");
       });
 
@@ -6073,14 +6075,27 @@
     if (hlprBridgePending) return true;
     if (hlprConsentInFlight) return false;
     desktopCapturePending = false;
+    const persistedOptInValue = safeReturn(
+      () => window.localStorage.getItem(HLPR_OPT_IN_STORAGE_KEY),
+      null
+    );
+    const persistedOptIn = persistedOptInValue === "ON";
     const persistedOptOutValue = safeReturn(
       () => window.localStorage.getItem(HLPR_OPT_OUT_STORAGE_KEY),
       null
     );
     const persistedOptOut = persistedOptOutValue === "ON" || persistedOptOutValue === "yes";
+    if (persistedOptIn) {
+      hlprBridgePending = true;
+      pulseLiveFailureReason = "";
+      armHlprFirstConnectNotify();
+      connectHlprSocket();
+      updateMenuPanel();
+      return true;
+    }
     if (persistedOptOut) {
       pulseLiveFailureReason =
-        "HLPR opt-out remembered — clear localStorage key " + HLPR_OPT_OUT_STORAGE_KEY + " to re-enable";
+        "HLPR opt-out remembered — clear localStorage keys " + HLPR_OPT_OUT_STORAGE_KEY + " / " + HLPR_OPT_IN_STORAGE_KEY + " to re-prompt";
       return false;
     }
     hlprConsentInFlight = true;
@@ -6100,6 +6115,9 @@
       pulseLiveFailureReason = "HLPR declined";
       updateMenuPanel();
       return false;
+    }
+    if (consent === "remember-yes") {
+      safe(() => window.localStorage.setItem(HLPR_OPT_IN_STORAGE_KEY, "ON"));
     }
     hlprBridgePending = true;
     desktopCapturePending = false;
