@@ -14,7 +14,7 @@ Miss the old 2000s Pioneer head units? Wish you could still have those dolphins 
 
 PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 2000s Pioneer-style VFD/LCD stereo interface. It replaces the stock lower player area with a chrome head-unit panel, WebM OEL animations, expanded RGB and mono display modes, hardware-style readouts, ATT-style muting, and live audio spectrum bars around the center badge.
 
-**Latest Build** - v4.0.1 marketplace build, right-click now-playing context menu for track data in skinny LCD, LCD divider with clickable play/pause glyph in the meta track, Ever Scroll for long track data in skinny LCD, classic Pioneer logo font (Musieer) option, italic hardware silk labels with smaller W&times;4, and contrast polish for add-to-playlist scrollbars. Fixes unreadable tint in certain areas. PLAY/PAUSE and time readout overlay for the VFD.
+**Latest Build** - v4.0.3 marketplace build, adds the Linux `PULSE` helper bridge for systems where Spotify is not available as a Chromium audio capture source. Keeps the v4.0 controls, Ever Scroll skinny LCD metadata, clickable play/pause glyph, classic Pioneer logo font option, OEL/VFD playback readouts, and recent display polish.
 
 ## Preview
 
@@ -42,7 +42,7 @@ PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 
 - Adds an `ATT` button for instant mute/restore behavior.
 - Uses `LST` for the queue/list control.
 - Adds mirrored live spectrum bars around the center badge logo.
-- Uses Chromium desktop audio capture for the `PULSE` live visualizer.
+- Uses Chromium desktop audio capture for the `PULSE` live visualizer on Windows/macOS, with an optional Linux helper bridge.
 - Adds a two-page `PIONEER MENU` / `CUSTOMIZE MENU` layout.
 - Includes 15 tint modes: cyan, teal, lime, amber, orange, red, pink, magenta, violet, blue, green, yellow, indigo, black-on-white, and white-on-black.
 - Includes `FULL` and `ECO` performance modes for different machines.
@@ -72,7 +72,7 @@ The Pioneer `MENU` button opens the main runtime controls:
 - `OEL` cycles the WebM OEL clip.
 - `DEMO` auto-cycles OEL clips without changing the saved startup clip.
 - `PERF` switches between `FULL` and `ECO`.
-- `PULSE` toggles Chromium live audio capture for the logo spectrum.
+- `PULSE` toggles live audio capture for the logo spectrum.
 - `VFD` toggles the large OEL display on and off.
 - `CUSTOMIZE` opens the appearance controls.
 
@@ -93,8 +93,11 @@ Faceplate and transport controls include:
 - The `EEQ` silk label can tint-match now by clicking it.
 - The lyrics button opens Spotify lyrics while avoiding Beautiful Lyrics / Spicy Lyrics takeover routes.
 
-`PULSE` in current state only works for Mac and Windows.
-`PULSE` starts from `OFF` on launch so Spotify does not reopen desktop/system audio capture by itself. Turn it on from the menu when you want live bars, then select a capture source with audio when Chromium asks.
+On Windows and macOS, `PULSE` uses Chromium desktop audio capture. Turn it on from the menu when you want live bars, then select a capture source with audio when Chromium asks.
+
+On Linux, Chromium/Spotify often does not expose Spotify audio through the capture picker. PioneerVFD v4.0.3 includes the `HLPR` bridge for [PVFD-Linux-Helper](https://github.com/adainstarks/PVFD-Linux-Helper). Install and run the helper, then press `PULSE`; the menu row switches to `HLPR` when PioneerVFD is receiving helper audio.
+
+`PULSE` starts from `OFF` on launch so Spotify does not reopen desktop/system audio capture or reconnect the Linux helper by itself.
 
 Saved preferences include `PERF`, `TINT`, `DIM`, `TYPE`, selected `OEL` clip, `VFD`, racing color mode, dark chrome, EEQ tint, and transport button glow. `PULSE` intentionally boots idle even if it was previously enabled.
 
@@ -109,7 +112,8 @@ Saved preferences include `PERF`, `TINT`, `DIM`, `TYPE`, selected `OEL` clip, `V
 - Spotify desktop
 - Spicetify CLI installed and initialized
 - A Spotify/Chromium build that supports extension APIs through Spicetify
-- For `PULSE`: Chromium desktop capture support with audio sharing
+- For `PULSE` on Windows/macOS: Chromium desktop capture support with audio sharing
+- For `PULSE` on Linux: optional [PVFD-Linux-Helper](https://github.com/adainstarks/PVFD-Linux-Helper), plus PipeWire/PulseAudio capture tools such as `pactl`/`parec` or `pw-record`
 
 ## Install
 
@@ -118,6 +122,8 @@ Saved preferences include `PERF`, `TINT`, `DIM`, `TYPE`, selected `OEL` clip, `V
 If the Spicetify Marketplace package is available and up to date, install `PioneerVFD` from Marketplace.
 
 Marketplace currently points at the versioned marketplace CSS/JS files published through this repository. The marketplace path fetches WebM clips from the GitHub Pages asset paths and caches them in IndexedDB after successful playback.
+
+Linux Marketplace users who want `PULSE` should also install the Linux helper below. Marketplace installs the PioneerVFD bridge, but the helper itself runs locally on your machine.
 
 If the OEL screen is blank, clips do not play, or Spotify/Spicetify does not expose the APIs the extension needs, use one of the script installs below. The script installs are the reference path for setting the correct Spicetify config and preserving any existing extensions already enabled.
 
@@ -150,6 +156,17 @@ You are in the right folder if you see `install-linux.sh`, `Themes`, and `Extens
 chmod +x ./install-linux.sh
 ./install-linux.sh
 ```
+
+### Linux PULSE Helper
+
+After installing PioneerVFD from Marketplace or the Linux installer, install the helper separately if you want `PULSE`:
+
+```bash
+pipx install git+https://github.com/adainstarks/PVFD-Linux-Helper.git
+pvfd-hlpr --with-spotify
+```
+
+`pvfd-hlpr --with-spotify` hooks your user-level Spotify launcher so the helper starts with Spotify in the background. If you prefer a manual terminal session, run `pvfd-hlpr` and leave it open while Spotify is running. Use `pvfd-hlpr --probe` when debugging sink/source detection.
 
 ### macOS Install
 
@@ -217,11 +234,12 @@ PioneerVFD/
 ## Notes
 
 - The Marketplace and script installs fetch OEL/WebM clips over the network on first use. Once a clip has loaded successfully, PioneerVFD attempts to reuse the cached IndexedDB copy.
-- `Extensions/pioneerVFD.js` owns the head-unit runtime, ATT state, menu behavior, WebM OEL state, Chromium live audio capture, route state, and visualizer logic.
+- `Extensions/pioneerVFD.js` owns the head-unit runtime, ATT state, menu behavior, WebM OEL state, Chromium/HLPR live audio capture, route state, and visualizer logic.
 - `Themes/PioneerVFD/user.css` owns the chrome body, LCD/OEL styling, tint and mono palettes, app-wide Spotify styling, route-specific layout, and performance gates.
 - `Themes/PioneerVFD/color.ini` defines the `PioneerVFD` Spicetify color scheme.
 - Manual raw-copy installs are not recommended because the theme depends on several Spicetify config flags and exposed APIs.
-- If `PULSE` has no signal, turn it off and on again, then pick a capture source that includes audio.
+- If `PULSE` has no signal on Windows/macOS, turn it off and on again, then pick a capture source that includes audio.
+- If `PULSE` has no signal on Linux, install/run `pvfd-hlpr`, then check that the `PULSE` menu row says `HLPR`. Run `pvfd-hlpr --probe` if it does not detect Spotify audio.
 - If the OEL screen is blank after a manual copy, rerun the platform installer and open Spotify once while online.
 - `DISP` is implemented as the Pioneer-logo fullscreen display prompt. `ATT`, `LST`, `SRC`, `EJECT`, and `BAND/FM` behavior live in the extension runtime.
 - If macOS opens Spotify to a black screen or the Pioneer player appears without working JavaScript, fully quit Spotify and rerun:
