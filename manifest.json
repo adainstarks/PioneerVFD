@@ -3,10 +3,10 @@
     "description": "A retro 2000s Pioneer stereo-inspired Spicetify theme with chrome panels, VFD/LCD styled displays, and original OEL-style animations.",
     "preview": "assets/preview.png",
     "readme": "README.md",
-    "usercss": "https://adainstarks.github.io/PioneerVFD/Themes/PioneerVFD/user.marketplace.v4.0.2.css",
+    "usercss": "https://adainstarks.github.io/PioneerVFD/Themes/PioneerVFD/user.marketplace.v4.0.3.css",
     "schemes": "Themes/PioneerVFD/color.ini",
     "include": [
-        "https://adainstarks.github.io/PioneerVFD/Extensions/pioneerVFD.marketplace.v4.0.2.js"
+        "https://adainstarks.github.io/PioneerVFD/Extensions/pioneerVFD.marketplace.v4.0.3.js"
     ],
     "authors": [
         {
