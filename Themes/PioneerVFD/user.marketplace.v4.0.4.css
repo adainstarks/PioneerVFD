@@ -10371,6 +10371,23 @@ body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[ar
   transform: none !important;
 }
 
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label^="Play" i] svg,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label*="Preview" i] svg,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label*="Pause" i] svg,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label^="Play" i] svg,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label*="Preview" i] svg,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label*="Pause" i] svg,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label^="Play" i] svg,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label*="Preview" i] svg,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label*="Pause" i] svg {
+  filter:
+    drop-shadow(0 1px 0 rgba(0, 0, 0, 0.58))
+    drop-shadow(0 0 1px rgba(0, 0, 0, 0.42))
+    drop-shadow(0 -1px 0 rgba(255, 255, 255, 0.22))
+    drop-shadow(0 0 3px rgba(var(--pvfd-accent-rgb), 0.18)) !important;
+  overflow: visible !important;
+}
+
 /* #18 (comments 2-3): the expanded "fullscreen" library renders inside
    .Root__nav-bar — outside every .Root__main-view-scoped play-FAB rule above —
    so its grid cards showed Spotify's stock green FAB and default hover tints
@@ -10450,6 +10467,17 @@ body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playBut
   margin: auto !important;
   stroke: currentColor !important;
   transform: none !important;
+}
+
+body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playButton-PlayButton
+  button:is([aria-label^="Play" i], [aria-label*="Pause" i], [aria-label*="Preview" i])
+  svg {
+  filter:
+    drop-shadow(0 1px 0 rgba(0, 0, 0, 0.58))
+    drop-shadow(0 0 1px rgba(0, 0, 0, 0.42))
+    drop-shadow(0 -1px 0 rgba(255, 255, 255, 0.22))
+    drop-shadow(0 0 3px rgba(var(--pvfd-accent-rgb), 0.18)) !important;
+  overflow: visible !important;
 }
 
 /* Tracklist rows keep Spotify's row geometry: glyph only, no button body. */
@@ -11657,6 +11685,45 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-card-Pl
   fill: #ffffff !important;
   stroke: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Same white-glyph fix for the fullscreen-library FABs (#18): the nav-bar
+   chrome key-cap rule colors the glyph var(--pvfd-accent), which resolves to
+   black ink in B-ON-W. Mirror the main-view override above so BOW reads like
+   WOB here too. */
+html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playButton-PlayButton
+  button:is([aria-label^="Play" i], [aria-label*="Pause" i], [aria-label*="Preview" i]) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playButton-PlayButton
+  button:is([aria-label^="Play" i], [aria-label*="Pause" i], [aria-label*="Preview" i]) * {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Universal play-FAB glyph emboss: keep the fill tint-aware/white, but draw a
+   subtle dark stroke behind it so the icon survives the chrome cap's white
+   glare without reading as a heavy outline. */
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label^="Play" i] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label*="Preview" i] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label*="Pause" i] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label^="Play" i] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label*="Preview" i] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label*="Pause" i] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label^="Play" i] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label*="Preview" i] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label*="Pause" i] svg :is(path, polygon, rect),
+body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playButton-PlayButton
+  button:is([aria-label^="Play" i], [aria-label*="Pause" i], [aria-label*="Preview" i]) svg :is(path, polygon, rect) {
+  fill: currentColor !important;
+  paint-order: stroke fill !important;
+  stroke: rgba(0, 0, 0, 0.46) !important;
+  stroke-linejoin: round !important;
+  stroke-width: 1.1px !important;
+  vector-effect: non-scaling-stroke !important;
 }
 
 /* Right sidebar Now Playing — TOP region only
@@ -13653,4 +13720,3 @@ body.pvfd-theme-active .Iag_FD63ISoBROKL {
   line-height: 0 !important;
   border-radius: 4px !important;
 }
-
