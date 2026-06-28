@@ -1,7 +1,8 @@
 name: Track traffic
 
-# Snapshots GitHub's 14-day traffic data into the repo so we keep
-# indefinite history. Runs weekly + on-demand.
+# Snapshots GitHub's 14-day traffic data into the dedicated `traffic` branch
+# (an orphan branch with no shared history with main) so main's commit history
+# stays free of weekly bot commits. Runs weekly + on-demand.
 on:
   schedule:
     # Mondays at 03:30 UTC. Cadence < 14 days so daily entries never
@@ -16,7 +17,12 @@ jobs:
   collect:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Check out the data branch, not main — every commit this job makes
+      # lands on `traffic`, never on main.
+      - name: Check out the traffic data branch
+        uses: actions/checkout@v4
+        with:
+          ref: traffic
 
       - name: Fetch traffic snapshots
         env:
@@ -72,5 +78,6 @@ jobs:
             echo "No traffic changes to commit."
           else
             git commit -m "Update traffic snapshots ($(date -u +%Y-%m-%d))"
-            git push
+            # Push back to the data branch only.
+            git push origin HEAD:traffic
           fi
