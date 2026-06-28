@@ -45,7 +45,7 @@ PioneerVFD is a Spicetify theme and extension that turns Spotify desktop into a 
 - Includes 15 tint modes: cyan, teal, lime, amber, orange, red, pink, magenta, violet, blue, green, yellow, indigo, black-on-white, and white-on-black.
 - Includes `FULL` and `ECO` performance modes for different machines.
 - Includes period-correct BAND button to cycle through old archive.org radio broadcasts.
-- Includes a full screen display mode. Click on the center pioneer wordmark to access.
+- Includes a full-screen display mode. Click on the center pioneer wordmark to access.
 
 ## OEL And Media
 
@@ -61,7 +61,7 @@ The center OEL/VFD display is WebM-based. The current clip set includes:
 
 All builds load the clips from the published GitHub Pages asset paths. PioneerVFD stores successful clip fetches in IndexedDB, so clips can continue working from cache when the browser has already seen them.
 
-You can also bring your own clip. In the `CUSTOMIZE MENU`, the `OEL` control opens an importer for a local `.webm` file (up to 25 MB) that becomes an extra OEL clip. It joins the normal clip rotation, cycles in `DEMO`, persists across restarts, and is stored locally in IndexedDB. Animated GIFs must be converted to WebM first; hosted URLs and multiple custom clips are not supported — there is one custom slot, which you can replace or remove.
+You can also bring your own clip. In the `CUSTOMIZE MENU`, the `OEL` control opens an importer for a local `.webm` file (up to 25 MB) that becomes an extra OEL clip. It joins the normal clip rotation, cycles in `DEMO`, persists across restarts, and is stored locally in IndexedDB. Animated GIFs must be converted to WebM first; hosted URLs and multiple custom clips are not supported. There is one custom slot, which you can replace or remove.
 
 The racing clip and an imported custom clip honor a `COLOR` toggle in the `CUSTOMIZE MENU`. By default they follow the current VFD tint; switching `COLOR` to `ON` lets them keep their full-color look while the rest of the theme stays tint-aware. You can also click the OEL display to toggle it.
 
