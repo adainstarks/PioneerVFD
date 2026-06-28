@@ -61,7 +61,9 @@ The center OEL/VFD display is WebM-based. The current clip set includes:
 
 All builds load the clips from the published GitHub Pages asset paths. PioneerVFD stores successful clip fetches in IndexedDB, so clips can continue working from cache when the browser has already seen them.
 
-The racing clip has its own `RACING` color mode. By default it follows the current VFD tint; switching `RACING` to `COLOR` lets that clip keep its full-color look while the rest of the theme stays tint-aware.
+You can also bring your own clip. In the `CUSTOMIZE MENU`, the `OEL` control opens an importer for a local `.webm` file (up to 25 MB) that becomes an extra OEL clip. It joins the normal clip rotation, cycles in `DEMO`, persists across restarts, and is stored locally in IndexedDB. Animated GIFs must be converted to WebM first; hosted URLs and multiple custom clips are not supported — there is one custom slot, which you can replace or remove.
+
+The racing clip and an imported custom clip honor a `COLOR` toggle in the `CUSTOMIZE MENU`. By default they follow the current VFD tint; switching `COLOR` to `ON` lets them keep their full-color look while the rest of the theme stays tint-aware. You can also click the OEL display to toggle it.
 
 ## Controls
 
@@ -78,8 +80,9 @@ The `CUSTOMIZE MENU` contains:
 
 - `TINT` opens the 15-mode tint picker.
 - `TYPE` switches the Spotify content font preset.
-- `RACING` switches the racing clip between one-color tint mode and full-color mode.
-- `BUTTON` toggles transport button LED glow.
+- `COLOR` switches the racing and custom OEL clips between one-color tint mode and full-color mode.
+- `BUTTON` cycles transport button LED glow: `SOFT`, `HARD`, or `OFF`.
+- `OEL` imports, replaces, or removes your custom WebM clip.
 - `DARK` toggles dark chrome plastic.
 
 Faceplate and transport controls include:
@@ -97,7 +100,7 @@ On Linux, Chromium/Spotify often does not expose Spotify audio through the captu
 
 `PULSE` starts from `OFF` on launch so Spotify does not reopen desktop/system audio capture or reconnect the Linux helper by itself.
 
-Saved preferences include `PERF`, `TINT`, `DIM`, `TYPE`, selected `OEL` clip, `VFD`, racing color mode, dark chrome, EEQ tint, and transport button glow. `PULSE` intentionally boots idle even if it was previously enabled.
+Saved preferences include `PERF`, `TINT`, `DIM`, `TYPE`, selected `OEL` clip (including an imported custom clip), `VFD`, `COLOR` mode, dark chrome, EEQ tint, and transport button glow. `PULSE` intentionally boots idle even if it was previously enabled.
 
 ## Performance
 
