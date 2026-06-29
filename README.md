@@ -1,7 +1,7 @@
 <img width="2000" height="668" alt="PioneerVFD logo" src="https://github.com/user-attachments/assets/d84f1508-fee8-4ebd-b3b5-8600e1bec88e" />
 
 > Unofficial fan-made Spicetify theme. Not affiliated with Pioneer Corporation.
-> ENGLISH Spotify Only! Will break on other languages!
+> Might break on non-English Spotify!
 > If you enjoy PioneerVFD, starring the repo helps more people find it.
 
 <p align="center">
