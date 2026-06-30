@@ -36,7 +36,7 @@ Import your own clips: https://www.youtube.com/watch?v=QuRZPHMGhso
 - Chrome Pioneer head-unit panel replacing Spotify's lower player.
 - WebM OEL center display with authentic Pioneer clips, streamed from GitHub Pages and cached in IndexedDB after first play.
 - **`GAUGES`**: audio-reactive twin VFD needles, driven by `PULSE`. *(new)*
-- **`PIONEERVFD`**: signature hero clip, the Night Cruising loop with an animated logo sting. *(new)*
+- **`PIONEERVFD`**: signature clip, the Night Cruising loop with an animated logo sting. *(new)*
 - Metadata LCDs: artist, title, playtime, ATT, tint, dim, mode, clip, and playback.
 - 15 tints: cyan, teal, lime, amber, orange, red, pink, magenta, violet, blue, green, yellow, indigo, black-on-white, white-on-black.
 - `PULSE` live spectrum bars via Chromium desktop audio capture (Windows/macOS) or a Linux helper bridge.
