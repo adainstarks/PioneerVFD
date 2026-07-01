@@ -13,7 +13,7 @@ Miss the old 2000s Pioneer head units, dolphins swimming while you bump tunes? N
 
 PioneerVFD turns Spotify desktop into a 2000s Pioneer-style VFD/LCD car stereo. It replaces the stock lower player with a chrome head-unit: WebM OEL animations, RGB and mono display modes, hardware-style readouts, ATT muting, and live spectrum bars around the center badge.
 
-**v4.0.7:** **Spicy-Lyrics compatibility**, truer violet/blue/indigo tints ([#28](https://github.com/adainstarks/PioneerVFD/issues/28)), the first audio-reactive OEL clip (`GAUGES`), the `PIONEERVFD` clip, and a leaner runtime.
+**v4.0.8:** **Spicy-Lyrics compatibility**, truer violet/blue/indigo tints ([#28](https://github.com/adainstarks/PioneerVFD/issues/28)), the first audio-reactive OEL clip (`GAUGES`), the `PIONEERVFD` clip, and a leaner runtime.
 
 Import your own clips: https://www.youtube.com/watch?v=QuRZPHMGhso
 
