@@ -17,6 +17,13 @@ PioneerVFD turns Spotify desktop into a 2000s Pioneer-style VFD/LCD car stereo. 
 
 Import your own clips: https://www.youtube.com/watch?v=QuRZPHMGhso
 
+## Got feedback or suggestions?
+
+Open an issue, or reach out to me at:
+
+* Discord: @dollarsign
+* Reddit: u/Confident-Change-664
+
 ## Preview
 
 <img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/7da1f0dc-0cf9-4fdf-b556-beff8cc96820" />
