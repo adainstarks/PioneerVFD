@@ -19,7 +19,7 @@ Import your own clips: https://www.youtube.com/watch?v=QuRZPHMGhso
 
 ## Got feedback or suggestions?
 
-Open an issue, or reach out to me at:
+Open an issue, use the discussions tab, or reach out to me at:
 
 * Discord: @dollarsign
 * Reddit: u/Confident-Change-664
