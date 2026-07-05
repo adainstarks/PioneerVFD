@@ -13,9 +13,7 @@ Miss the old 2000s Pioneer head units, dolphins swimming while you bump tunes? N
 
 PioneerVFD turns Spotify desktop into a 2000s Pioneer-style VFD/LCD car stereo. It replaces the stock lower player with a chrome head-unit: WebM OEL animations, RGB and mono display modes, hardware-style readouts, ATT muting, and live spectrum bars around the center badge.
 
-**v4.1.0:** **Adaptive Tint** (the display recolors to your album art), a **State Flash** LCD takeover for EJECT/TUNER/LYRICS/CINEMA, remapped DAB controls (BAND tunes stations, ±10s seek, artist/context shortcuts) with debounced seeking, persistent lyrics lamp state, a truer base cyan phosphor ramp, and LCD play/pause + low-zoom layout fixes.
-
-**v4.0.8:** **Spicy-Lyrics compatibility**, truer violet/blue/indigo tints ([#28](https://github.com/adainstarks/PioneerVFD/issues/28)), the first audio-reactive OEL clip (`GAUGES`), the `PIONEERVFD` clip, and a leaner runtime.
+**v4.1.0:** **Adaptive Tint** (the display recolors to your album art), a **State Flash** LCD takeover for EJECT/TUNER/LYRICS/CINEMA, remapped DAB controls, persistent lyrics lamp state, a truer base cyan phosphor ramp, and LCD play/pause + low-zoom layout fixes.
 
 Import your own clips: https://www.youtube.com/watch?v=QuRZPHMGhso
 
@@ -65,7 +63,7 @@ The center display rotates through a set of authentic Pioneer OEL clips, includi
 
 **`MENU`**: `OEL` (cycle clip), `DEMO` (auto-cycle without changing the saved startup clip), `PERF` (FULL/ECO), `PULSE` (live audio), `VFD` (display on/off), `CUSTOMIZE`.
 
-**`CUSTOMIZE`**: `TINT` (15-mode picker), `TYPE` (Spotify content font), `COLOR` (tint vs full-color clips), `BUTTON` (LED glow: SOFT/HARD/OFF), `OEL` (import/replace/remove custom clip), `DARK` (dark chrome).
+**`CUSTOMIZE`**: `TINT` (15-mode picker + `ADAPTIVE`), `TYPE` (Spotify content font), `COLOR` (tint vs full-color clips), `BUTTON` (LED glow: SOFT/HARD/OFF), `OEL` (import/replace/remove custom clip), `DARK` (dark chrome).
 
 **Faceplate**: `ATT` (instant mute, restores on next press; exits when you adjust volume), `DIM` (LCD brightness), `LST` (queue), `EEQ` (click to tint-match), lyrics button (opens Spotify lyrics, avoids Beautiful/Spicy Lyrics takeover).
 
