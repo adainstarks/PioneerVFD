@@ -26,6 +26,9 @@ Open an issue, use the discussions tab, or reach out to me at:
 
 ## Preview
 
+<p align="center">
+<img width="800" height="450" alt="PVFDGIFloop_new" src="https://github.com/user-attachments/assets/5c18a9a2-dc6d-4bd7-9877-20833dc9c0bf" />
+
 <img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/7da1f0dc-0cf9-4fdf-b556-beff8cc96820" />
 
 > Default state with PULSE = ON, LCD = DSEG14
@@ -34,9 +37,8 @@ Open an issue, use the discussions tab, or reach out to me at:
 
 > TINT = LIME, DARK = ON, PULSE = ON, SCROLL = LOOP, LCD = DSEG14
 
-<p align="center">
-<img width="800" height="450" alt="PVFDGIFloop" src="https://github.com/user-attachments/assets/e515bd3e-10eb-4e24-86eb-c2729c28aedf" />
-</p>
+
+
 
 ## Features
 
