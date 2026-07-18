@@ -65,4 +65,4 @@ if ($configuredExtensions -notmatch "pioneerVFD\.js") {
 }
 
 
-Write-Host "PioneerVFD installed and applied with Chromium-only PULSE and the WebM-only OEL clip set."
+Write-Host "PioneerVFD installed and applied successfully."
