@@ -13280,9 +13280,9 @@ body.pvfd-cinema-active .pvfd-fsd-tab { display: none !important; }
   border-color: rgba(var(--pvfd-light-rgb), 0.9);
 }
 /* The sliver that stays on screen. A segmented light pipe rather than one solid
-   bar: 5 lit cells of 5px on a 3px gap fills the 40px exactly, so the parked
-   rail reads as a column of VFD segments — the same vocabulary as the rest of
-   the chassis — instead of an anonymous glowing stub. */
+   bar: five lit cells with the gaps between them, so the parked rail reads as
+   a column of VFD segments — the same vocabulary as the rest of the chassis —
+   instead of an anonymous glowing stub. Geometry on the rule below. */
 .pvfd-fsd-tab-grip {
   width: 3px;
   /* 37px = five 5px bands with four 3px gaps BETWEEN them. At 40px the bar was
@@ -13473,15 +13473,6 @@ body[data-pvfd-art-px="on"] .pvfd-cinema-art-frame::before { content: "UNDITHER"
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-.pvfd-cinema-controls-row {
-  font-size: 11px;
-  letter-spacing: 1.2px;
-  color: var(--pvfd-cyan-mid);
-  text-align: center;
-  padding: 12px;
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(var(--pvfd-light-deep-rgb), 0.3);
 }
 
 /* Cinema lyrics + OEL fallback panel */
@@ -13714,15 +13705,6 @@ body[data-pvfd-playing="0"]
 .pvfd-cinema-lyric-line.active .pvfd-cinema-lyric-text[data-pvfd-t][data-pvfd-scan="off"]::after {
   content: none;
 }
-.pvfd-cinema-oel {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  background: #000;
-}
-
 /* Cinema no-lyrics fallback — giant title + animated tint bars. */
 .pvfd-cinema-no-lyrics {
   position: absolute;
@@ -14654,8 +14636,7 @@ html[data-pvfd-tint="bow"] .pvfd-disp-prompt-btn {
 html[data-pvfd-tint="bow"] .pvfd-cinema { background: var(--pvfd-lcd-void); }
 /* Insets on the paper: white cards behind hairline rules, not black wells. */
 html[data-pvfd-tint="bow"] .pvfd-cinema-body,
-html[data-pvfd-tint="bow"] .pvfd-cinema-controls,
-html[data-pvfd-tint="bow"] .pvfd-cinema-controls-row {
+html[data-pvfd-tint="bow"] .pvfd-cinema-controls {
   background: rgba(255, 255, 255, 0.62);
 }
 /* The CRT overlays invert with the surface. Screen-blended stripes and white
