@@ -37,7 +37,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
-    timeout-minutes: 35
+    timeout-minutes: 50
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
@@ -68,7 +68,7 @@ jobs:
             exit 1
           fi
 
-          build_version="${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          build_version="$GITHUB_SHA"
           payload="$({
             jq -n \
               --argjson artifact_id "$artifact_id" \
@@ -101,7 +101,7 @@ jobs:
           echo "page_url=$page_url" >>"$GITHUB_OUTPUT"
           echo "Created Pages deployment $deployment_id."
 
-          deadline=$((SECONDS + 1800))
+          deadline=$((SECONDS + 2700))
           while (( SECONDS < deadline )); do
             status="$({
               gh api \
@@ -121,5 +121,5 @@ jobs:
             sleep 15
           done
 
-          echo "Pages deployment did not finish within 30 minutes; leaving it intact for GitHub to complete." >&2
+          echo "Pages deployment did not finish within 45 minutes; leaving it intact for GitHub to complete." >&2
           exit 1
