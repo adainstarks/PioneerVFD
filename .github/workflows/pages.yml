@@ -47,6 +47,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          echo "Finding the Pages artifact for this workflow run."
           artifact_id="$({
             gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
               --jq '[.artifacts[] | select(.name == "github-pages")][0].id'
@@ -56,6 +57,7 @@ jobs:
             exit 1
           fi
 
+          echo "Requesting the GitHub Actions OIDC token."
           oidc_token="$({
             curl --fail-with-body --silent --show-error \
               -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
@@ -74,17 +76,27 @@ jobs:
               --arg oidc_token "$oidc_token" \
               '{artifact_id: $artifact_id, pages_build_version: $pages_build_version, oidc_token: $oidc_token}'
           })"
+          echo "Creating Pages deployment $build_version."
+          set +e
           response="$({
             gh api --method POST \
               "repos/${GITHUB_REPOSITORY}/pages/deployments" \
               --input - <<<"$payload"
-          })"
+          } 2>&1)"
+          create_exit=$?
+          set -e
 
-          deployment_id="$(jq -r '.id // (.status_url | rtrimstr("/") | split("/")[-1])' <<<"$response")"
-          page_url="$(jq -r '.page_url // empty' <<<"$response")"
-          if [[ -z "$deployment_id" || "$deployment_id" == "null" ]]; then
-            echo "GitHub did not return a Pages deployment ID." >&2
-            exit 1
+          deployment_id="$build_version"
+          page_url=""
+          if (( create_exit == 0 )); then
+            page_url="$(jq -r '.page_url // empty' <<<"$response")"
+          elif gh api \
+            "repos/${GITHUB_REPOSITORY}/pages/deployments/${deployment_id}" \
+            >/dev/null 2>&1; then
+            echo "The create response was unavailable, but GitHub accepted the deployment."
+          else
+            echo "$response" >&2
+            exit "$create_exit"
           fi
           echo "page_url=$page_url" >>"$GITHUB_OUTPUT"
           echo "Created Pages deployment $deployment_id."
