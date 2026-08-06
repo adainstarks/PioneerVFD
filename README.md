@@ -13,9 +13,7 @@ Miss the old 2000s Pioneer head units, dolphins swimming while you bump tunes? N
 
 PioneerVFD turns Spotify desktop into a 2000s Pioneer-style VFD/LCD car stereo. It replaces the stock lower player with a chrome head-unit: WebM OEL animations, RGB and mono display modes, hardware-style readouts, ATT muting, and live spectrum bars around the center badge.
 
-**v5.0.0:** The full screen display becomes its own player. A **pull-out tab** on the lyrics page opens it, and a **left rail** slides out three panels over the album art: **PLAY** (Liked Songs and your playlists, with any track playable in context), **QUEUE**, and **TINT**. **UP NEXT** fades in on the album line for the last 10% of a track, and a tint-aware scan crosses the artwork every 45 seconds. Lyrics get a **scan ridge** fitted to each line's real duration, matched on both the display and Spotify's own lyrics page, plus DSEG14 sizing that no longer moves when TYPE changes and support for Korean/Japanese translation extensions. **ART** dithers the cover art and now runs alongside ADAPTIVE. LYRICS always opens and closes, with PioneerVFD's own no-lyrics panel in place of Spotify's. B-ON-W prints the full screen display rather than inverting it.
-
-**v4.1.0:** **Adaptive Tint** (the display recolors to your album art), a **State Flash** LCD takeover for EJECT/BAND/LYRICS/CINEMA (fullscreen mode), remapped DAB controls, persistent lyrics lamp state, a truer base cyan phosphor ramp, and LCD play/pause + low-zoom layout fixes.
+**v5.0.0:** Full-screen display and lyrics major revamp. Other fixes.
 
 Import your own clips: https://www.youtube.com/watch?v=QuRZPHMGhso
 
@@ -46,13 +44,13 @@ Open an issue, use the discussions tab, or reach out to me at:
 
 - Chrome Pioneer head-unit panel replacing Spotify's lower player.
 - WebM OEL center display with authentic Pioneer clips, streamed from GitHub Pages and cached in IndexedDB after first play.
-- **`GAUGES`**: audio-reactive twin VFD needles, driven by `PULSE`. *(new)*
-- **`PIONEERVFD`**: signature clip, the Night Cruising loop with an animated logo sting. *(new)*
 - Metadata LCDs: artist, title, playtime, ATT, tint, dim, mode, clip, and playback.
 - 15 tints: cyan, teal, lime, amber, orange, red, pink, magenta, violet, blue, green, yellow, indigo, black-on-white, white-on-black.
 - `PULSE` live spectrum bars via Chromium desktop audio capture (Windows/macOS) or a Linux helper bridge.
 - `ATT` instant mute/restore, `LST` queue, `BAND` archive.org radio broadcasts, fullscreen mode (click the center wordmark).
 - `FULL` / `ECO` performance modes.
+- `ART` - Dither album art in Full screen display or in the Now Playing View.
+- Full-Screen Display - access from either Spotify lyrics (right side tab) or via the _Pioneer_ wordmark.
 - Import your own `.webm` OEL clip (up to 25 MB).
 
 ## OEL clips
