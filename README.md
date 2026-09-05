@@ -13,7 +13,7 @@ Miss the old 2000s Pioneer head units, dolphins swimming while you bump tunes? N
 
 PioneerVFD turns Spotify desktop into a 2000s Pioneer-style VFD/LCD car stereo. It replaces the stock lower player with a chrome head-unit: WebM OEL animations, RGB and mono display modes, hardware-style readouts, ATT muting, and live spectrum bars around the center badge.
 
-**v5.0.0:** Full-screen display and lyrics major revamp. Other fixes.
+**v5.1.0:** FACE detachable display, PULSE matrix, smoother browsing.
 
 Import your own clips: https://www.youtube.com/watch?v=QuRZPHMGhso
 
@@ -51,6 +51,8 @@ Open an issue, use the discussions tab, or reach out to me at:
 - `FULL` / `ECO` performance modes.
 - `ART` - Dither album art in Full screen display or in the Now Playing View.
 - Full-Screen Display - access from either Spotify lyrics (right side tab) or via the _Pioneer_ wordmark.
+- `FACE` - pop the display off into its own always-on-top mini window: drag it anywhere, full transport (play, skip, shuffle, like), live track readout, and a music-reactive scene.
+- `PULSE` matrix - a pixel matrix under the full-screen display album art with three reactive looks: `FIELD`, `LIQUID`, `SPECTRUM`. Click the matrix to switch.
 - Import your own `.webm` OEL clip (up to 25 MB).
 
 ## OEL clips
@@ -68,6 +70,8 @@ The center display rotates through a set of authentic Pioneer OEL clips, includi
 **`CUSTOMIZE`**: `TINT` (15-mode picker + `ADAPTIVE`), `TYPE` (Spotify content font), `COLOR` (tint vs full-color clips), `BUTTON` (LED glow: SOFT/HARD/OFF), `OEL` (import/replace/remove custom clip), `DARK` (dark chrome).
 
 **Faceplate**: `ATT` (instant mute, restores on next press; exits when you adjust volume), `DIM` (LCD brightness), `LST` (queue), `EEQ` (click to tint-match), lyrics button (opens Spotify lyrics, avoids Beautiful/Spicy Lyrics takeover).
+
+**Full-screen display rail**: `PLAY` (mini library: liked songs and playlists), `QUEUE`, `TINT`, `PULSE` (live audio on/off), `FACE` (detach the display). `ESC` or `FULL` exits.
 
 Saved across restarts: `PERF`, `TINT`, `DIM`, `TYPE`, selected clip (incl. custom), `VFD`, `COLOR`, dark chrome, EEQ tint, button glow. `PULSE` always boots `OFF` so Spotify doesn't reopen audio capture on its own.
 
