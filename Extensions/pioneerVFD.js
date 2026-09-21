@@ -5678,16 +5678,84 @@
     };
 
     const tryNext = (i) => {
-      if (i >= endpoints.length) { pvfdLyricsCache.set(trackUri, null); return null; }
+      if (i >= endpoints.length) return null;
       return cosmos.get(endpoints[i])
         .then((res) => {
           const parsed = parse(res);
-          if (parsed) { pvfdLyricsCache.set(trackUri, parsed); return parsed; }
+          if (parsed) return parsed;
           return tryNext(i + 1);
         })
         .catch(() => tryNext(i + 1));
     };
-    return tryNext(0);
+
+    return tryNext(0).then((parsed) => {
+      if (parsed) { pvfdLyricsCache.set(trackUri, parsed); return parsed; }
+      // Spotify's own lyrics endpoints fail in the current client — fall back
+      // to the public lrclib provider (CORS-open, synced LRC).
+      return fetchLrclibLyrics(trackUri).then((lr) => {
+        pvfdLyricsCache.set(trackUri, lr);
+        return lr;
+      });
+    });
+  }
+
+  // Public lrclib.net provider, used when Spotify's own lyrics endpoints fail.
+  // Returns the same {time, dur, text} shape as the Spotify parse above so the
+  // display cannot tell the two apart. lrclib is CORS-open and needs only the
+  // track/artist names; the app's current item supplies the metadata.
+  const PVFD_LRC_RE = /\[(\d{1,2}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
+
+  function parsePvfdLrc(lrc) {
+    const lines = [];
+    for (const raw of String(lrc || "").split(/\r?\n/)) {
+      PVFD_LRC_RE.lastIndex = 0;
+      const stamps = [];
+      let m;
+      while ((m = PVFD_LRC_RE.exec(raw))) {
+        const frac = String(m[3] || "0").padEnd(3, "0").slice(0, 3);
+        stamps.push((parseInt(m[1], 10) * 60 + parseInt(m[2], 10)) * 1000 + parseInt(frac, 10));
+      }
+      if (!stamps.length) continue;
+      const text = raw.replace(PVFD_LRC_RE, "").trim();
+      if (!text || text === "♪") continue;
+      for (const ms of stamps) lines.push({ time: ms, dur: null, text: text });
+    }
+    lines.sort((a, b) => a.time - b.time);
+    // Same backward duration pass as the Spotify parse.
+    for (let i = lines.length - 2; i >= 0; i--) {
+      if (lines[i + 1].time > lines[i].time) lines[i].dur = lines[i + 1].time - lines[i].time;
+    }
+    return lines.length ? lines : null;
+  }
+
+  function fetchLrclibLyrics(trackUri) {
+    const meta = safeReturn(() => Spicetify.Player.data.item, null);
+    if (!meta) return Promise.resolve(null);
+    const name = meta.name || (meta.metadata && meta.metadata.title);
+    const artist = (meta.artists && meta.artists[0] && meta.artists[0].name) ||
+      (meta.metadata && meta.metadata.artist_name);
+    if (!name || !artist || meta.uri !== trackUri) return Promise.resolve(null);
+    const album = (meta.album && meta.album.name) ||
+      (meta.metadata && meta.metadata.album_title) || "";
+    const durSec = Number.isFinite(meta.duration && meta.duration.milliseconds)
+      ? String(Math.round(meta.duration.milliseconds / 1000)) : "";
+    const params = new URLSearchParams({ track_name: name, artist_name: artist });
+    if (album) params.set("album_name", album);
+    if (durSec) params.set("duration", durSec);
+    const url = "https://lrclib.net/api/get?" + params.toString();
+
+    const attempt = (n) => fetch(url, { headers: { "User-Agent": "PioneerVFD/5.1 (Spicetify theme)" } })
+      .then((res) => {
+        if (!res.ok) throw new Error("http " + res.status);
+        return res.json();
+      })
+      .then((d) => (d && d.syncedLyrics ? parsePvfdLrc(d.syncedLyrics) : null))
+      .catch((e) => {
+        // 503s are routine on lrclib; retry a couple of times with a pause.
+        if (n < 2) return new Promise((r) => setTimeout(() => r(attempt(n + 1)), 1500));
+        return null;
+      });
+    return attempt(0);
   }
 
   // Third-party Korean/Japanese translation extensions patch Spotify's OWN
@@ -5965,19 +6033,44 @@
         noLyricsEl.hidden = true;
         startPvfdLyricsTicker();
       } else {
-        // No lyrics — keep the ticker running anyway so progress/time/controls
-        // still update. tickPvfdLyrics short-circuits its lyrics work when
-        // pvfdCurrentLyrics is null but still calls tickPvfdCinemaControls.
-        pvfdCurrentLyrics = null;
-        lyricsEl.hidden = true;
-        statusEl.hidden = true;
-        noLyricsEl.hidden = false;
-        // Populate the big-title text with current track name.
-        const data = safeReturn(() => Spicetify.Player.data, null);
-        const item = data && data.item;
-        const bigTitle = (item && (item.name || (item.metadata && item.metadata.title))) || "—";
-        const bigEl = cinema.querySelector("[data-pvfd-cinema='big-title']");
-        if (bigEl) bigEl.textContent = bigTitle;
+        // The API had nothing. Before conceding, read the native lyrics page
+        // DOM — same selector the route cover uses. When the display is opened
+        // from the lyrics route the page is still mounted underneath, and its
+        // lines are the ground truth Spotify already has on screen. Lines are
+        // rendered unsynced (time:null), the same path fetchPvfdLyrics uses
+        // for tracks whose API data carries no timing.
+        const domTexts = safeReturn(() => {
+          const nodes = document.querySelectorAll(PVFD_LYRIC_LINE_SELECTOR);
+          const texts = [];
+          for (let i = 0; i < nodes.length; i++) {
+            const t = (nodes[i].textContent || "").trim();
+            if (t && t !== "♪") texts.push(t);
+          }
+          return texts;
+        }, null);
+        if (domTexts && domTexts.length) {
+          pvfdCurrentLyrics = domTexts.map((text) => ({ time: null, dur: null, text: text }));
+          renderPvfdLyrics(pvfdCurrentLyrics);
+          lyricsEl.hidden = false;
+          statusEl.hidden = true;
+          noLyricsEl.hidden = true;
+          startPvfdLyricsTicker();
+        } else {
+          // No lyrics anywhere — keep the ticker running anyway so
+          // progress/time/controls still update. tickPvfdLyrics short-circuits
+          // its lyrics work when pvfdCurrentLyrics is null but still calls
+          // tickPvfdCinemaControls.
+          pvfdCurrentLyrics = null;
+          lyricsEl.hidden = true;
+          statusEl.hidden = true;
+          noLyricsEl.hidden = false;
+          // Populate the big-title text with current track name.
+          const data = safeReturn(() => Spicetify.Player.data, null);
+          const item = data && data.item;
+          const bigTitle = (item && (item.name || (item.metadata && item.metadata.title))) || "—";
+          const bigEl = cinema.querySelector("[data-pvfd-cinema='big-title']");
+          if (bigEl) bigEl.textContent = bigTitle;
+        }
       }
     });
   }
@@ -11533,9 +11626,14 @@
   const PVFD_LYRIC_ACTIVE_SELECTOR =
     '[class*="lyrics-lyricsContent-highlight" i], [class*="LyricsLyricsContentHighlight" i], ' +
     '[class*="lyrics-lyricsContent-active" i], [class*="LyricsLyricsContentActive" i], ' +
-    '[aria-current="true"], [data-highlighted="true"]';
+    '[aria-current="true"], [data-highlighted="true"], [data-active="true"]';
   const PVFD_LYRIC_LINE_SELECTOR =
-    "[class*='lyrics-lyricsContent-lyric' i], [class*='LyricsLyricsContentLyric' i]";
+    // Current client: lyric lines have no testid and hashed class names, but
+    // every line carries dir="auto" inside the container Spotify stamps with
+    // the --lyrics-color-* inline vars. Older selectors kept as fallbacks.
+    "div[style*='--lyrics-color-active'] div[dir='auto'], " +
+    "[class*='lyrics-lyricsContent-lyric' i], [class*='LyricsLyricsContentLyric' i], " +
+    "[data-testid='fullscreen-lyric']";
   const PVFD_LYRIC_TEXT_SELECTOR =
     "[class*='lyrics-lyricsContent-text' i], [class*='LyricsLyricsContentText' i]";
 

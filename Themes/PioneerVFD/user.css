@@ -8530,6 +8530,7 @@ body[data-pvfd-route="home"] .Root__main-view :is(.main-card-card, [data-encore-
 /* Lyrics route LCD treatment, adapted from the older working build. */
 body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   [data-testid*="lyrics" i],
+  div[style*="--lyrics-color-active"],
   :is(.lyrics-lyrics-background, .lyrics-lyrics-container, .lyrics-lyrics-contentContainer, .lyrics-lyrics-contentWrapper, .lyrics-lyricsContent-active, .lyrics-lyricsContent-lyric, .lyrics-lyricsContent-previous, .lyrics-lyricsContent-provider, .lyrics-lyricsContent-text, .lyrics-lyricsContent-upcoming),
   .pvfd-nevermatch,
   .pvfd-nevermatch:not(.BeautifulLyricsPage),
@@ -8544,6 +8545,7 @@ body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
 
 body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   .pvfd-lyrics-surface:is(.lyrics-lyrics-container, .lyrics-lyrics-container, .pvfd-nevermatch),
+  div[style*="--lyrics-color-active"],
   .lyrics-lyrics-container,
   .lyrics-lyrics-background,
   .pvfd-nevermatch,
@@ -8572,7 +8574,8 @@ body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   .pvfd-nevermatch,
   .lyrics-lyrics-contentContainer,
   .pvfd-nevermatch,
-  [data-testid*="lyrics" i]
+  [data-testid*="lyrics" i],
+  div[style*="--lyrics-color-active"] div[dir="auto"]
 ) :is(p, span, div, button, [data-encore-id="text"]) {
   color: rgba(var(--pvfd-light-rgb), 0.64) !important;
   background: transparent !important;
@@ -8624,6 +8627,7 @@ body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
 
 body.pvfd-theme-active:not([data-pvfd-lyrics-pass="on"]) .Root__main-view :is(
   .lyrics-lyricsContent-lyric,
+  div[style*="--lyrics-color-active"] div[dir="auto"],
   .pvfd-nevermatch
 ) {
   background: transparent !important;
