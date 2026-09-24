@@ -349,9 +349,9 @@ body.pvfd-theme-active:is(
   [data-pvfd-route="playlist"],
   [data-pvfd-route="profile"]
 ) .Root__main-view :is(
-  .main-entityHeader-backgroundColor,
+  :is(.main-entityHeader-backgroundColor, .kMUtWcOMOZmCWTMAc_gu),
   :is(:is(.main-actionBarBackground-background, .M7ECcaA17LC8UqL2GKVD), .playlist-playlist-actionBarBackground-background),
-  .main-entityHeader-backgroundColor
+  :is(.main-entityHeader-backgroundColor, .kMUtWcOMOZmCWTMAc_gu)
 ) {
   --background-base: var(--pvfd-lcd-void) !important;
   --background-highlight: rgba(var(--pvfd-light-deep-rgb), 0.16) !important;
@@ -11849,10 +11849,10 @@ body.pvfd-theme-active:is(
   [data-pvfd-route="playlist"],
   [data-pvfd-route="profile"]
 ) .Root__main-view :is(
-  .main-entityHeader-backgroundColor,
+  :is(.main-entityHeader-backgroundColor, .kMUtWcOMOZmCWTMAc_gu),
   :is(.main-actionBarBackground-background, .M7ECcaA17LC8UqL2GKVD),
   .playlist-playlist-actionBarBackground-background,
-  .main-entityHeader-backgroundColor,
+  :is(.main-entityHeader-backgroundColor, .kMUtWcOMOZmCWTMAc_gu),
   :is(:is(.main-actionBarBackground-background, .M7ECcaA17LC8UqL2GKVD), .playlist-playlist-actionBarBackground-background)
 ) {
   background:
