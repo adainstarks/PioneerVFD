@@ -347,7 +347,8 @@ body.pvfd-theme-active .Root__main-view :is(
 body.pvfd-theme-active:is(
   [data-pvfd-route="album"],
   [data-pvfd-route="playlist"],
-  [data-pvfd-route="profile"]
+  [data-pvfd-route="profile"],
+  [data-pvfd-route="artist"]
 ) .Root__main-view :is(
   :is(.main-entityHeader-backgroundColor, .kMUtWcOMOZmCWTMAc_gu),
   :is(:is(.main-actionBarBackground-background, .M7ECcaA17LC8UqL2GKVD), .playlist-playlist-actionBarBackground-background),
@@ -11535,6 +11536,30 @@ body.pvfd-theme-active .Root__main-view .marketplace-header .Dropdown-option:is(
   background: rgba(var(--pvfd-light-deep-rgb), 0.16) !important;
 }
 
+/* Native <select> controls (Settings: language, streaming quality, and the
+   rest). The open list is Chromium's own popup, which takes only the
+   options' colour and background; Spotify sets neither, so the list came up
+   on the popup's default light surface with the tint's 72% text on it
+   (owner report: unreadable). Void and ink from the tint tokens: every dark
+   tint gets its light text on the void, B-ON-W gets ink on paper because its
+   tokens already flip. The scheme follows the same split so the popup's
+   scrollbar and highlight match. */
+body.pvfd-theme-active select {
+  color: var(--pvfd-text-main) !important;
+  -webkit-text-fill-color: var(--pvfd-text-main) !important;
+  background-color: var(--pvfd-lcd-void) !important;
+  color-scheme: dark;
+}
+
+body.pvfd-theme-active select option {
+  color: var(--pvfd-text-main) !important;
+  background-color: var(--pvfd-lcd-void) !important;
+}
+
+html[data-pvfd-tint="bow"] body.pvfd-theme-active select {
+  color-scheme: light;
+}
+
 body.pvfd-theme-active .Root__main-view .marketplace-header .marketplace-header-icon-button :is(svg, path, circle, rect, line, polyline, polygon) {
   color: currentColor !important;
   fill: currentColor !important;
@@ -11584,10 +11609,11 @@ body.pvfd-theme-active .Root__main-view [class*="marketplace-"][class*="Button" 
 /* Snackbar / toast popups (issue #9): Spotify uses notistack (a React
    snackbar library) for "Added to playlist" / "Saved to liked songs"
    etc. Structure: .notistack-Snackbar > div[role="alert"] >
-   .e-10451-box--elevated > inner layout divs. The visible pill is the
+   .e-10451-box--elevated > inner layout divs (Spotify 1.3 renamed the
+   Encore box to e-10860-legacy-box--elevated; both names are listed). The visible pill is the
    Encore Box; style only that, and reset every descendant's box chrome
    so nested layout divs don't inherit borders/shadows. */
-body.pvfd-theme-active .notistack-Snackbar :is(.e-10451-box--elevated, .e-10860-box--elevated),
+body.pvfd-theme-active .notistack-Snackbar :is(.e-10451-box--elevated, .e-10860-box--elevated, .e-10451-legacy-box--elevated, .e-10860-legacy-box--elevated),
 body.pvfd-theme-active :is(.e-10451-snackbar, .e-10860-snackbar),
 body.pvfd-theme-active [class*="snackbar" i][class*="--visible"],
 body.pvfd-theme-active [role="status"][class*="snackbar" i] {
@@ -11609,8 +11635,8 @@ body.pvfd-theme-active [role="status"][class*="snackbar" i] {
 /* Strip Encore default backgrounds / borders / shadows from descendants
    INSIDE the elevated box (the visible pill keeps its chrome — only its
    children get reset so we don't get nested chrome). */
-body.pvfd-theme-active .notistack-Snackbar :is(.e-10451-box--elevated, .e-10860-box--elevated) > *,
-body.pvfd-theme-active .notistack-Snackbar :is(.e-10451-box--elevated, .e-10860-box--elevated) > * *,
+body.pvfd-theme-active .notistack-Snackbar :is(.e-10451-box--elevated, .e-10860-box--elevated, .e-10451-legacy-box--elevated, .e-10860-legacy-box--elevated) > *,
+body.pvfd-theme-active .notistack-Snackbar :is(.e-10451-box--elevated, .e-10860-box--elevated, .e-10451-legacy-box--elevated, .e-10860-legacy-box--elevated) > * *,
 body.pvfd-theme-active :is(.e-10451-snackbar, .e-10860-snackbar) > * {
   background: transparent !important;
   background-image: none !important;
@@ -11882,11 +11908,17 @@ body.pvfd-theme-active:is(
     inset 0 0 40px rgba(0, 0, 0, 0.34) !important;
 }
 
-/* Album / playlist / profile red/green/purple Spotify wash layers. */
+/* Album / playlist / profile red/green/purple Spotify wash layers, and the
+   artist header when the artist has no banner photo: that variant is the
+   same two colour layers plus the action-bar wash, painted in Spotify's
+   extracted colour (owner report: a flat blue band). Artists WITH a banner
+   use a different component that has none of these layers, so they keep
+   their photo. */
 body.pvfd-theme-active:is(
   [data-pvfd-route="album"],
   [data-pvfd-route="playlist"],
-  [data-pvfd-route="profile"]
+  [data-pvfd-route="profile"],
+  [data-pvfd-route="artist"]
 ) .Root__main-view :is(
   :is(.main-entityHeader-backgroundColor, .kMUtWcOMOZmCWTMAc_gu),
   :is(.main-actionBarBackground-background, .M7ECcaA17LC8UqL2GKVD),
