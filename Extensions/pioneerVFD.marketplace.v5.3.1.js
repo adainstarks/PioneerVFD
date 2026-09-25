@@ -1,0 +1,12680 @@
+// =====================================================================
+// PioneerVFD — DEH-P7600MP-style head unit for Spotify (Spicetify).
+// No build step: the installer copies this file verbatim, so this is the
+// shipped code. The chassis replaces Spotify's player bar, WebM OEL clips
+// drive the centre display, and the app-wide skin lives in user.css.
+// =====================================================================
+
+(function PioneerVFD() {
+  const bootStartedAt = window.__PVFD_BOOT_STARTED_AT || Date.now();
+  window.__PVFD_BOOT_STARTED_AT = bootStartedAt;
+  const playerReady = !!(
+    window.Spicetify
+    && Spicetify.Player
+    && typeof Spicetify.Player.isPlaying === "function"
+  );
+
+  if (!playerReady) {
+    if (!window.__PVFD_BOOT_WARNED__ && Date.now() - bootStartedAt > 10000) {
+      window.__PVFD_BOOT_WARNED__ = true;
+      console.warn("[PVFD] Waiting for Spicetify Player API. If this never loads, run `spicetify config expose_apis 1`, then `spicetify apply`.");
+    }
+    setTimeout(PioneerVFD, 300);
+    return;
+  }
+  if (window.__PVFD_EXTENSION_RUNNING__) return;
+  window.__PVFD_EXTENSION_RUNNING__ = true;
+
+  const NUM_BARS = 48;
+  const SMOOTHING = 0.72;
+  const FRAME_INTERVAL_MS = 33;
+  const PVFD_PROF_STORAGE_KEY = "pvfd-prof";
+  const MEDIUM_LANE_INTERVAL_MS = 120;
+  const SLOW_LANE_INTERVAL_MS = 320;
+  const ROUTE_STATE_SAMPLE_MS = 240;
+  const ROUTE_CHURN_SUPPRESS_MS = 700;
+  const ROUTE_CHURN_SEARCH_DELAY_MS = 220;
+  const VISUALIZER_EPSILON = 0.004;
+  const SEEK_STEP_MS = 10000;   // DAB left/right arrow jog step
+
+  // Lightweight perf diagnostic. Counters only — bumped at hot init/loop sites
+  // and dumped by PioneerVFD.diagnosePerf(). Investigates progressive lag in
+  // knob/scrubber drag + EJECT standby text that does NOT clear on window
+  // close (Spotify backgrounds to tray on Windows, JS context survives) but
+  // DOES clear on reinstall (spicetify apply restarts the renderer).
+  const pvfdDiag = {
+    bootAt: Date.now(),
+    injectChassisCalls: 0,
+    wireControlsCalls: 0,
+    attachUnsafeCalls: 0,
+    recoverFatals: 0,
+    mutationObserversCreated: 0,
+    loopFrames: 0,
+    mutationQueues: 0,
+    mutationFlushes: 0,
+    listenersAdded: { lknob: 0, trackbar: 0, navring: 0 },
+    pointerBubbleBlocks: 0,
+  };
+
+  // Default RGB values for the 4 main LCD color roles, used if CSS variable parsing fails.
+
+  const PVFD_DEFAULT_COLORS = {
+    lcdVoid: "#02060c",
+    lcdDeep: "#06121e",
+    lcdRim: "#1a2c3c",
+
+    cyan: "#05c7dc",
+    cyanMid: "#06b2c5",
+    cyanDeep: "#079eaf",
+    cyanGlow: "#00ffff",
+
+    textBright: "#effcff",
+    chromeText: "#1a2030",
+    green: "#b8e896",
+
+    light: [5, 199, 220],
+    mid: [6, 178, 197],
+    deep: [7, 158, 175],
+    accentDim: [26, 58, 92],
+    lcdVoidRgb: [2, 6, 12],
+    lcdDeepRgb: [6, 18, 30],
+    lcdRimRgb: [26, 44, 60],
+    textBrightRgb: [239, 252, 255],
+    greenRgb: [184, 232, 150]
+  };
+
+  const pvfdCssPalette = {
+    lcdVoid: PVFD_DEFAULT_COLORS.lcdVoid,
+    lcdDeep: PVFD_DEFAULT_COLORS.lcdDeep,
+    lcdRim: PVFD_DEFAULT_COLORS.lcdRim,
+
+    cyan: PVFD_DEFAULT_COLORS.cyan,
+    cyanMid: PVFD_DEFAULT_COLORS.cyanMid,
+    cyanDeep: PVFD_DEFAULT_COLORS.cyanDeep,
+    cyanGlow: PVFD_DEFAULT_COLORS.cyanGlow,
+
+    textBright: PVFD_DEFAULT_COLORS.textBright,
+    chromeText: PVFD_DEFAULT_COLORS.chromeText,
+    green: PVFD_DEFAULT_COLORS.green,
+
+    light: PVFD_DEFAULT_COLORS.light.slice(),
+    mid: PVFD_DEFAULT_COLORS.mid.slice(),
+    deep: PVFD_DEFAULT_COLORS.deep.slice(),
+    accentDim: PVFD_DEFAULT_COLORS.accentDim.slice(),
+    lcdVoidRgb: PVFD_DEFAULT_COLORS.lcdVoidRgb.slice(),
+    lcdDeepRgb: PVFD_DEFAULT_COLORS.lcdDeepRgb.slice(),
+    lcdRimRgb: PVFD_DEFAULT_COLORS.lcdRimRgb.slice(),
+    textBrightRgb: PVFD_DEFAULT_COLORS.textBrightRgb.slice(),
+    greenRgb: PVFD_DEFAULT_COLORS.greenRgb.slice()
+  };
+
+  let pvfdPaletteVersion = 0;
+
+  function pvfdSameRgb(a, b) {
+    return (
+      a &&
+      b &&
+      a[0] === b[0] &&
+      a[1] === b[1] &&
+      a[2] === b[2]
+    );
+  }
+
+  function pvfdNormalizeHexColor(value, fallback) {
+    const raw = String(value || "").trim();
+
+    if (/^#[0-9a-f]{6}$/i.test(raw)) return raw.toLowerCase();
+
+    if (/^#[0-9a-f]{3}$/i.test(raw)) {
+      return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`.toLowerCase();
+    }
+
+    return fallback;
+  }
+
+  // During a deck-scoped tint glide only the chassis carries the live colors
+  // (<html> is left on the old tint), so prefer the chassis value then.
+  function readCssColorVar(name, fallback) {
+    const rootValue = getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim();
+
+    const chassisValue = chassis
+      ? getComputedStyle(chassis).getPropertyValue(name).trim()
+      : "";
+
+    const primary = tintTransitionActive ? (chassisValue || rootValue) : (rootValue || chassisValue);
+    return pvfdNormalizeHexColor(primary, fallback);
+  }
+
+  function readCssRgbVar(name, fallback) {
+    const rootValue = getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim();
+
+    const chassisValue = chassis
+      ? getComputedStyle(chassis).getPropertyValue(name).trim()
+      : "";
+
+    const raw = tintTransitionActive ? (chassisValue || rootValue) : (rootValue || chassisValue);
+
+    if (!raw) return fallback.slice();
+
+    const parts = raw
+      .split(",")
+      .map((part) => Number(part.trim()));
+
+    if (parts.length < 3 || parts.some((value) => !Number.isFinite(value))) {
+      return fallback.slice();
+    }
+
+    return [
+      Math.max(0, Math.min(255, Math.round(parts[0]))),
+      Math.max(0, Math.min(255, Math.round(parts[1]))),
+      Math.max(0, Math.min(255, Math.round(parts[2])))
+    ];
+  }
+
+  function pvfdRgba(rgb, alpha) {
+    return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`;
+  }
+
+  // Every read below is getComputedStyle, and the first one makes the browser
+  // flush any pending style work for the whole document at the stylesheet's
+  // per-element price. The palette is a pure function of the attributes and
+  // inline styles on <html>, <body> and the chassis (every --pvfd-* colour is
+  // scoped to one of those), so when none of them changed since the last read
+  // the answer cannot have changed either. Glides bypass the memo: the chassis
+  // inline vars move every frame and the reads must follow them.
+  let pvfdPaletteInputsKey = "";
+  function pvfdPaletteInputs() {
+    const attrs = (el) => (el ? Array.from(el.attributes, (a) => a.name + "=" + a.value).join("\u0001") : "");
+    return attrs(document.documentElement) + "\u0002" + attrs(document.body) + "\u0002" + attrs(chassis);
+  }
+
+  function refreshPvfdCssPalette() {
+    const inputs = tintTransitionActive ? "" : pvfdPaletteInputs();
+    if (inputs && inputs === pvfdPaletteInputsKey) return false;
+    const nextPalette = {
+      lcdVoid: readCssColorVar("--pvfd-lcd-void", PVFD_DEFAULT_COLORS.lcdVoid),
+      lcdDeep: readCssColorVar("--pvfd-lcd-deep", PVFD_DEFAULT_COLORS.lcdDeep),
+      lcdRim: readCssColorVar("--pvfd-lcd-rim", PVFD_DEFAULT_COLORS.lcdRim),
+
+      cyan: readCssColorVar("--pvfd-cyan", PVFD_DEFAULT_COLORS.cyan),
+      cyanMid: readCssColorVar("--pvfd-cyan-mid", PVFD_DEFAULT_COLORS.cyanMid),
+      cyanDeep: readCssColorVar("--pvfd-cyan-deep", PVFD_DEFAULT_COLORS.cyanDeep),
+      cyanGlow: readCssColorVar("--pvfd-cyan-glow", PVFD_DEFAULT_COLORS.cyanGlow),
+
+      textBright: readCssColorVar("--pvfd-text-bright", PVFD_DEFAULT_COLORS.textBright),
+      chromeText: readCssColorVar("--pvfd-chrome-text", PVFD_DEFAULT_COLORS.chromeText),
+      green: readCssColorVar("--pvfd-green", PVFD_DEFAULT_COLORS.green),
+
+      light: readCssRgbVar("--pvfd-light-rgb", PVFD_DEFAULT_COLORS.light),
+      mid: readCssRgbVar("--pvfd-light-mid-rgb", PVFD_DEFAULT_COLORS.mid),
+      deep: readCssRgbVar("--pvfd-light-deep-rgb", PVFD_DEFAULT_COLORS.deep),
+      accentDim: readCssRgbVar("--pvfd-accent-dim-rgb", PVFD_DEFAULT_COLORS.accentDim),
+      lcdVoidRgb: readCssRgbVar("--pvfd-lcd-void-rgb", PVFD_DEFAULT_COLORS.lcdVoidRgb),
+      lcdDeepRgb: readCssRgbVar("--pvfd-lcd-deep-rgb", PVFD_DEFAULT_COLORS.lcdDeepRgb),
+      lcdRimRgb: readCssRgbVar("--pvfd-lcd-rim-rgb", PVFD_DEFAULT_COLORS.lcdRimRgb),
+      textBrightRgb: readCssRgbVar("--pvfd-text-bright-rgb", PVFD_DEFAULT_COLORS.textBrightRgb),
+      greenRgb: readCssRgbVar("--pvfd-green-rgb", PVFD_DEFAULT_COLORS.greenRgb)
+    };
+
+    const changed = (
+      pvfdCssPalette.lcdVoid !== nextPalette.lcdVoid ||
+      pvfdCssPalette.lcdDeep !== nextPalette.lcdDeep ||
+      pvfdCssPalette.lcdRim !== nextPalette.lcdRim ||
+      pvfdCssPalette.cyan !== nextPalette.cyan ||
+      pvfdCssPalette.cyanMid !== nextPalette.cyanMid ||
+      pvfdCssPalette.cyanDeep !== nextPalette.cyanDeep ||
+      pvfdCssPalette.cyanGlow !== nextPalette.cyanGlow ||
+      pvfdCssPalette.textBright !== nextPalette.textBright ||
+      pvfdCssPalette.chromeText !== nextPalette.chromeText ||
+      pvfdCssPalette.green !== nextPalette.green ||
+      !pvfdSameRgb(pvfdCssPalette.light, nextPalette.light) ||
+      !pvfdSameRgb(pvfdCssPalette.mid, nextPalette.mid) ||
+      !pvfdSameRgb(pvfdCssPalette.deep, nextPalette.deep) ||
+      !pvfdSameRgb(pvfdCssPalette.accentDim, nextPalette.accentDim) ||
+      !pvfdSameRgb(pvfdCssPalette.lcdVoidRgb, nextPalette.lcdVoidRgb) ||
+      !pvfdSameRgb(pvfdCssPalette.lcdDeepRgb, nextPalette.lcdDeepRgb) ||
+      !pvfdSameRgb(pvfdCssPalette.lcdRimRgb, nextPalette.lcdRimRgb) ||
+      !pvfdSameRgb(pvfdCssPalette.textBrightRgb, nextPalette.textBrightRgb) ||
+      !pvfdSameRgb(pvfdCssPalette.greenRgb, nextPalette.greenRgb)
+    );
+
+    // A glide read stores "" so the first settled read after it cannot be
+    // skipped: the palette it left behind came from the moving chassis vars.
+    pvfdPaletteInputsKey = inputs;
+    if (!changed) return false;
+
+    pvfdCssPalette.lcdVoid = nextPalette.lcdVoid;
+    pvfdCssPalette.lcdDeep = nextPalette.lcdDeep;
+    pvfdCssPalette.lcdRim = nextPalette.lcdRim;
+    pvfdCssPalette.cyan = nextPalette.cyan;
+    pvfdCssPalette.cyanMid = nextPalette.cyanMid;
+    pvfdCssPalette.cyanDeep = nextPalette.cyanDeep;
+    pvfdCssPalette.cyanGlow = nextPalette.cyanGlow;
+    pvfdCssPalette.textBright = nextPalette.textBright;
+    pvfdCssPalette.chromeText = nextPalette.chromeText;
+    pvfdCssPalette.green = nextPalette.green;
+
+    pvfdCssPalette.light = nextPalette.light;
+    pvfdCssPalette.mid = nextPalette.mid;
+    pvfdCssPalette.deep = nextPalette.deep;
+    pvfdCssPalette.accentDim = nextPalette.accentDim;
+    pvfdCssPalette.lcdVoidRgb = nextPalette.lcdVoidRgb;
+    pvfdCssPalette.lcdDeepRgb = nextPalette.lcdDeepRgb;
+    pvfdCssPalette.lcdRimRgb = nextPalette.lcdRimRgb;
+    pvfdCssPalette.textBrightRgb = nextPalette.textBrightRgb;
+    pvfdCssPalette.greenRgb = nextPalette.greenRgb;
+
+    pvfdPaletteVersion++;
+
+
+    return true;
+  }
+
+  // TINT cycle: full-color OEL/video keeps the old LCD hue-rotate path.
+  // One-color WebM tint uses the CSS RGB tint wash directly so it is not
+  // hue-rotated a second time.
+  const TINT_LABELS = ["CYAN", "TEAL", "LIME", "AMBER", "ORANGE", "RED", "PINK", "MAGENTA", "VIOLET", "BLUE", "GREEN", "YELLOW", "INDIGO", "B ON W", "W ON B"];
+  const TINT_LABELS_SHORT = ["CYAN", "TEAL", "LIME", "AMBER", "ORNGE", "RED", "PINK", "MGNTA", "VIOLET", "BLUE", "GREEN", "YELLW", "INDGO", "B ONW", "W ONB"];
+  const TINT_HUE_DEG = [0, 335, 270, 225, 195, 170, 145, 115, 82, 25, 300, 250, 52, 0, 0];
+  // Foreground (--pvfd-light-rgb) of each of the 13 COLOR tints, index-aligned
+  // with TINT_HUE_DEG[0..12]. ADAPTIVE interpolates (this color's HSL hue ->
+  // TINT_HUE_DEG) to pick a hue-rotate degree for an arbitrary album hue, so
+  // color-mode clips shift the same way the hand-tuned fixed tints shift them.
+  const TINT_LIGHT_RGB = [
+    [5, 199, 220], [137, 243, 210], [197, 243, 137], [255, 223, 154],
+    [255, 192, 137], [255, 138, 137], [255, 137, 197], [243, 137, 255],
+    [165, 120, 255], [107, 160, 255], [154, 248, 194], [255, 247, 154],
+    [122, 134, 255]
+  ];
+  // Mono modes apply grayscale + an inverted chrome palette; the chassis attribute
+  // data-pvfd-mono="bow"|"wob" drives the CSS. Color modes leave it unset.
+  const TINT_MONO_MODE = ["", "", "", "", "", "", "", "", "", "", "", "", "", "bow", "wob"];
+  function mapTintNameForCss(idx) {
+    const mono = TINT_MONO_MODE[idx];
+    if (mono) return mono;
+    return TINT_LABELS[idx].toLowerCase();
+  }
+  const TINT_STORAGE_KEY = "pvfd-tint-mode";
+  const DIM_STORAGE_KEY = "pvfd-dim-mode";
+  const FONT_STORAGE_KEY = "pvfd-font-preset";
+  const PERF_STORAGE_KEY = "pvfd-performance-mode";
+  const LOGO_GLOW_STORAGE_KEY = "pvfd-logo-bpm-glow";
+  const CLIP_STORAGE_KEY = "pvfd-oel-clip";
+  const OEL_DISPLAY_STORAGE_KEY = "pvfd-oel-display";
+  const RACING_COLOR_STORAGE_KEY = "pvfd-racing-color-mode";
+  const LEGACY_RACING_COLOR_STORAGE_KEY = "pvfd-racing-color-breakout";
+  const CUSTOM_OEL_META_STORAGE_KEY = "pvfd-oel-custom-webm-meta";
+  const CHROME_STORAGE_KEY = "pvfd-chrome-mode";
+  const LOGO_STYLE_STORAGE_KEY = "pvfd-logo-style";
+  const LOGO_STYLES = ["MODERN", "CLASSIC"];
+  const EVER_SCROLL_STORAGE_KEY = "pvfd-ever-scroll";
+  const EVER_SCROLL_MODES = ["OFF", "ONCE", "LOOP", "BOUNCE"];
+  const EVER_SCROLL_LOOP_SEPARATOR = "   •   ";
+  const EEQ_TINT_STORAGE_KEY = "pvfd-eeq-tint";
+  const LED_GLOW_STORAGE_KEY = "pvfd-led-glow";
+  const LED_GLOW_MODES = ["SOFT", "HARD", "OFF"];
+  const KNOB_GLOW_STORAGE_KEY = "pvfd-knob-glow";
+  const ATT_MODE_STORAGE_KEY = "pvfd-att-mode";
+  // ATT modes: "mute" drops volume to 0; "soft" multiplies current volume by 0.1.
+  const ATT_SOFT_MULTIPLIER = 0.1;
+  const BAND_STORAGE_KEY = "pvfd-band-idx";
+  const BAND_PRESETS = ["88.1", "89.9", "92.3", "94.7", "98.5", "102.5", "105.7", "107.9"];
+  const BAND_TUNING_MS = 600;
+  // Glyph pool for the tuning-static flicker. Mix of digits, separators, and
+  // visual-noise punctuation that reads as "scrambled FM" on the skinny LCD.
+  const BAND_NOISE_GLYPHS = "0123456789.-_=#*~|/\\";
+  // Audio sources per BAND preset. Two flavors:
+  //
+  //   episodes: [...] — static curated list (small collections, hand-picked).
+  //                     Each entry's cutInRange [start,end] in seconds
+  //                     constrains the random mid-broadcast seek; null = first
+  //                     half of duration. Useful for splitting one long file
+  //                     into multiple logical "episodes" via different windows.
+  //
+  //   archiveCollection: "<id>" — fetch the collection's file manifest from
+  //                     archive.org at first tune-in, cache it in memory, and
+  //                     pick a random file matching fileExtensions. Best for
+  //                     large collections (the Howard Stern 2006 archive has
+  //                     179 episodes — hardcoding is absurd).
+  const ARCHIVE_DL_BASE = "https://archive.org/download/";
+  const ARCHIVE_META_BASE = "https://archive.org/metadata/";
+  const BLOCKED_ARCHIVE_FILES = {
+    "howard-stern-24k-complete-2006": new Set([
+      "Howard_Stern_24k_09-13-06_cf.mp3"
+    ])
+  };
+  const BAND_AUDIO_PRESETS = {
+    // 88.1 — WLCE Big Ron classic hits (1h14m). Skip 2min cold-open intro.
+    0: {
+      episodes: [
+        { label: "WLCE Big Ron 2001-04-18", path: "wlce-big-ron-04-18-2001-unscoped-hour/WLCE_Big_Ron_04-18-2001_unscoped_hour%2B.mp3", cutInRange: [120, 1800] }
+      ]
+    },
+    // 89.9 — Ice Cream Pirate Show 1: Heavy Metal Thunder (60min).
+    1: {
+      episodes: [
+        { label: "Heavy Metal Thunder", path: "radio-ice-cream-pirate-shortwave/01_Radio_Ice_Cream_Show_1_Heavy_Metal_Thunder.mp3", cutInRange: [300, 1800] }
+      ]
+    },
+    // 92.3 — Democracy Now! (gain boost for quiet masters).
+    2: {
+      gain: 1.3,
+      episodes: [
+        { label: "DN! 2004-08-16", path: "dn2004-0816/dn2004-0816-1.mp3", cutInRange: null },
+        { label: "DN! 2005-08-30", path: "dn2005-0830/dn2005-0830-1.mp3", cutInRange: null },
+        { label: "DN! 2003-08-21", path: "dn2003-0821/dn2003-0821-1.mp3", cutInRange: null }
+      ]
+    },
+    // 94.7 — Ice Cream Pirate Show 2: Ride The Rock Rocket (60min).
+    3: {
+      episodes: [
+        { label: "Ride The Rock Rocket", path: "radio-ice-cream-pirate-shortwave/02_Radio_Ice_Cream_Show_2_Ride_The_Rock_Rocket.mp3", cutInRange: [300, 1800] }
+      ]
+    },
+    // 98.5 — Bruce Dickinson Rock Show late 2006 (~170min each, 2 episodes).
+    4: {
+      episodes: [
+        { label: "Bruce Dickinson late 2006 #2", path: "02-bruce-dickinson-rock-show-late-2006/02%20%20Bruce%20Dickinson%20Rock%20Show%20-%20Late%202006.mp3", cutInRange: [300, 3600] },
+        { label: "Bruce Dickinson late 2006 #3 (Disturbed)", path: "03-bruce-dickinson-rock-show-late-2006-with-disturbed/03%20Bruce%20Dickinson%20Rock%20Show%20-%20Late%202006%20with%20Disturbed.mp3", cutInRange: [300, 3600] }
+      ]
+    },
+    // 102.5 — Fusebox Radio hip hop (Apr 14 2010 #357, 184min).
+    5: {
+      episodes: [
+        { label: "Fusebox #357 (Apr 14, 2010)", path: "Fuseboxradio-FuseBoxRadioBroadcastForWeekOfApril142010357/Fuseboxradio-FuseBoxRadioBroadcastForWeekOfApril142010357.mp3", cutInRange: [180, 3600] }
+      ]
+    },
+    // 105.7 — Howard Stern 2006. Limit marketplace randomization to the
+    // earliest vetted MP3s instead of the full 179-file archive.
+    6: {
+      archiveCollection: "howard-stern-24k-complete-2006",
+      fileExtensions: ["mp3"],
+      archiveFileLimit: 10,
+      cutInRange: null
+    },
+    // 107.9 — Ice Cream Pirate Show 5: Psych-A-Rocky-Road (74min).
+    7: {
+      episodes: [
+        { label: "Psych-A-Rocky-Road", path: "radio-ice-cream-pirate-shortwave/05_Radio_Ice_Cream_Show_5_Psych-A-Rocky-Road.mp3", cutInRange: [300, 2000] }
+      ]
+    }
+  };
+  // collectionId → [filename, ...]  in-memory cache of archive.org file lists.
+  const archiveFilesCache = new Map();
+  const blockedArchiveWarned = new Set();
+  const MC_HOLD_MS = 700;
+  const MC_HOLD_MOVE_THRESHOLD_PX = 3;
+  // Fraction of knob radius that counts as the "center hot zone" for M.C. hold.
+  const MC_CENTER_HIT_FRACTION = 0.5;
+  const SPECIAL_PROFILE_USERNAME = "habahooney69";
+  const SPECIAL_PROFILE_COLORS = ["#00d68f", "#b366ff", "#ff3df0", "#ffdd80"];
+  const SPECIAL_PROFILE_HEART_COUNT = 15;
+  const PIONEER_VFD_CLIP_ID = "pioneervfd-night-cruising-webm";
+  const PIONEER_VFD_WEBM_ASSET_NAME = "night_cruising.webm";
+  const PIONEER_VFD_STING_LOGO_ASSET_NAME = "pvfd_logo_8px_oel_384.png";
+  const PIONEER_VFD_STING_W = 384;
+  const PIONEER_VFD_STING_H = 96;
+  const PIONEER_VFD_STING_END_S = 2.65;
+  const PIONEER_VFD_STING_BAYER8 = Object.freeze([
+    0, 48, 12, 60, 3, 51, 15, 63,
+    32, 16, 44, 28, 35, 19, 47, 31,
+    8, 56, 4, 52, 11, 59, 7, 55,
+    40, 24, 36, 20, 43, 27, 39, 23,
+    2, 50, 14, 62, 1, 49, 13, 61,
+    34, 18, 46, 30, 33, 17, 45, 29,
+    10, 58, 6, 54, 9, 57, 5, 53,
+    42, 26, 38, 22, 41, 25, 37, 21
+  ]);
+  const RACING_CLIP_ID = "racing-cart-longloop-webm";
+  const OEL_WEBM_SOURCE_MAP_PLACEHOLDER = "__PVFD_" + "OEL_WEBM_SOURCE_MAP_JSON__";
+  const OEL_WEBM_SOURCE_MAP = "__PVFD_OEL_WEBM_SOURCE_MAP_JSON__";
+  // Time-synced GAUGE clip: two needles (bass=left, treble=right) blitted from
+  // a 15-frame sprite sheet (each cell 128x132 = bass top tile + treble bottom
+  // tile) onto the LCD canvas, driven independently by PULSE band envelopes.
+  const GAUGE_SPRITE_ASSET_NAME = "li_06_gauges_sprite.webp";
+  const GAUGE_NEEDLE_EASE = 0.30; // per-frame travel toward the live reading
+  const gaugeSpriteCache = new Map(); // clip.id -> { img, ready }
+  let gaugeDisp = [0, 0];             // eased display level per channel (ch0=low, ch1=high)
+  let lastGaugeFrameKey = "";
+  let pioneerVfdStingLogo = null;
+  let pioneerVfdStingFrameKey = "";
+  const OEL_WEBM_CLIPS = [
+    { id: PIONEER_VFD_CLIP_ID, label: "PIONEERVFD", name: "PIONEER VFD", assetName: PIONEER_VFD_WEBM_ASSET_NAME, nativeColor: true, sting: true },
+    { id: "movie5-longloop-webm-proof", label: "CARZERIA", name: "MOVIE5 LONG", assetName: "movie5_longloop.webm" },
+    { id: "movie1-longloop-webm", label: "JETS", name: "MOVIE1 LONG", assetName: "movie1_longloop.webm" },
+    { id: "movie6-longloop-webm", label: "J-FLYIN", name: "MOVIE6 LONG", assetName: "movie6_longloop.webm" },
+    { id: "movie10f-longloop-webm", label: "MECHA", name: "MOVIE10 F", assetName: "movie10_f_longloop.webm" },
+    { id: "diverdolphins-longloop-webm", label: "DOLPHIN", name: "DIVER DOLPHINS", assetName: "diverdolphins_longloop.webm" },
+    { id: "racing-cart-longloop-webm", label: "RACING", name: "RACING CART", assetName: "6_Racing_Cart_longloop.webm" },
+    // PULSE-gated, time-synced OEL animation. `pulse: true` marks a clip as
+    // driven by the PULSE audio engine: "shown but locked" until PULSE
+    // is enabled. De-stacked bass/treble level gauges from the OEL firmware dump
+    // (li_06.lkd). The sprite atlas is hosted beside the OEL WebM assets;
+    // playback still renders through canvas so PULSE behavior stays local.
+    { id: "level06-gauges-webm", label: "GAUGES", name: "LEVEL 06", pulse: true, gauges: true,
+      gauge: { assetName: GAUGE_SPRITE_ASSET_NAME, cellW: 128, cellH: 132, layout: "sideBySide",
+        ch: [ { base: 0, frames: 15, sx: 0, sy: 0,  sw: 128, sh: 66 },
+              { base: 0, frames: 15, sx: 0, sy: 66, sw: 128, sh: 66 } ] } }
+  ];
+  // One user-imported WebM rides as an extra slot appended after the built-ins.
+  // The built-in array above stays immutable; getOelClips() is the runtime list
+  // everything indexes/cycles through.
+  const CUSTOM_OEL_CLIP_ID = "custom-user-webm";
+  const CUSTOM_OEL_ASSET_NAME = "__pvfd_custom_oel_webm__";
+  const CUSTOM_OEL_IDB_KEY = "__pvfd_custom_oel_webm_v1__";
+  const CUSTOM_OEL_MAX_BYTES = 25 * 1024 * 1024;
+  const CUSTOM_FONT_IDB_KEY = "__pvfd_custom_font_v1__";
+  const CUSTOM_FONT_META_STORAGE_KEY = "pvfd-custom-font-meta";
+  const CUSTOM_FONT_MAX_BYTES = 40 * 1024 * 1024;   // Windows ships CJK fonts as 13-21 MB .ttc collections
+  const CUSTOM_FONT_FAMILY = "PVFD Local Font";
+
+  function getOelClips() {
+    return customOelClip ? OEL_WEBM_CLIPS.concat([customOelClip]) : OEL_WEBM_CLIPS;
+  }
+
+  function isCustomOelClip(clip) {
+    return !!clip && clip.id === CUSTOM_OEL_CLIP_ID;
+  }
+  const DEVICE_PICKER_SELECTORS = [
+    "button[data-testid='control-button-connect-picker']",
+    "[data-testid='control-button-connect-picker']",
+    "button[data-testid*='connect-picker' i]",
+    "[data-testid*='connect-picker' i]",
+    "button[data-testid*='device-picker' i]",
+    "[data-testid*='device-picker' i]",
+    "button[data-testid*='connect-device' i]",
+    "[data-testid*='connect-device' i]",
+    "button[data-restore-focus-key='DevicePicker']",
+    "[data-restore-focus-key='DevicePicker']",
+    "button[aria-label*='Connect to a device' i]",
+    "button[aria-label*='Devices Available' i]",
+    "button[aria-label*='device picker' i]",
+    "button[aria-label*='device' i]",
+    "[role='button'][aria-label*='device' i]",
+    "[role='button'][aria-label*='connect' i]",
+    "button[title*='device' i]",
+    "button[title*='connect' i]"
+  ];
+  const DEVICE_PICKER_SCAN_SELECTOR = "button, [role='button'], [data-testid], [aria-label], [title]";
+  const DEVICE_PICKER_SCOPE_SELECTOR = [
+    "[data-testid='now-playing-bar']",
+    ".Root__now-playing-bar",
+    ".main-nowPlayingBar-container",
+    "[class*='nowPlayingBar']",
+    "footer"
+  ].join(",");
+  // Known sibling-button testids in the now-playing-bar right cluster — used to
+  // EXCLUDE them when we fall back to generic-button scanning. The connect-picker
+  // in Spotify 1.2.89.x has no testid, so the elimination approach is reliable.
+  const DEVICE_PICKER_SIBLING_TESTIDS = new Set([
+    "control-button-queue",
+    "control-button-lyrics",
+    "control-button-sleep-timer",
+    "control-button-npv",
+    "control-button-fullscreen",
+    "control-button-mini-player",
+    "control-button-pip",
+    "control-button-volume",
+    "control-button-playback-speed"
+  ]);
+  const PVFD_PLAY_GLYPH = "\u25B6\uFE0E";
+  const PVFD_PAUSE_GLYPH = "\u23F8\uFE0E";
+  const PVFD_META_IDLE_GLYPH = "\u2014";
+  const PVFD_META_PAUSE_GLYPH = "\u2161";
+  // DSEG14 is a 14-segment face: it carries A-Z / 0-9 and nothing else, so
+  // Hangul, Kana, Kanji, Cyrillic etc. fall through to the fallback font
+  // per-character and render as broken-looking soup. The cinema path handles
+  // this in renderPvfdLyrics() where it owns the line data; native lyrics are
+  // Spotify's DOM, so read the rendered text back out instead. CSS then skips
+  // the DSEG14 retype for those tracks (discussion #39).
+  //
+  // The flag goes on <body>, NOT on a lyrics container: the container classes
+  // are applied when the container APPEARS, which is before Spotify has painted
+  // any lines into it, so a container-scoped flag is a race that loses (this is
+  // exactly why the first cut of this silently never applied). Reading the lines
+  // directly and flagging body sidesteps the timing entirely.
+  //
+  // Track-level, not per-line: a per-line decision would swap the face mid-song
+  // as the view scrolls, which reads as a bug.
+  // Match a LETTER from a non-Latin script -- NOT merely "any codepoint
+  // outside the Latin range", which is what this used to do. That
+  // distinction is the whole ballgame: Spotify renders instrumental intros
+  // and breaks as a lone music-note line, and U+266A sits outside Latin, so
+  // a codepoint-range test flags essentially EVERY song as non-Latin. The
+  // segment font would apply on first paint and then get yanked the moment
+  // the scan re-ran -- which is exactly how the bug presented.
+  //
+  // Property escapes ask the real question: is there a letter here from
+  // another script? Punctuation, symbols, the music note, digits and emoji
+  // are all correctly ignored.
+  const PVFD_NON_LATIN_RE = /(?!\p{Script=Latin})\p{Letter}/u;
+
+  // Each stack ends in var(--pvfd-font-local): the sheet's one-line font
+  // fallback for scripts these faces do not cover (see user.css). Written
+  // inline as a custom property value, so the var() resolves where it is used.
+  const FONT_PRESETS = [
+    { label: "DOT",  stack: "\"VT323\", \"Share Tech Mono\", var(--pvfd-font-local)" },
+    { label: "LCD",  stack: "\"Iceland\", \"Share Tech Mono\", var(--pvfd-font-local)" },
+    { label: "TECH", stack: "\"Share Tech Mono\", var(--pvfd-font-local)" },
+    { label: "CRT",  stack: "\"VCR OSD Mono\", \"Silkscreen\", \"VT323\", var(--pvfd-font-local)" },
+  ];
+  const DEFAULT_FONT_PRESET = "TECH";
+  const LCD_FONT_PRESETS = [
+    { label: "DEFAULT", bodyAttr: "" },
+    { label: "DSEG14",  bodyAttr: "dseg14" },
+  ];
+  const DEFAULT_LCD_FONT_PRESET = "DEFAULT";
+  const LCD_FONT_STORAGE_KEY = "pvfd-lcd-font-preset";
+  // OEL album art in the full screen display (discussion #39). Opt-in: it is a
+  // stylistic choice, so it stays off until asked for.
+  const ART_PIXEL_STORAGE_KEY = "pvfd-art-pixel";
+  let artPixelEnabled = false;
+  let tintIdx = 0;
+  let fontPresetIdx = FONT_PRESETS.findIndex(p => p.label === DEFAULT_FONT_PRESET);
+  let lcdFontPresetIdx = LCD_FONT_PRESETS.findIndex(p => p.label === DEFAULT_LCD_FONT_PRESET);
+  let performanceModeIdx = 0;
+  let logoGlowEnabled = false;
+  let pulseLiveFailureReason = "";
+  let oelDisplayEnabled = true;
+  let racingColorEnabled = false;
+
+  const SOURCE_TARGETS = [
+    { label: "PLAY", title: "Playback", kind: "playback" },
+    { label: "LIB", title: "Your Library", kind: "library" },
+    { label: "SRCH", title: "Search", kind: "search" },
+    { label: "HOME", title: "Home", kind: "home" },
+  ];
+  let sourceIdx = 0;
+  let sourceFlashUntil = 0;
+  let demoAutoMode = false;
+  let demoLastClipSwitchMs = 0;
+  let demoSavedClipIdx = null;
+  const DEMO_CYCLE_INTERVAL_MS = 15000;
+  let menuOpen = false;
+  let tintMenuOpen = false;
+  let customizeMenuOpen = false;
+  let pvfdSpecialProfileActive = false;
+  let pvfdSpecialProfileSavedTintIdx = null;
+  let pvfdSpecialProfileSweepEl = null;
+  let pvfdSpecialProfileHeartsTimer = 0;
+  let pvfdSpecialProfileRetriesLeft = 0;
+  let pvfdSpecialProfileCheckTimer = 0;
+
+  // Legacy LKD payload intentionally stripped from the production path now that the
+  // WebM OEL system is the only active renderer.
+  const CLIPS = [];
+  let clipIdx = 0;
+  // The single user-imported OEL clip, or null. Metadata is hydrated
+  // synchronously at startup (so it joins getOelClips() before readClipIdx),
+  // its blob URL resolves asynchronously from IndexedDB.
+  let customOelClip = null;
+
+  // HLPR (Linux audio helper) bridge — see issue #16 and the Reddit thread
+  // with IpegFemboys. On Linux, xdg-desktop-portal often hides Spotify or
+  // omits the "Share system audio" checkbox, AND picking Spotify in the
+  // picker yields a silent track because Spotify outputs to PipeWire, not
+  // the renderer media element. pvfd-hlpr taps PipeWire directly and streams
+  // getByteFrequencyData-shaped bins over a localhost WebSocket. The bridge
+  // stubs logoLiveAudioAnalyser/Ctx/Bins so the existing
+  // readLogoLiveAudioMetrics pipeline works unchanged.
+  const HLPR_PROTOCOL_VERSION = 1;
+  const HLPR_DEFAULT_PORT = 17455;
+  const HLPR_WS_URL = `ws://127.0.0.1:${HLPR_DEFAULT_PORT}`;
+  const HLPR_OPT_OUT_STORAGE_KEY = "pvfd-hlpr-opt-out";
+  const HLPR_OPT_IN_STORAGE_KEY = "pvfd-hlpr-opt-in";
+  const HLPR_PROJECT_URL = "https://github.com/adainstarks/PVFD-Linux-Helper";
+  const HLPR_RECONNECT_MIN_MS = 250;
+  const HLPR_RECONNECT_MAX_MS = 4000;
+  const HLPR_FIRST_CONNECT_NOTIFY_MS = 8000;
+  const HLPR_VIRTUAL_SAMPLE_RATE = 48000;
+
+  let logoLiveGuitarCentroidPrev = 0;
+  let logoLiveGuitarMotionEnv = 0;
+  let logoLiveAudioStream = null;
+  let logoLiveAudioCtx = null;
+  let logoLiveAudioAnalyser = null;
+  let logoLiveAudioBins = null;
+  let logoStrip = null;
+  let logoLiveAudioSchedulerRaf = 0;
+  let logoLiveAudioActive = false;
+  let logoLiveAudioPending = false;
+  let logoLiveAudioResumeTimer = 0;
+  let desktopCaptureActive = false;
+  let desktopCapturePending = false;
+  // HLPR bridge state. hlprBridgeActive distinguishes Linux-helper streams
+  // from native getDisplayMedia so the menu can show HLPR vs LIVE.
+  let hlprBridgeActive = false;
+  let hlprBridgePending = false;
+  let hlprSocket = null;
+  let hlprReconnectTimer = 0;
+  let hlprReconnectDelayMs = HLPR_RECONNECT_MIN_MS;
+  let hlprFirstConnectNotifyTimer = 0;
+  let hlprConsentInFlight = false;
+  let hlprLatestBins = null;
+  let hlprHelloInfo = null;
+  let hlprProtocolMismatched = false;
+  let logoLivePrevBins = null;
+  let logoLiveDebugLastMs = 0;
+  let logoLiveSubEnv = 0;
+  let logoLiveBassEnv = 0;
+  let logoLiveLowMidEnv = 0;
+  let logoLiveMidEnv = 0;
+  let logoLiveUpperMidEnv = 0;
+  let logoLivePresenceEnv = 0;
+  let logoLiveAirEnv = 0;
+  let logoLiveLowEnv = 0;
+  let logoLiveHighEnv = 0;
+  let logoLivePunchEnv = 0;
+  let logoLiveLogoEnv = 0;
+  let lastLogoLiveAudioUpdateAt = -Infinity;
+  let barHeights = new Array(NUM_BARS).fill(0);
+  let sideVuEnergy = 0;
+  let pvfdPlaylistScrollStressUntil = -Infinity;
+  let pvfdPlaylistScrollStressInstalled = false;
+
+  let lastScrollStressLogoDemandAt = -Infinity;
+  let lastScrollStressKnobLedAt = -Infinity;
+
+  let lastSideVuPlayingState = null;
+  let lastSideVuReadoutAt = -Infinity;
+  let sideVuSettleUntil = -Infinity;
+
+  const SCROLL_STRESS_LOGO_DEMAND_MS = 500;
+  const SCROLL_STRESS_KNOB_LED_MS = 350;
+
+  const SIDE_VU_READOUT_MS = 1000;
+  const SIDE_VU_SETTLE_MS = 420;
+  const SIDE_VU_SETTLE_UPDATE_MS = 70;
+  let lastMediumLaneAt = -Infinity;
+  let lastSlowLaneAt = -Infinity;
+  let globalSearchFocusState = false;
+  let globalSearchFocusTimer = 0;
+  let pendingGlobalSearchFocusTarget = null;
+  const patchedLibrarySearchInputs = new WeakSet();
+  const patchedLibrarySearchContainers = new WeakSet();
+  const patchedLibraryToolbars = new WeakSet();
+  const patchedLibraryRecentsControls = new WeakSet();
+  const patchedLyricsSyncButtons = new WeakSet();
+  const pvfdRouteState = { route: "other", at: -Infinity, churnUntil: 0 };
+  const pvfdMutationWork = {
+    chassisRecheck: false,
+    mainViewChurn: false,
+    searchRoot: null,
+    lyricsRoot: null,
+    browseFontTarget: false,
+    routeMaybeChanged: false,
+  };
+  let pvfdPerfEnabled = false;
+  const pvfdPerfStats = Object.create(null);
+
+  let canvas = null, ctx = null;
+  let lcdDimmed = false;
+  let chromeDarkEnabled = false;
+  let logoStyleIdx = 0;
+  let everScrollMode = "OFF";
+  let eeqTinted = false;
+  let ledGlowMode = "SOFT";
+  let knobGlowEnabled = true;
+  let attMode = "mute";
+  let mcMenuOpen = false;
+  // -1 = BAND off (normal track metadata visible). 0..7 = active preset index.
+  let bandPresetIdx = -1;
+  let bandTuningTimer = null;
+  let bandTuningInterval = null;
+  let chassis = null;
+  let trackTitle = "", trackArtist = "";
+  let lastTrackUri = "";
+  let pendingVolume = null;
+  let volumeCommitTimer = null;
+  let scrubPreviewMs = null;
+  let scrubPreviewUntil = 0;
+  let seekCommitTimer = 0;
+  let seekPendingTarget = null;
+  let navDrag = null;
+  let oelVideoActiveClipKey = "";
+  let oelWebmSourceMap = null;
+  let oelWebmCachePopulationStarted = false;
+  let oelWebmLastCheckedUrl = "";
+  let oelCanvasRendererDisabledLogged = false;
+  let clipCacheRebuildBlockedUntil = 0;
+  const CLIP_CACHE_BATCH_MS = 4;
+  const CLIP_CACHE_ROUTE_REBUILD_BLOCK_MS = 650;
+  const MUTATION_FLUSH_DELAY_MS = 80;
+  const PLAYER_STATE_SAMPLE_MS = 900;
+  const PLAYER_TIMING_SAMPLE_MS = 1000;
+  // logo strip is live-audio only. No Spotify analysis, no metronome fallback.
+  // The analyser is throttled to ~30fps to keep the theme cheap for release users.
+  const LOGO_LIVE_AUDIO_SCHEDULER_MS = 33;
+  const LOGO_LIVE_SUB_MIN_HZ = 28;
+  const LOGO_LIVE_SUB_MAX_HZ = 70;
+  const LOGO_LIVE_BASS_MIN_HZ = 70;
+  const LOGO_LIVE_BASS_MAX_HZ = 160;
+  const LOGO_LIVE_LOWMID_MIN_HZ = 160;
+  const LOGO_LIVE_LOWMID_MAX_HZ = 420;
+  const LOGO_LIVE_MID_MIN_HZ = 420;
+  const LOGO_LIVE_MID_MAX_HZ = 1500;
+  const LOGO_LIVE_UPPERMID_MIN_HZ = 1500;
+  const LOGO_LIVE_UPPERMID_MAX_HZ = 3200;
+  const LOGO_LIVE_PRESENCE_MIN_HZ = 3200;
+  const LOGO_LIVE_PRESENCE_MAX_HZ = 7000;
+  const LOGO_LIVE_AIR_MIN_HZ = 7000;
+  const LOGO_LIVE_AIR_MAX_HZ = 12000;
+  const LOGO_LIVE_ATTACK = 0.96;
+  const LOGO_LIVE_RELEASE = 0.64;
+  // Per-band AGC. Tracks each band's recent raw peak with a slow decay; the
+  // effective compression gain is then reduced when the band has been
+  // sustained-loud (shoegaze wall, dense mids) so transients still have
+  // headroom to read above the wall. Floor prevents under-amplifying quiet
+  // material. Target is the peak level where base gain is preserved at 1×.
+  // At ~30fps render rate, 0.997/frame ≈ ~5s peak half-life.
+  const LOGO_LIVE_AGC_DECAY = 0.997;
+  const LOGO_LIVE_AGC_TARGET = 0.50;
+  const LOGO_LIVE_AGC_FLOOR = 0.18;
+  const logoLiveBandPeaks = new Float32Array(7);
+  const LOGO_LIVE_HIGH_ATTACK = 0.97;
+  const LOGO_LIVE_LOGO_ATTACK = 0.24;
+  const LOGO_LIVE_LOGO_RELEASE = 0.070;
+  const LOGO_LIVE_DEBUG = false;
+  const LOGO_GLOW_TIMING_SMOOTHING = 0.65;
+  // 2048 gives ~23 Hz/bin at 48 kHz — coarser sizes (e.g. 256 → 187 Hz/bin) collapse
+  // the 28–70 Hz SUB band and 70–160 Hz BASS band into the same bin.
+  const DESKTOP_CAPTURE_FFT_SIZE = 2048;
+  const TRACK_SYNC_INTERVAL_MS = 600;
+  const BAR_UPDATE_INTERVAL_MS = 140;
+  const PROGRESS_READOUT_INTERVAL_MS = 220;
+  const LCD_CLOCK_READOUT_INTERVAL_MS = 250;
+  const STATIC_READOUT_INTERVAL_MS = 1200;
+  const ECO_STATIC_READOUT_INTERVAL_MS = 4200;
+  const EXTERNAL_VOLUME_LED_SAMPLE_MS = 5000;
+  const VOLUME_SAMPLE_MS = 1200;
+  const PERFORMANCE_MODES = [
+    {
+      label: "FULL",
+      frameMs: FRAME_INTERVAL_MS,
+      maxClipFps: 60,
+      maxDpr: 2,
+      cacheBatchMs: CLIP_CACHE_BATCH_MS,
+      cacheFramesPerSlice: 3,
+      barUpdateMs: BAR_UPDATE_INTERVAL_MS,
+      sideVu: true,
+      sideReadouts: true,
+      reducedEffects: false,
+      preloadFullClipCache: true,
+      allowPartialClipCache: false,
+      keepPreviousClipCache: true,
+      releaseInactiveClipBytes: false,
+      maxCachedClipFrames: Infinity,
+    },
+    {
+      label: "ECO",
+      frameMs: FRAME_INTERVAL_MS,
+      maxClipFps: 12,
+      maxDpr: 1,
+      cacheBatchMs: 8,
+      cacheFramesPerSlice: 6,
+      barUpdateMs: 1000,
+      sideVu: false,
+      sideReadouts: false,
+      reducedEffects: true,
+      preloadFullClipCache: true,
+      allowPartialClipCache: true,
+      keepPreviousClipCache: false,
+      releaseInactiveClipBytes: true,
+      maxCachedClipFrames: Infinity,
+    },
+  ];
+
+  // Cache for the logo spectrum meter canvases — avoids per-frame querySelector +
+  // getContext. Populated by ensureLogoSpectrumMarkup; nulled by mutation observer
+  // when the strip is rebuilt by Spotify.
+  const logoMeterCache = { left: null, right: null };
+
+  function fmtTime(ms) {
+    const s = Math.max(0, Math.floor((ms || 0) / 1000));
+    return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+  }
+
+  function findPlayerBar() {
+    const root = document.querySelector(".Root__now-playing-bar");
+    if (root) return root;
+
+    const testIdBar = document.querySelector("[data-testid='now-playing-bar']");
+    if (testIdBar) {
+      const rootParent = testIdBar.closest(".Root__now-playing-bar");
+      return rootParent || testIdBar;
+    }
+
+    return document.querySelector(".main-nowPlayingBar-container");
+  }
+
+  function preparePlayerBar(bar) {
+    if (!bar) return;
+    document.documentElement.classList.add("pvfd-theme-active");
+    document.body.classList.add("pvfd-theme-active");
+    bar.classList.add("pvfd-mounted");
+    bar.style.setProperty("height", "var(--pvfd-player-height)", "important");
+    bar.style.setProperty("min-height", "var(--pvfd-player-height)", "important");
+    bar.style.setProperty("max-height", "var(--pvfd-player-height)", "important");
+    bar.style.setProperty("position", "relative", "important");
+    bar.style.setProperty("overflow", "hidden", "important");
+  }
+
+  function hideNativePlayerChildren(bar) {
+    if (!bar) return;
+    Array.from(bar.children).forEach((child) => {
+      if (!child.classList || !child.classList.contains("pvfd-chassis")) {
+        child.classList.add("pvfd-native-player-hidden");
+        child.removeAttribute("aria-hidden");
+      }
+    });
+  }
+
+  function buildChassis() {
+    const root = document.createElement("div");
+    root.className = "pvfd-chassis";
+    root.innerHTML = `
+      <div class="pvfd-faceplate">
+        <div style="display:flex;align-items:center;gap:14px;justify-content:flex-start;">
+          <span class="pvfd-silk-eeq" data-pvfd="eeq" role="button" tabindex="0" title="Toggle EEQ tint">EEQ</span>
+          <span class="pvfd-silk-label">MOSFET 50w<span class="pvfd-silk-label-x">&times;</span><span class="pvfd-silk-label-4">4</span></span>
+          <button class="pvfd-silk-lyrics" type="button" data-pvfd="lyrics" aria-label="Open song lyrics" title="Open lyrics">Lyrics</button>
+        </div>
+        <div class="pvfd-logo-strip" aria-label="Live audio spectrum logo strip">
+          <div class="pvfd-logo-spectrum pvfd-logo-spectrum-left" aria-hidden="true">
+            <span class="pvfd-vbar pvfd-vbar-left-air"></span>
+            <span class="pvfd-vbar pvfd-vbar-left-presence"></span>
+            <span class="pvfd-vbar pvfd-vbar-left-uppermid"></span>
+            <span class="pvfd-vbar pvfd-vbar-left-mid"></span>
+            <span class="pvfd-vbar pvfd-vbar-left-lowmid"></span>
+            <span class="pvfd-vbar pvfd-vbar-left-bass"></span>
+            <span class="pvfd-vbar pvfd-vbar-left-sub"></span>
+          </div>
+          <span class="pvfd-silk-pioneer">pioneer</span>
+          <div class="pvfd-logo-spectrum pvfd-logo-spectrum-right" aria-hidden="true">
+            <span class="pvfd-vbar pvfd-vbar-right-sub"></span>
+            <span class="pvfd-vbar pvfd-vbar-right-bass"></span>
+            <span class="pvfd-vbar pvfd-vbar-right-lowmid"></span>
+            <span class="pvfd-vbar pvfd-vbar-right-mid"></span>
+            <span class="pvfd-vbar pvfd-vbar-right-uppermid"></span>
+            <span class="pvfd-vbar pvfd-vbar-right-presence"></span>
+            <span class="pvfd-vbar pvfd-vbar-right-air"></span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;justify-content:flex-end;">
+          <span class="pvfd-silk-label">WMA / MP3</span>
+          <span class="pvfd-silk-dab">DAB CONTROL</span>
+          <div class="pvfd-info-cluster">
+            <span class="pvfd-info-label">INFO</span>
+            <button class="pvfd-info-glyph" type="button" data-pvfd="npv" title="Open Now Playing view (art, lyrics, credits, queue)" aria-label="Open Now Playing view"></button>
+          </div>
+          <div class="pvfd-eject-cluster" style="display:flex;gap:5px;padding-left:2px;">
+            <span class="pvfd-eject-label">EJECT</span>
+            <button class="pvfd-eject-glyph" type="button" data-pvfd="eject" title="Eject (initialize standby mode)" aria-label="Eject — Standby Mode"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pvfd-mainrow">
+        <div class="pvfd-knob-wrap">
+          <div class="pvfd-knob" data-pvfd="lknob" title="Volume (scroll or drag — hold center for M.C.)">
+            <div class="pvfd-knob-glow"></div>
+            <div class="pvfd-knob-bezel"></div>
+            <div class="pvfd-knob-led-arc"></div>
+            <div class="pvfd-knob-cap"></div>
+            <div class="pvfd-knob-engraving" aria-hidden="true">M.C.</div>
+            <div class="pvfd-knob-indicator"></div>
+          </div>
+          <div class="pvfd-mc-menu" data-pvfd="mc-menu" role="menu" aria-hidden="true">
+            <div class="pvfd-mc-menu-title">M.C.</div>
+            <button class="pvfd-mc-menu-row" type="button" data-pvfd-mc-row="att" title="ATT mode — MUTE (silence) or 10%VOL (0.1 x Current Vol.)"><b>ATT</b><span>MUTE</span></button>
+            <button class="pvfd-mc-menu-row" type="button" data-pvfd-mc-row="glow" title="GLOW — knob halo + indicator light up while dragging"><b>GLOW</b><span>ON</span></button>
+          </div>
+        </div>
+
+        <div class="pvfd-flank">
+          <div class="pvfd-pill" data-pvfd="esc"  title="Back (previous page)">ESC</div>
+          <div class="pvfd-pill" data-pvfd="att" title="Attenuator: instant mute toggle">ATT</div>
+          <div class="pvfd-pill" data-pvfd="dim"  title="Toggle LCD brightness">DIM</div>
+          <div class="pvfd-pill" data-pvfd="clip" title="Next OEL animation">OEL</div>
+        </div>
+
+        <div class="pvfd-display-stack">
+          <div class="pvfd-meta-lcd" aria-label="Now playing metadata">
+            <div class="pvfd-meta-track">
+              <button class="pvfd-meta-glyph" type="button" data-pvfd="meta-play-toggle" title="Play / pause" aria-label="Play or pause">${PVFD_PLAY_GLYPH}</button>
+              <span class="pvfd-meta-title-window"><span class="pvfd-meta-track-inner">${PVFD_META_IDLE_GLYPH}</span></span>
+            </div>
+            <div class="pvfd-meta-progress" data-pvfd="trackbar" title="Click or drag to scrub">
+              <span class="pvfd-progress-text">:----------&gt;----------:</span>
+            </div>
+            <div class="pvfd-meta-time"><span class="pvfd-ro">0:00</span></div>
+            <div class="pvfd-fm-overlay" data-pvfd="fm-overlay" aria-hidden="true">
+              <span class="pvfd-fm-band-label">FM</span>
+              <span class="pvfd-fm-freq" data-pvfd="fm-freq">92.3</span>
+              <span class="pvfd-fm-unit">MHz</span>
+              <span class="pvfd-fm-stereo">ST</span>
+            </div>
+            <video class="pvfd-fm-audio" data-pvfd="fm-audio" preload="none" playsinline style="display:none"></video>
+          </div>
+
+          <div class="pvfd-compact-stage" aria-label="Compact Pioneer LCD test stage">
+            <div class="pvfd-lcd-side pvfd-lcd-side-left" aria-label="Playback readouts">
+              <div class="pvfd-side-label">PLAYBACK</div>
+              <div class="pvfd-side-readout"><b>VOL</b><span data-pvfd="side-vol"><span class="pvfd-ro">--%</span></span></div>
+              <div class="pvfd-side-readout"><b>MODE</b><span data-pvfd="side-mode"><span class="pvfd-ro">----</span></span></div>
+              <div class="pvfd-side-readout"><b>TINT</b><span data-pvfd="side-tint"><span class="pvfd-ro">CYAN</span></span></div>
+              <div class="pvfd-side-readout"><b>LCD</b><span data-pvfd="side-dim"><span class="pvfd-ro">FULL</span></span></div>
+              <div class="pvfd-side-badges"><span data-pvfd="badge-live" title="Lit while live audio is flowing: PULSE capture or the BAND tuner">LIVE</span><span data-pvfd="badge-vfd" title="Lit while the OEL animation display is on">VFD</span></div>
+              <div class="pvfd-side-model pvfd-side-eco-model" data-pvfd="side-eco-model">ECO</div>
+            </div>
+
+            <div class="pvfd-lcd" aria-label="Pioneer VFD animation display">
+              <div class="pvfd-lcd-video-probe" data-pvfd="lcd-video-probe" aria-hidden="true"></div>
+              <video class="pvfd-lcd-video" data-pvfd="lcd-video" aria-hidden="true"></video>
+              <div class="pvfd-oel-tint-wash" data-pvfd="oel-tint-wash" aria-hidden="true"></div>
+              <canvas class="pvfd-oel-sting" data-pvfd="oel-sting" aria-hidden="true"></canvas>
+              <canvas class="pvfd-lcd-canvas"></canvas>
+              <div class="pvfd-lcd-status" data-pvfd="lcd-status" data-pvfd-label="PLAY" aria-hidden="true">PLAY</div>
+              <div class="pvfd-lcd-clock" data-pvfd="lcd-clock" data-pvfd-label="--:--" aria-hidden="true">--:--</div>
+              <div class="pvfd-eject-tintmask" data-pvfd="eject-tintmask" aria-hidden="true"></div>
+              <div class="pvfd-eject-overlay" data-pvfd="eject-overlay" aria-hidden="true">
+                <div class="pvfd-eject-headline"><span>EJECTING</span></div>
+                <div class="pvfd-eject-caption">COME BACK SOON <span class="pvfd-eject-smiley">☺</span></div>
+              </div>
+              <div class="pvfd-stateflash" data-pvfd="stateflash" aria-hidden="true">
+                <video class="pvfd-stateflash-bed" data-pvfd="stateflash-bed" muted loop playsinline aria-hidden="true"></video>
+                <div class="pvfd-stateflash-wash" aria-hidden="true"></div>
+                <div class="pvfd-stateflash-scan" aria-hidden="true"></div>
+                <div class="pvfd-stateflash-word" data-pvfd="stateflash-word"></div>
+              </div>
+            </div>
+
+            <div class="pvfd-lcd-side pvfd-lcd-side-right" aria-label="Playback status readouts">
+              <div class="pvfd-side-vu" data-pvfd="side-vu">
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <div class="pvfd-side-readouts-right">
+                <div class="pvfd-side-readout"><b>PROG</b><span data-pvfd="side-prog"><span class="pvfd-ro">--%</span></span></div>
+                <div class="pvfd-side-readout"><b>LEFT</b><span data-pvfd="side-left"><span class="pvfd-ro">--:--</span></span></div>
+                <div class="pvfd-side-readout"><b>RPT</b><span data-pvfd="side-repeat"><span class="pvfd-ro">OFF</span></span></div>
+                <div class="pvfd-side-readout"><b>SHUF</b><span data-pvfd="side-shuffle"><span class="pvfd-ro">OFF</span></span></div>
+              </div>
+              <div class="pvfd-side-model" data-pvfd="side-status">PAUSE</div>
+              <div class="pvfd-side-badges"><span>DSP</span><span data-pvfd="side-playbadge">IDLE</span></div>
+            </div>
+          </div>
+
+          <div class="pvfd-tint-menu-panel" data-pvfd="tint-menu-panel" aria-hidden="true">
+            <div class="pvfd-tint-menu-header">
+              <div class="pvfd-tint-menu-title">TINT</div>
+              <div class="pvfd-tint-menu-actions">
+                <span class="pvfd-adaptive-label">ADAPTIVE:</span>
+                <button class="pvfd-tint-swatch pvfd-tint-adaptive" type="button" data-pvfd-menu-action="tintAdaptive" title="Adaptive: tint from the current album art" aria-label="Adaptive tint from album art"><span class="pvfd-tint-swatch-color pvfd-adaptive-swatch"></span></button>
+                <button class="pvfd-menu-back" type="button" data-pvfd-menu-action="tintBack" title="Back to Customize" aria-label="Back to Customize menu">&#x2190;</button>
+                <button class="pvfd-menu-close" type="button" data-pvfd-menu-action="tintClose" title="Close tint menu" aria-label="Close tint menu">&#x2715;</button>
+              </div>
+            </div>
+            <div class="pvfd-tint-menu-grid" data-pvfd="tint-menu-grid"></div>
+          </div>
+
+          <div class="pvfd-menu-panel" data-pvfd="menu-panel" data-view="main" aria-hidden="true">
+            <div class="pvfd-menu-header">
+              <div class="pvfd-menu-title" data-pvfd="menu-title">PIONEER MENU</div>
+              <button class="pvfd-menu-close" type="button" data-pvfd-menu-action="close" title="Close menu" aria-label="Close menu">&#x2715;</button>
+            </div>
+            <div class="pvfd-menu-main" data-pvfd="menu-main" data-pvfd-menu-view="main">
+              <div class="pvfd-menu-row-split">
+                <div class="pvfd-menu-row" data-pvfd-menu-action="clip" title="Next OEL animation"><b>OEL</b><span data-pvfd="menu-oel">----</span></div>
+                <div class="pvfd-menu-row" data-pvfd-menu-action="demo"><b>DEMO</b><span data-pvfd="menu-demo">OFF</span></div>
+              </div>
+              <div class="pvfd-menu-row-split">
+                <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-perf-toggle" type="button" data-pvfd-menu-action="perf" title="Cycle performance mode"><b>PERF</b><span data-pvfd="menu-perf">FULL</span></button>
+                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="artPixel" title="Dither album art like the display panel. Works alongside ADAPTIVE, which paints it in the album's own colour."><b>ART</b><span data-pvfd="menu-art-pixel">OFF</span></button>
+              </div>
+              <div class="pvfd-menu-row-split">
+                <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-logo-toggle" type="button" data-pvfd-menu-action="logoGlow" title="Toggle Chromium live audio capture"><b>PULSE</b><span data-pvfd="menu-logo-glow">OFF</span></button>
+                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="chromeMode" title="Toggle dark chrome plastic"><b>DARK</b><span data-pvfd="menu-chrome">OFF</span></button>
+              </div>
+              <div class="pvfd-menu-row-split">
+                <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-logo-toggle" type="button" data-pvfd-menu-action="oelDisplay" title="Toggle large OEL display"><b>VFD</b><span data-pvfd="menu-oel-display">ON</span></button>
+                <div class="pvfd-menu-row pvfd-menu-row-placeholder" aria-hidden="true"></div>
+              </div>
+              <div class="pvfd-menu-row-split">
+                <button class="pvfd-menu-row pvfd-menu-right-toggle pvfd-menu-row-customize" type="button" data-pvfd-menu-action="openCustomize" title="Appearance & customization"><b>CUSTOMIZE</b><span></span></button>
+                <div class="pvfd-menu-row pvfd-menu-row-placeholder" aria-hidden="true"></div>
+              </div>
+            </div>
+            <div class="pvfd-menu-main pvfd-menu-customize" data-pvfd="menu-customize" data-pvfd-menu-view="customize" hidden>
+              <div class="pvfd-menu-row-split">
+                <div class="pvfd-menu-row" data-pvfd-menu-action="tint"><b>TINT</b><span data-pvfd="menu-tint">CYAN</span></div>
+                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="racingColor" title="Racing & custom OEL clips: OFF forces one-color VFD tint; ON keeps full color while still hue-shifting with the current tint"><b>COLOR</b><span data-pvfd="menu-racing-color">OFF</span></button>
+              </div>
+              <div class="pvfd-menu-row-split">
+                <div class="pvfd-menu-row" data-pvfd-menu-action="type"><b>TYPE</b><span data-pvfd="menu-type">DOT</span></div>
+                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="ledGlow" title="Cycle transport button LED glow: SOFT, HARD, or OFF"><b>BUTTON</b><span data-pvfd="menu-led-glow">SOFT</span></button>
+              </div>
+
+              <div class="pvfd-menu-row-split">
+                <div class="pvfd-menu-row" data-pvfd-menu-action="lcdFont" title="Cycle LCD segment font"><b>LCD</b><span data-pvfd="menu-lcd-font">DEFAULT</span></div>
+                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="everScroll" title="Title scroll: OFF (truncate with ellipsis), ONCE (Pioneer Ever Scroll OFF — scroll across once), or ON (Pioneer Ever Scroll ON — loop forever)"><b>SCROLL</b><span data-pvfd="menu-ever-scroll">OFF</span></button>
+              </div>
+              <div class="pvfd-menu-row-split">
+                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="customFont" title="Import a font file for languages the theme fonts do not cover (max 40 MB)"><b>FONT</b><span data-pvfd="menu-custom-font">OFF</span></button>
+                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="logoStyle" title="Pioneer logo style: MODERN (Neuropol geometric) or CLASSIC (Musieer serif from older Pioneer units)"><b>LOGO</b><span data-pvfd="menu-logo-style">MODERN</span></button>
+              </div>
+              <div class="pvfd-menu-row-split pvfd-menu-row-split-back">
+                <button class="pvfd-menu-row pvfd-menu-back" type="button" data-pvfd-menu-action="backToMain" title="Back to Pioneer Menu" aria-label="Back to Pioneer Menu"><span>&#x2190;</span></button>
+                <button class="pvfd-menu-row pvfd-menu-right-toggle" type="button" data-pvfd-menu-action="customOel" title="Import your own .webm clip for the OEL display (max 25 MB)"><b>OEL</b><span data-pvfd="menu-custom-oel">IMPORT</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pvfd-flank">
+          <div class="pvfd-pill" data-pvfd="band" title="BAND (fake-FM radio. Fetches archived 2000s broadcasts)">BAND</div>
+          <div class="pvfd-pill" data-pvfd="demo" title="Toggle showroom auto-cycle">DEMO</div>
+          <div class="pvfd-pill" data-pvfd="menu" title="Open Pioneer menu">MENU</div>
+          <div class="pvfd-pill" data-pvfd="tint" title="Cycle theme color">TINT</div>
+        </div>
+
+        <div class="pvfd-knob-wrap">
+          <div class="pvfd-nav" title="Ring tunes stations (BAND on). Center = play/pause. &#9668;&#9658; seek &#177;10s &#183; &#9650; artist &#183; &#9660; menu">
+            <div class="pvfd-nav-glow"></div>
+            <div class="pvfd-nav-outer" data-pvfd="navring"></div>
+            <div class="pvfd-nav-led-ring"></div>
+            <!-- Arrows come FIRST: the arrow-hover styling on the button and
+                 inner ring uses the general-sibling combinator (it replaced
+                 :has(:hover), which made Chromium run :has invalidation on
+                 every hover flip page-wide), and ~ only looks forward. Paint
+                 and hit order are pinned by z-index in the theme, not by this
+                 order. -->
+            <div class="pvfd-nav-arrow up"    data-pvfd="navup"    title="Go to artist">&#9650;</div>
+            <div class="pvfd-nav-arrow down"  data-pvfd="navdn"    title="Track menu">&#9660;</div>
+            <div class="pvfd-nav-arrow left"  data-pvfd="navleft"  title="Seek &#8722;10s">&#9664;</div>
+            <div class="pvfd-nav-arrow right" data-pvfd="navright" title="Seek +10s">&#9654;</div>
+            <div class="pvfd-nav-inner-ring"></div>
+            <div class="pvfd-nav-button" data-pvfd="navcenter"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pvfd-transport">
+        <div class="pvfd-tab-side" data-pvfd="queue" title="List (queue)">LST<div class="pvfd-led-strip"></div></div>
+        <div class="pvfd-preset-row">
+          <div class="pvfd-tab-preset" data-pvfd="shuffle" title="Shuffle">&#8646;<div class="pvfd-led-strip"></div></div>
+          <div class="pvfd-tab-preset" data-pvfd="prev"    title="Previous">&#9198;&#xFE0E;<div class="pvfd-led-strip"></div></div>
+          <div class="pvfd-tab-preset" data-pvfd="play"    title="Play / pause"><span class="pvfd-tab-glyph">&#9654;&#xFE0E;</span><div class="pvfd-led-strip"></div></div>
+          <div class="pvfd-tab-preset" data-pvfd="next"    title="Next">&#9197;&#xFE0E;<div class="pvfd-led-strip"></div></div>
+          <div class="pvfd-tab-preset" data-pvfd="repeat"  title="Repeat"><span class="pvfd-tab-glyph">&#8635;</span><div class="pvfd-led-strip"></div></div>
+          <div class="pvfd-tab-preset" data-pvfd="love"    title="Save to liked">&#9829;<div class="pvfd-led-strip"></div></div>
+        </div>
+        <div class="pvfd-tab-side" data-pvfd="devices" title="Devices">SRC<div class="pvfd-led-strip"></div></div>
+      </div>
+    `;
+    return root;
+  }
+
+  function ensureOelVideoMarkup() {
+    if (!chassis) return;
+    const lcd = chassis.querySelector(".pvfd-lcd");
+    if (!lcd) return;
+
+    let domChanged = false;
+    let probe = lcd.querySelector("[data-pvfd='lcd-video-probe']");
+    if (!probe) {
+      probe = document.createElement("div");
+      probe.className = "pvfd-lcd-video-probe";
+      probe.setAttribute("data-pvfd", "lcd-video-probe");
+      probe.setAttribute("aria-hidden", "true");
+      lcd.insertBefore(probe, lcd.firstChild || null);
+      domChanged = true;
+    }
+
+    let video = lcd.querySelector("[data-pvfd='lcd-video']");
+    if (!video) {
+      video = document.createElement("video");
+      video.className = "pvfd-lcd-video";
+      video.setAttribute("data-pvfd", "lcd-video");
+      video.setAttribute("aria-hidden", "true");
+      lcd.insertBefore(video, probe.nextSibling);
+      domChanged = true;
+    }
+
+    prepareOelVideoElement(video);
+
+    let tintWash = lcd.querySelector("[data-pvfd='oel-tint-wash']");
+    if (!tintWash) {
+      tintWash = document.createElement("div");
+      tintWash.className = "pvfd-oel-tint-wash";
+      tintWash.setAttribute("data-pvfd", "oel-tint-wash");
+      tintWash.setAttribute("aria-hidden", "true");
+      lcd.insertBefore(tintWash, video.nextSibling);
+      domChanged = true;
+    }
+
+    let sting = lcd.querySelector("[data-pvfd='oel-sting']");
+    if (!sting) {
+      sting = document.createElement("canvas");
+      sting.className = "pvfd-oel-sting";
+      sting.setAttribute("data-pvfd", "oel-sting");
+      sting.setAttribute("aria-hidden", "true");
+      lcd.insertBefore(sting, tintWash.nextSibling);
+      domChanged = true;
+    }
+
+    let pulseLock = lcd.querySelector("[data-pvfd='pulse-lock']");
+    if (!pulseLock) {
+      pulseLock = document.createElement("div");
+      pulseLock.className = "pvfd-pulse-lock";
+      pulseLock.setAttribute("data-pvfd", "pulse-lock");
+      pulseLock.innerHTML = '<span class="pvfd-pulse-lock-badge">\uD83D\uDD12 PULSE</span>';
+      lcd.insertBefore(pulseLock, sting.nextSibling);
+      domChanged = true;
+    }
+    // This runs every frame. Unconditional setAttribute queues a mutation
+    // record even when the value is unchanged (measured ~105 records/s from
+    // these four lines alone), so only write what differs. aria-hidden and
+    // tabindex are then owned by syncOelColorModeAttributes, which already
+    // sets them from the lock state; seeding them here only on creation keeps
+    // the two from fighting.
+    if (!pulseLock.hasAttribute("aria-hidden")) pulseLock.setAttribute("aria-hidden", "true");
+    setAttrIfChanged(pulseLock, "aria-label", "Enable PULSE");
+    setAttrIfChanged(pulseLock, "role", "button");
+    if (!pulseLock.hasAttribute("tabindex")) pulseLock.setAttribute("tabindex", "-1");
+
+    if (!lcd.hasAttribute("data-pvfd-video-state")) {
+      lcd.setAttribute("data-pvfd-video-state", "fallback");
+      domChanged = true;
+    }
+
+    if (domChanged) pvfdDom = null;
+    syncOelColorModeAttributes();
+  }
+
+  function isRacingClip(clip) {
+    return !!clip && clip.id === RACING_CLIP_ID;
+  }
+
+  function isPioneerVfdClip(clip) {
+    return !!clip && clip.id === PIONEER_VFD_CLIP_ID;
+  }
+
+  function isNativeColorClip(clip) {
+    return !!(clip && clip.nativeColor);
+  }
+
+  // Clips that honor the COLOR/TINT toggle: the racing clip and the user's
+  // imported custom clip. The PioneerVFD ident is always native color because
+  // its cyan fireworks are the point of the clip.
+  function canToggleOelColor(clip) {
+    return isRacingClip(clip) || isCustomOelClip(clip);
+  }
+
+  function racingColorModeLabel() {
+    return racingColorEnabled ? "ON" : "OFF";
+  }
+
+  function syncOelColorModeAttributes() {
+    if (!chassis) return;
+    const dom = getPvfdDom();
+    const activeClip = getActiveOelClip();
+    const activeClipId = activeClip && activeClip.id ? activeClip.id : "";
+    const customActive = isCustomOelClip(activeClip);
+    const nativeColorActive = isNativeColorClip(activeClip);
+    const toggleColorActive = canToggleOelColor(activeClip) && racingColorEnabled;
+    const pulseLocked = isClipPulseLocked(activeClip);
+    const colorMode = (nativeColorActive || toggleColorActive) ? "color" : "tint";
+
+    setAttrIfChanged(chassis, "data-pvfd-racing-color", racingColorEnabled ? "on" : "off");
+    setAttrIfChanged(chassis, "data-pvfd-active-oel-clip", activeClipId || "none");
+
+    if (dom.lcd) {
+      setAttrIfChanged(dom.lcd, "data-pvfd-oel-clip", activeClipId || "none");
+      setAttrIfChanged(dom.lcd, "data-pvfd-oel-color", colorMode);
+      setAttrIfChanged(dom.lcd, "data-pvfd-oel-custom", customActive ? "true" : "false");
+      setAttrIfChanged(dom.lcd, "data-pvfd-racing-color", toggleColorActive ? "on" : "off");
+      setAttrIfChanged(dom.lcd, "data-pvfd-pulse-locked", pulseLocked ? "on" : "off");
+      if (dom.pulseLock) {
+        setAttrIfChanged(dom.pulseLock, "aria-hidden", pulseLocked ? "false" : "true");
+        setAttrIfChanged(dom.pulseLock, "tabindex", pulseLocked ? "0" : "-1");
+      }
+      if (nativeColorActive) {
+        if (dom.lcd.hasAttribute("title")) dom.lcd.removeAttribute("title");
+      } else {
+        // Per frame, like everything in here: compare before writing, or the
+        // title alone is a mutation record every frame.
+        setAttrIfChanged(dom.lcd, "title", canToggleOelColor(activeClip)
+          ? `OEL color mode: ${racingColorModeLabel()} (click OEL to toggle)`
+          : "Pioneer OEL display");
+      }
+    }
+
+    // Same discipline for the video's data attributes (was three unconditional
+    // dataset writes per frame, ~150 mutation records/s for no change).
+    if (dom.lcdVideo) {
+      setAttrIfChanged(dom.lcdVideo, "data-pvfd-clip-id", activeClipId || "none");
+      setAttrIfChanged(dom.lcdVideo, "data-pvfd-color-mode", colorMode);
+      setAttrIfChanged(dom.lcdVideo, "data-pvfd-racing-color", toggleColorActive ? "on" : "off");
+    }
+  }
+
+  function ensureLogoSpectrumMarkup() {
+    if (!chassis) return;
+
+    const strip = chassis.querySelector(".pvfd-logo-strip");
+    if (!strip) return;
+
+    logoStrip = strip;
+
+    let glowCanvas = strip.querySelector("canvas.pvfd-logo-glow-canvas");
+
+    if (!glowCanvas) {
+      glowCanvas = document.createElement("canvas");
+      glowCanvas.className = "pvfd-logo-glow-canvas";
+      glowCanvas.width = LOGO_GLOW_W;
+      glowCanvas.height = LOGO_GLOW_H;
+      glowCanvas.setAttribute("aria-hidden", "true");
+      strip.insertBefore(glowCanvas, strip.firstChild || null);
+    }
+
+    const glowCtx = glowCanvas.getContext("2d", { alpha: true });
+    if (glowCtx) glowCtx.imageSmoothingEnabled = false;
+
+    logoGlowCanvasCache.canvas = glowCanvas;
+    logoGlowCanvasCache.ctx = glowCtx;
+
+    const ensureSide = (selector, cacheKey) => {
+      const side = strip.querySelector(selector);
+
+      if (!side) {
+        logoMeterCache[cacheKey] = null;
+        return;
+      }
+
+      let meterCanvas = side.querySelector("canvas.pvfd-logo-meter-canvas");
+
+      if (!meterCanvas || side.children.length !== 1 || side.firstElementChild !== meterCanvas) {
+        side.textContent = "";
+
+        meterCanvas = document.createElement("canvas");
+        meterCanvas.className = "pvfd-logo-meter-canvas";
+        meterCanvas.width = LOGO_METER_W;
+        meterCanvas.height = LOGO_METER_H;
+        meterCanvas.setAttribute("aria-hidden", "true");
+
+        side.appendChild(meterCanvas);
+      }
+
+      const ctx2d = meterCanvas.getContext("2d", { alpha: true });
+      if (ctx2d) ctx2d.imageSmoothingEnabled = false;
+
+      side.setAttribute("data-pvfd-meter", "canvas");
+      side.setAttribute("data-pvfd-vbar-count", String(LOGO_METER_BAND_COUNT));
+
+      logoMeterCache[cacheKey] = {
+        side,
+        canvas: meterCanvas,
+        ctx: ctx2d
+      };
+    };
+
+    ensureSide(".pvfd-logo-spectrum-left", "left");
+    ensureSide(".pvfd-logo-spectrum-right", "right");
+
+    logoRenderState.dirty = true;
+    renderLogoVisuals(performance.now(), true);
+  }
+
+  function injectChassis() {
+    pvfdDiag.injectChassisCalls++;
+    const bar = findPlayerBar();
+    if (!bar) return false;
+
+    preparePlayerBar(bar);
+
+    if (bar.querySelector(".pvfd-chassis")) {
+      chassis = bar.querySelector(".pvfd-chassis");
+      hideNativePlayerChildren(bar);
+      ensureLogoSpectrumMarkup();
+      ensureOelVideoMarkup();
+      canvas = chassis.querySelector(".pvfd-lcd-canvas");
+      logoStrip = chassis.querySelector(".pvfd-logo-strip");
+      if (canvas) ctx = canvas.getContext("2d");
+      if (ctx) ctx.imageSmoothingEnabled = false;
+      sizeCanvas();
+      // belt-and-braces re-measure on next rAF in case the bar wasn't
+      // laid out yet on first attach. Without this, canvasCssW could stay 0 and
+      // the loop's safe-bail path would fire every frame until a window resize.
+      if (!canvasCssW || !canvasCssH) scheduleSizeCanvas();
+      syncOelVideoPlayback(true);
+      return true;
+    }
+
+    hideNativePlayerChildren(bar);
+    chassis = buildChassis();
+    chassis.dataset.pvfdInstance = String(pvfdDiag.injectChassisCalls);
+    bar.appendChild(chassis);
+    hideNativePlayerChildren(bar);
+    ensureLogoSpectrumMarkup();
+    ensureOelVideoMarkup();
+
+    canvas = chassis.querySelector(".pvfd-lcd-canvas");
+    logoStrip = chassis.querySelector(".pvfd-logo-strip");
+    if (canvas) {
+      ctx = canvas.getContext("2d");
+      if (ctx) ctx.imageSmoothingEnabled = false;
+      sizeCanvas();
+      if (!canvasCssW || !canvasCssH) scheduleSizeCanvas();
+      window.addEventListener("resize", scheduleSizeCanvas, { passive: true });
+    }
+    /* Meta-track re-measure on window resize. Container width changes when
+       the Spotify window resizes or the right sidebar collapses/expands,
+       which shifts overflow detection and scroll distance. Debounced via
+       rAF so a drag-resize burst only re-measures once per frame. */
+    window.addEventListener("resize", scheduleMetaTrackRepaint, { passive: true });
+    wireControls();
+    syncOelVideoPlayback(true);
+    return true;
+  }
+
+  let metaTrackRepaintRaf = 0;
+  function scheduleMetaTrackRepaint() {
+    if (metaTrackRepaintRaf) return;
+    metaTrackRepaintRaf = requestAnimationFrame(() => {
+      metaTrackRepaintRaf = 0;
+      repaintMetaTrackForMode();
+    });
+  }
+
+  let canvasResizeRaf = 0;
+  let canvasCssW = 0, canvasCssH = 0;
+  function scheduleSizeCanvas() {
+    if (canvasResizeRaf) return;
+    canvasResizeRaf = requestAnimationFrame(() => {
+      canvasResizeRaf = 0;
+      sizeCanvas();
+    });
+  }
+
+  function sizeCanvas() {
+    if (!canvas || !ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    canvasCssW = rect.width;
+    canvasCssH = rect.height;
+    const perf = activePerformanceConfig();
+    const dpr = Math.max(1, Math.min(perf.maxDpr || 2, window.devicePixelRatio || 1));
+    const pixelW = Math.max(1, Math.floor(rect.width * dpr));
+    const pixelH = Math.max(1, Math.floor(rect.height * dpr));
+    const dprKey = String(dpr);
+    if (canvas.width === pixelW && canvas.height === pixelH && canvas.dataset.pvfdDpr === dprKey) return;
+    canvas.width = pixelW;
+    canvas.height = pixelH;
+    canvas.dataset.pvfdDpr = dprKey;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+  }
+
+  function bind(el, fn) { if (el) el.addEventListener("click", fn); }
+  function safe(fn) { try { fn(); } catch (e) { console.warn("[PVFD]", e); } }
+  function safeReturn(fn, fallback) { try { return fn(); } catch (e) { return fallback; } }
+  function safeErrorSummary(err) {
+    if (!err) return "";
+    const name = err.name ? String(err.name) : "";
+    const message = err.message ? String(err.message) : String(err);
+    return name && message && message !== name ? `${name}: ${message}` : (message || name || String(err));
+  }
+  function safePlayerIsPlaying(fallback = false) {
+    return safeReturn(() => {
+      if (!window.Spicetify || !Spicetify.Player || !Spicetify.Player.data) return fallback;
+      return !!Spicetify.Player.isPlaying();
+    }, fallback);
+  }
+
+  // Case-preserving variant. Spotify album/artist/playlist IDs are case-
+  // sensitive base62 — lowercasing them breaks navigation back to that page
+  // ("couldn't find that album"). Use this when storing a path to navigate
+  // BACK to. Use currentSpotifyPath() only for prefix-matching route detection.
+  function currentSpotifyPathRaw() {
+    let spotifyPath = "";
+    try {
+      const hist = window.Spicetify && Spicetify.Platform && Spicetify.Platform.History;
+      const loc = hist && hist.location;
+      spotifyPath = String((loc && (loc.pathname || loc.href)) || "");
+    } catch {
+      spotifyPath = "";
+    }
+    return spotifyPath || String(window.location && window.location.pathname || "");
+  }
+
+  function currentSpotifyPath() {
+    return currentSpotifyPathRaw().toLowerCase();
+  }
+
+  function refreshPvfdPerfEnabled() {
+    pvfdPerfEnabled = safeReturn(() => window.localStorage.getItem(PVFD_PROF_STORAGE_KEY) === "1", false);
+    return pvfdPerfEnabled;
+  }
+  function pvfdPerfStart() {
+    return pvfdPerfEnabled ? performance.now() : -1;
+  }
+  function pvfdPerfEnd(name, startedAt) {
+    if (startedAt < 0 || !pvfdPerfEnabled) return;
+    const duration = performance.now() - startedAt;
+    const entry = pvfdPerfStats[name] || (pvfdPerfStats[name] = {
+      count: 0,
+      totalMs: 0,
+      maxMs: 0,
+    });
+    entry.count += 1;
+    entry.totalMs += duration;
+    if (duration > entry.maxMs) entry.maxMs = duration;
+  }
+  function pvfdPerfDump() {
+    refreshPvfdPerfEnabled();
+    const rows = Object.keys(pvfdPerfStats)
+      .sort()
+      .map((name) => {
+        const entry = pvfdPerfStats[name];
+        const avgMs = entry.count ? entry.totalMs / entry.count : 0;
+        return {
+          name,
+          count: entry.count,
+          totalMs: Number(entry.totalMs.toFixed(3)),
+          avgMs: Number(avgMs.toFixed(3)),
+          maxMs: Number(entry.maxMs.toFixed(3)),
+        };
+      });
+    if (console.table) console.table(rows);
+    else console.log("[PVFD] perf", rows);
+    return rows;
+  }
+  function pvfdPerfReset() {
+    for (const key of Object.keys(pvfdPerfStats)) delete pvfdPerfStats[key];
+    refreshPvfdPerfEnabled();
+    return true;
+  }
+  window.pvfdPerfDump = pvfdPerfDump;
+  window.pvfdPerfReset = pvfdPerfReset;
+  function invokePlayerAction(fn, refreshDelay = 140) {
+    safe(fn);
+    schedulePlayerStateRefresh(refreshDelay);
+  }
+  function applyRouteStateToDom() {
+    const route = pvfdRouteState.route || "other";
+    const churn = performance.now() < pvfdRouteState.churnUntil ? "1" : "0";
+    const roots = [document.documentElement, document.body, chassis].filter(Boolean);
+    for (const root of roots) {
+      if (root.dataset) {
+        root.dataset.pvfdRoute = route;
+        root.dataset.pvfdRouteChurn = churn;
+      } else {
+        root.setAttribute("data-pvfd-route", route);
+        root.setAttribute("data-pvfd-route-churn", churn);
+      }
+    }
+  }
+
+  function beginRouteChurn(ms = ROUTE_CHURN_SUPPRESS_MS) {
+    const until = performance.now() + ms;
+    if (until > pvfdRouteState.churnUntil) pvfdRouteState.churnUntil = until;
+    applyRouteStateToDom();
+  }
+
+  // Special-profile easter egg. Spotify user URLs use internal IDs that don't
+  // carry the display name, so we identify her by the rendered entity-header
+  // heading once it lands in the DOM. Bounded retries cover the small window
+  // between "route became profile" and "Spotify rendered the h1".
+  function pvfdCheckSpecialProfile() {
+    if (pvfdRouteState.route !== "profile") {
+      if (pvfdSpecialProfileActive) pvfdExitSpecialProfile();
+      pvfdSpecialProfileRetriesLeft = 0;
+      if (pvfdSpecialProfileCheckTimer) {
+        clearTimeout(pvfdSpecialProfileCheckTimer);
+        pvfdSpecialProfileCheckTimer = 0;
+      }
+      return;
+    }
+    const headingText = pvfdReadProfileHeading();
+    const onSpecial = headingText === SPECIAL_PROFILE_USERNAME;
+    if (onSpecial && !pvfdSpecialProfileActive) {
+      pvfdSpecialProfileRetriesLeft = 0;
+      pvfdEnterSpecialProfile();
+    } else if (!onSpecial && pvfdSpecialProfileActive) {
+      pvfdSpecialProfileRetriesLeft = 0;
+      pvfdExitSpecialProfile();
+    } else if (!onSpecial && !pvfdSpecialProfileActive) {
+      pvfdScheduleSpecialProfileRecheck();
+    }
+  }
+
+  function pvfdReadProfileHeading() {
+    const mainView = document.querySelector(".Root__main-view");
+    if (!mainView) return "";
+    const heading =
+      mainView.querySelector(".main-entityHeader-container h1") ||
+      mainView.querySelector("[class*='entityHeader'][class*='container' i] h1") ||
+      mainView.querySelector("[data-testid*='entity-header' i] h1") ||
+      mainView.querySelector("h1[data-encore-id='text']");
+    return heading ? String(heading.textContent || "").trim().toLowerCase() : "";
+  }
+
+  function pvfdScheduleSpecialProfileRecheck() {
+    if (pvfdSpecialProfileCheckTimer) return;
+    if (pvfdSpecialProfileRetriesLeft <= 0) return;
+    pvfdSpecialProfileRetriesLeft--;
+    pvfdSpecialProfileCheckTimer = window.setTimeout(function () {
+      pvfdSpecialProfileCheckTimer = 0;
+      if (pvfdRouteState.route === "profile" && !pvfdSpecialProfileActive) {
+        pvfdCheckSpecialProfile();
+      }
+    }, 350);
+  }
+
+  function pvfdEnterSpecialProfile() {
+    pvfdSpecialProfileActive = true;
+    const roots = [document.documentElement, document.body, chassis].filter(Boolean);
+    for (const root of roots) {
+      if (root.dataset) root.dataset.pvfdSpecialProfile = SPECIAL_PROFILE_USERNAME;
+      else root.setAttribute("data-pvfd-special-profile", SPECIAL_PROFILE_USERNAME);
+    }
+    // Auto-lock TINT to MAGENTA, remembering whatever she had set so we can
+    // restore on exit. applyTintMode(false) does NOT persist to localStorage.
+    const magentaIdx = TINT_LABELS.indexOf("MAGENTA");
+    if (magentaIdx >= 0 && tintIdx !== magentaIdx) {
+      pvfdSpecialProfileSavedTintIdx = tintIdx;
+      tintIdx = magentaIdx;
+      applyTintMode(false);
+    }
+    pvfdInjectSpecialProfileSweep();
+    pvfdBurstSpecialProfileHearts();
+  }
+
+  function pvfdExitSpecialProfile() {
+    pvfdSpecialProfileActive = false;
+    const roots = [document.documentElement, document.body, chassis].filter(Boolean);
+    for (const root of roots) {
+      if (root && root.removeAttribute) root.removeAttribute("data-pvfd-special-profile");
+    }
+    if (pvfdSpecialProfileSavedTintIdx !== null) {
+      tintIdx = pvfdSpecialProfileSavedTintIdx;
+      pvfdSpecialProfileSavedTintIdx = null;
+      applyTintMode(false);
+    }
+    if (pvfdSpecialProfileSweepEl && pvfdSpecialProfileSweepEl.parentNode) {
+      pvfdSpecialProfileSweepEl.parentNode.removeChild(pvfdSpecialProfileSweepEl);
+    }
+    pvfdSpecialProfileSweepEl = null;
+    if (pvfdSpecialProfileHeartsTimer) {
+      clearTimeout(pvfdSpecialProfileHeartsTimer);
+      pvfdSpecialProfileHeartsTimer = 0;
+    }
+    const hearts = document.querySelector(".pvfd-habby-hearts-container");
+    if (hearts && hearts.parentNode) hearts.parentNode.removeChild(hearts);
+  }
+
+  function pvfdInjectSpecialProfileSweep() {
+    if (pvfdSpecialProfileSweepEl) return;
+    const host = document.querySelector(".Root__main-view .main-view-container__scroll-node-child")
+      || document.querySelector(".main-view-container__scroll-node-child")
+      || document.querySelector(".Root__main-view");
+    if (!host) return;
+    const el = document.createElement("div");
+    el.className = "pvfd-habby-sweep-overlay";
+    el.setAttribute("aria-hidden", "true");
+    // Ensure the host can position absolute children even if Spotify left it static.
+    if (host.style && getComputedStyle(host).position === "static") {
+      host.style.position = "relative";
+    }
+    host.appendChild(el);
+    pvfdSpecialProfileSweepEl = el;
+  }
+
+  function pvfdBurstSpecialProfileHearts() {
+    const prior = document.querySelector(".pvfd-habby-hearts-container");
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+    if (pvfdSpecialProfileHeartsTimer) {
+      clearTimeout(pvfdSpecialProfileHeartsTimer);
+      pvfdSpecialProfileHeartsTimer = 0;
+    }
+    const container = document.createElement("div");
+    container.className = "pvfd-habby-hearts-container";
+    container.setAttribute("aria-hidden", "true");
+    let maxEndMs = 0;
+    for (let i = 0; i < SPECIAL_PROFILE_HEART_COUNT; i++) {
+      const heart = document.createElement("div");
+      heart.className = "pvfd-habby-heart";
+      const startX = Math.random() * 96;
+      const duration = 3 + Math.random() * 2;
+      const delay = Math.random() * 0.8;
+      const size = 16 + Math.random() * 12;
+      const color = SPECIAL_PROFILE_COLORS[Math.floor(Math.random() * SPECIAL_PROFILE_COLORS.length)];
+      heart.style.cssText =
+        "left:" + startX + "vw;" +
+        "animation-duration:" + duration + "s;" +
+        "animation-delay:" + delay + "s;" +
+        "font-size:" + size + "px;" +
+        "color:" + color + ";";
+      container.appendChild(heart);
+      const end = (delay + duration) * 1000;
+      if (end > maxEndMs) maxEndMs = end;
+    }
+    document.body.appendChild(container);
+    pvfdSpecialProfileHeartsTimer = window.setTimeout(function () {
+      if (container.parentNode) container.parentNode.removeChild(container);
+      pvfdSpecialProfileHeartsTimer = 0;
+    }, maxEndMs + 600);
+  }
+
+  function isRouteChurnActive(ts = performance.now()) {
+    if (ts < pvfdRouteState.churnUntil) return true;
+    if (pvfdRouteState.churnUntil !== 0) {
+      pvfdRouteState.churnUntil = 0;
+      applyRouteStateToDom();
+    }
+    return false;
+  }
+
+    function detectPvfdRoute() {
+    const mainView = document.querySelector(".Root__main-view");
+    const entityHeader = mainView && mainView.querySelector(".main-entityHeader-container");
+
+    const path = currentSpotifyPath();
+
+    const allRouteHints = mainView
+      ? Array.from(mainView.querySelectorAll("[data-test-uri], [data-uri], a[href]"))
+          .map((el) => (
+            el.getAttribute("data-test-uri") ||
+            el.getAttribute("data-uri") ||
+            el.getAttribute("href") ||
+            ""
+          ))
+          .join(" ")
+          .toLowerCase()
+      : "";
+
+    const headerText = entityHeader
+      ? String(entityHeader.innerText || entityHeader.textContent || "").trim().toLowerCase()
+      : "";
+
+    const hasArtist =
+      path.includes("/artist") ||
+      allRouteHints.includes("spotify:artist:") ||
+      !!(mainView && mainView.querySelector('section[data-test-uri^="spotify:artist:"]'));
+
+    const hasAlbum =
+      path.includes("/album") ||
+      allRouteHints.includes("spotify:album:") ||
+      /^\s*album\b/.test(headerText);
+
+    const hasPlaylist =
+      path.includes("/playlist") ||
+      allRouteHints.includes("spotify:playlist:") ||
+      /^\s*playlist\b/.test(headerText);
+
+    if (hasArtist) return "artist";
+    if (hasAlbum) return "album";
+    if (hasPlaylist) return "playlist";
+
+    if (path === "/" || path === "/home" || (mainView && mainView.querySelector("[data-testid='home-page']"))) return "home";
+    if (path.includes("/search")) return "search";
+    if (path.includes("/collection")) return "library";
+    if (path.includes("/queue")) return "queue";
+    if (path.includes("/beautifullyrics") || path.includes("/spicylyrics")) return "external-lyrics";
+    if (path.includes("/lyrics")) return "lyrics";
+    if (path.includes("/user/")) return "profile";
+
+    /*
+      Only call it fullscreen when there is no entity header.
+      Album/playlist/artist pages can keep fullscreen-ish or now-playing nodes mounted.
+    */
+    if (
+      !entityHeader &&
+      (
+        document.fullscreenElement ||
+        document.querySelector("[data-testid*='fullscreen' i], [class*='fullscreenView' i]")
+      )
+    ) {
+      return "fullscreen";
+    }
+
+    return "other";
+  }
+
+  function updateRouteState(force = false, ts = performance.now()) {
+    const perfAt = pvfdPerfStart();
+    if (!force && ts - pvfdRouteState.at < ROUTE_STATE_SAMPLE_MS && !isRouteChurnActive(ts)) {
+      pvfdPerfEnd("routeStateUpdate", perfAt);
+      return pvfdRouteState.route;
+    }
+    const nextRoute = detectPvfdRoute();
+    pvfdRouteState.at = ts;
+    const prevRoute = pvfdRouteState.route;
+    if (prevRoute !== nextRoute) {
+      pvfdRouteState.route = nextRoute;
+      // Entering a profile route — give the special-profile heading detector
+      // enough retries (8 × 350ms ≈ 2.8s) to catch Spotify's render.
+      if (nextRoute === "profile") pvfdSpecialProfileRetriesLeft = 8;
+      // Re-measure the lyrics tab's anchor on the way in. This reads layout,
+      // so it hangs off the transition only, never the sampled tick.
+      if (nextRoute === "lyrics") { ensureFsdTab(); safe(armNoLyricsCover); }
+    }
+    applyRouteStateToDom();
+    pvfdCheckSpecialProfile();
+    // Sampled rather than mutation-driven on purpose: the verdict is a TIMER
+    // (has the page stayed empty?), and a page that renders nothing produces no
+    // mutations to hang it off. Guarded on the route first, so anywhere other
+    // than lyrics this is a string comparison.
+    safe(syncNoLyricsPanel);
+    safe(nativeLyricElapsedTick);
+    safe(tagNpvLyricsCard);
+    pvfdPerfEnd("routeStateUpdate", perfAt);
+    return pvfdRouteState.route;
+  }
+
+  function readFontPresetIdx() {
+    const saved = safeReturn(() => window.localStorage.getItem(FONT_STORAGE_KEY), "");
+    const idx = FONT_PRESETS.findIndex(p => p.label === saved);
+    return idx >= 0 ? idx : Math.max(0, FONT_PRESETS.findIndex(p => p.label === DEFAULT_FONT_PRESET));
+  }
+
+  function readLcdFontPresetIdx() {
+    const saved = safeReturn(() => window.localStorage.getItem(LCD_FONT_STORAGE_KEY), "");
+    const idx = LCD_FONT_PRESETS.findIndex(p => p.label === saved);
+    return idx >= 0 ? idx : Math.max(0, LCD_FONT_PRESETS.findIndex(p => p.label === DEFAULT_LCD_FONT_PRESET));
+  }
+
+  function readTintIdx() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(TINT_STORAGE_KEY), "") || "").toUpperCase();
+    const idx = TINT_LABELS.findIndex(label => label === saved);
+    if (idx >= 0) return idx;
+    const numericIdx = Number(saved);
+    return Number.isInteger(numericIdx) && numericIdx >= 0 && numericIdx < TINT_LABELS.length ? numericIdx : 0;
+  }
+
+  function bootTintIsAdaptive() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(TINT_STORAGE_KEY), "") || "").toUpperCase();
+    return saved === "ADAPTIVE";
+  }
+
+  function readDimEnabled() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(DIM_STORAGE_KEY), "") || "").toUpperCase();
+    return saved === "ON" || saved === "TRUE" || saved === "1" || saved === "DIM";
+  }
+
+  function readChromeDarkEnabled() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(CHROME_STORAGE_KEY), "") || "").toUpperCase();
+    return saved === "ON" || saved === "TRUE" || saved === "1" || saved === "DARK";
+  }
+
+  function readLogoStyleIdx() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(LOGO_STYLE_STORAGE_KEY), "") || "").toUpperCase();
+    const idx = LOGO_STYLES.indexOf(saved);
+    return idx >= 0 ? idx : 0;
+  }
+
+  function readEverScrollMode() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(EVER_SCROLL_STORAGE_KEY), "") || "").toUpperCase();
+    /* Upgrade old "ON" value (early 3-state cycle) to "LOOP" — same intent. */
+    if (saved === "ON") return "LOOP";
+    return EVER_SCROLL_MODES.indexOf(saved) >= 0 ? saved : "OFF";
+  }
+
+  function readEeqTinted() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(EEQ_TINT_STORAGE_KEY), "") || "").toUpperCase();
+    return saved === "ON" || saved === "TRUE" || saved === "1";
+  }
+
+  function readLedGlowMode() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(LED_GLOW_STORAGE_KEY), "") || "").toUpperCase();
+    if (saved === "HARD") return "HARD";
+    if (saved === "OFF" || saved === "FALSE" || saved === "0") return "OFF";
+    // Preserve the previous default and migrate legacy ON/GLOW/TRUE/1 values.
+    return "SOFT";
+  }
+
+  function readKnobGlowEnabled() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(KNOB_GLOW_STORAGE_KEY), "") || "").toUpperCase();
+    return !(saved === "OFF" || saved === "FALSE" || saved === "0");
+  }
+
+  function readAttMode() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(ATT_MODE_STORAGE_KEY), "") || "").toLowerCase();
+    return saved === "soft" ? "soft" : "mute";
+  }
+
+  function readBandPresetIdx() {
+    const raw = safeReturn(() => window.localStorage.getItem(BAND_STORAGE_KEY), "");
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n)) return -1;
+    if (n < 0 || n >= BAND_PRESETS.length) return -1;
+    return n;
+  }
+
+  function isLinuxLikePlatform() {
+    const ua = String(safeReturn(() => navigator.userAgent, "") || "").toLowerCase();
+    const platform = String(safeReturn(() => navigator.platform, "") || "").toLowerCase();
+    const uaPlatform = String(safeReturn(() => navigator.userAgentData && navigator.userAgentData.platform, "") || "").toLowerCase();
+    return ua.includes("linux") || ua.includes("x11") || platform.includes("linux") || uaPlatform.includes("linux");
+  }
+
+  function clipStorageId(clip, idx = 0) {
+    return String((clip && (clip.id || clip.assetName || clip.source || clip.name)) || idx);
+  }
+
+  function clipWebmAssetName(clip) {
+    return clip && clip.assetName ? clip.assetName : "";
+  }
+
+  function prepareOelVideoElement(video) {
+    if (!video || video.dataset.pvfdInit === "1") return;
+    video.dataset.pvfdInit = "1";
+    console.log("[PVFD] OEL WebM proof: video element inserted into OEL frame");
+    video.muted = true;
+    video.defaultMuted = true;
+    video.autoplay = true;
+    video.loop = true;
+    video.controls = false;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.tabIndex = -1;
+    video.removeAttribute("controls");
+    video.setAttribute("muted", "");
+    video.setAttribute("autoplay", "");
+    video.setAttribute("loop", "");
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+
+    video.addEventListener("loadedmetadata", () => {
+      const clipKey = video.dataset.pvfdClipKey || "unknown";
+      console.log(`[PVFD] OEL WebM proof: loadedmetadata clip=${clipKey}`);
+    });
+
+    video.addEventListener("canplay", () => {
+      const clipKey = video.dataset.pvfdClipKey || "unknown";
+      console.log(`[PVFD] OEL WebM proof: canplay clip=${clipKey}`);
+    });
+
+    video.addEventListener("playing", () => {
+      // Gauge clips own the LCD through the canvas. If a stale webm frame ever
+      // fires 'playing', do NOT let it flip the LCD back to "active" (which
+      // would reveal the previous clip's frozen frame over the gauge canvas).
+      if (isGaugeClip(getActiveOelClip())) { safe(() => video.pause()); return; }
+      const clipKey = video.dataset.pvfdClipKey || "";
+      console.log(`[PVFD] OEL WebM proof: playing clip=${clipKey}`);
+      oelVideoActiveClipKey = clipKey;
+      const dom = getPvfdDom();
+      setAttrIfChanged(dom.lcd, "data-pvfd-video-state", "active");
+    });
+
+    video.addEventListener("error", () => {
+      const clipKey = video.dataset.pvfdClipKey || "unknown";
+      const errorCode = video.error && typeof video.error.code === "number" ? video.error.code : "unknown";
+      const errorMessage = video.error && video.error.message ? video.error.message : "unavailable";
+      console.warn(`[PVFD] OEL WebM proof: video error clip=${clipKey} code=${errorCode} message=${errorMessage}`);
+      // EJECT easter egg pipes through the same cache resolver as
+      // OEL clips, so leave its src alone if eject is active.
+      if (video.dataset.pvfdEjectActive === "1") return;
+      // A gauge clip detaches the video src (renderGaugeClip), which can fire a
+      // benign empty-src 'error'. Never flip the LCD to "error" while gauges own it.
+      if (isGaugeClip(getActiveOelClip())) return;
+      pauseOelVideoPlayback(oelDisplayEnabled ? "error" : "off", true);
+    });
+  }
+
+  function setOelVideoState(state, clipKey = "") {
+    const dom = getPvfdDom();
+    setAttrIfChanged(dom.lcd, "data-pvfd-video-state", state);
+    if (dom.lcdVideo) {
+      if (clipKey) dom.lcdVideo.dataset.pvfdClipKey = clipKey;
+      else delete dom.lcdVideo.dataset.pvfdClipKey;
+    }
+    if (state !== "active") oelVideoActiveClipKey = "";
+    syncOelColorModeAttributes();
+    applyLcdFilter();
+  }
+
+  function pauseOelVideoPlayback(state = "fallback", clearSrc = false) {
+    const dom = getPvfdDom();
+    const video = dom.lcdVideo;
+    if (!video) {
+      setOelVideoState(state);
+      return;
+    }
+
+    safe(() => video.pause());
+    delete video.dataset.pvfdPlayPending;
+    if (clearSrc && video.getAttribute("src")) {
+      video.removeAttribute("src");
+      safe(() => video.load());
+    }
+    setOelVideoState(state);
+  }
+
+  function ensurePioneerVfdStingLogo() {
+    if (pioneerVfdStingLogo) return pioneerVfdStingLogo;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.decoding = "async";
+    pioneerVfdStingLogo = { img, ready: false, failed: false, data: null };
+    img.onload = () => {
+      pioneerVfdStingLogo.ready = true;
+      pioneerVfdStingFrameKey = "";
+    };
+    img.onerror = () => {
+      pioneerVfdStingLogo.failed = true;
+      console.warn("[PVFD] PioneerVFD ident logo failed to load");
+    };
+    img.src = OEL_WEBM_GITHUB_BASE + PIONEER_VFD_STING_LOGO_ASSET_NAME;
+    return pioneerVfdStingLogo;
+  }
+
+  function preparePioneerVfdStingCanvas(sting) {
+    if (!sting) return null;
+    if (sting.width !== PIONEER_VFD_STING_W || sting.height !== PIONEER_VFD_STING_H) {
+      sting.width = PIONEER_VFD_STING_W;
+      sting.height = PIONEER_VFD_STING_H;
+      pioneerVfdStingFrameKey = "";
+    }
+    const sctx = sting.getContext("2d", { alpha: true });
+    if (sctx) sctx.imageSmoothingEnabled = false;
+    return sctx;
+  }
+
+  function buildPioneerVfdStingLogoData(entry) {
+    if (!entry || !entry.ready || entry.failed) return null;
+    if (entry.data) return entry.data;
+
+    const off = document.createElement("canvas");
+    off.width = PIONEER_VFD_STING_W;
+    off.height = PIONEER_VFD_STING_H;
+    const offCtx = off.getContext("2d", { alpha: true });
+    if (!offCtx) return null;
+    offCtx.imageSmoothingEnabled = false;
+    offCtx.clearRect(0, 0, off.width, off.height);
+    const y = Math.floor((PIONEER_VFD_STING_H - entry.img.height) / 2);
+    offCtx.drawImage(entry.img, 0, y);
+
+    try {
+      entry.data = offCtx.getImageData(0, 0, PIONEER_VFD_STING_W, PIONEER_VFD_STING_H);
+    } catch (err) {
+      entry.failed = true;
+      console.warn("[PVFD] PioneerVFD ident logo cannot be read for dithering", err && err.message || err);
+      return null;
+    }
+    return entry.data;
+  }
+
+  function hidePioneerVfdSting() {
+    const dom = getPvfdDom();
+    const sting = dom.oelSting;
+    if (!sting) return;
+    if (sting.style.opacity !== "0") sting.style.opacity = "0";
+    if (pioneerVfdStingFrameKey) {
+      const sctx = preparePioneerVfdStingCanvas(sting);
+      if (sctx) sctx.clearRect(0, 0, PIONEER_VFD_STING_W, PIONEER_VFD_STING_H);
+      pioneerVfdStingFrameKey = "";
+    }
+  }
+
+  function renderPioneerVfdSting(ts) {
+    const activeClip = getActiveOelClip();
+    if (!isPioneerVfdClip(activeClip) || !oelDisplayEnabled) {
+      hidePioneerVfdSting();
+      return;
+    }
+
+    const dom = getPvfdDom();
+    const sting = dom.oelSting;
+    const video = dom.lcdVideo;
+    const state = dom.lcd && dom.lcd.getAttribute("data-pvfd-video-state");
+    const chassisState = chassis && chassis.getAttribute("data-pvfd-state");
+    if (!sting || !video || chassisState === "ejecting" || (state !== "active" && state !== "loading")) {
+      hidePioneerVfdSting();
+      return;
+    }
+
+    const t = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+    if (t > PIONEER_VFD_STING_END_S) {
+      hidePioneerVfdSting();
+      return;
+    }
+
+    const logo = ensurePioneerVfdStingLogo();
+    const logoData = buildPioneerVfdStingLogoData(logo);
+    if (!logoData) {
+      hidePioneerVfdSting();
+      return;
+    }
+
+    const frame = Math.floor(t * 30);
+    const frameKey = `${video.dataset.pvfdClipKey || ""}:${frame}`;
+    if (pioneerVfdStingFrameKey === frameKey && sting.style.opacity === "1") return;
+
+    const sctx = preparePioneerVfdStingCanvas(sting);
+    if (!sctx) return;
+
+    const out = sctx.createImageData(PIONEER_VFD_STING_W, PIONEER_VFD_STING_H);
+    const src = logoData.data;
+    const dst = out.data;
+    const fadeIn = clamp(t / 0.18, 0, 1);
+    const dissolve = clamp((t - 1.12) / 1.25, 0, 1);
+    const dissolveEase = dissolve * dissolve * (3 - 2 * dissolve);
+    const coverage = 1 - dissolveEase;
+    const glint = clamp((t - 0.24) / 0.82, 0, 1);
+    const glintOn = glint > 0 && glint < 1;
+    const glintX = -64 + glint * (PIONEER_VFD_STING_W + 128);
+    for (let y = 0; y < PIONEER_VFD_STING_H; y++) {
+      for (let x = 0; x < PIONEER_VFD_STING_W; x++) {
+        const i = (y * PIONEER_VFD_STING_W + x) * 4;
+        const a = src[i + 3];
+        if (a < 8) continue;
+
+        if (dissolveEase > 0) {
+          const threshold = (PIONEER_VFD_STING_BAYER8[(y & 7) * 8 + (x & 7)] + 0.5) / 64;
+          if (coverage <= threshold) continue;
+        }
+
+        let r = src[i];
+        let g = src[i + 1];
+        let b = src[i + 2];
+
+        if (glintOn) {
+          const dist = Math.abs(x - glintX - (y - PIONEER_VFD_STING_H * 0.5) * 0.72);
+          if (dist < 20) {
+            const boost = (1 - dist / 20) * 82;
+            r = Math.min(255, r + boost);
+            g = Math.min(255, g + boost);
+            b = Math.min(255, b + boost);
+          }
+        }
+
+        dst[i] = r;
+        dst[i + 1] = g;
+        dst[i + 2] = b;
+        dst[i + 3] = Math.round(a * fadeIn);
+      }
+    }
+
+    sctx.putImageData(out, 0, 0);
+    sting.style.opacity = "1";
+    pioneerVfdStingFrameKey = frameKey;
+  }
+
+  const OEL_WEBM_CACHE_DB_NAME = "pvfd-oel-webm-cache";
+  const OEL_WEBM_CACHE_STORE = "clips";
+  // Bump when a webm's bytes change at the same filename — invalidates IndexedDB.
+  const OEL_WEBM_CACHE_VERSION = 3;
+  const OEL_WEBM_GITHUB_BASE = "https://adainstarks.github.io/PioneerVFD/Themes/PioneerVFD/assets/";
+
+  function oelWebmCacheKey(assetName) {
+    return `${assetName}@v${OEL_WEBM_CACHE_VERSION}`;
+  }
+
+  function openOelWebmCacheDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(OEL_WEBM_CACHE_DB_NAME, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(OEL_WEBM_CACHE_STORE);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function readOelWebmFromCache(assetName) {
+    return openOelWebmCacheDB().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(OEL_WEBM_CACHE_STORE, "readonly");
+      const req = tx.objectStore(OEL_WEBM_CACHE_STORE).get(oelWebmCacheKey(assetName));
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    }));
+  }
+
+  function writeOelWebmToCache(assetName, blob) {
+    return openOelWebmCacheDB().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(OEL_WEBM_CACHE_STORE, "readwrite");
+      tx.objectStore(OEL_WEBM_CACHE_STORE).put(blob, oelWebmCacheKey(assetName));
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+
+  // ----- Custom user-imported OEL clip -----
+  //
+  // The custom clip's blob lives in the SAME IndexedDB store as the built-in
+  // cache, but under its own raw key (CUSTOM_OEL_IDB_KEY) holding a structured
+  // record { blob, fileName, mimeType, size, updatedAt } — NOT a bare blob keyed
+  // by `assetName@vN`. It must therefore never be routed through
+  // resolveClipUrlViaCache(), which expects a bare blob and would otherwise try
+  // to fetch the synthetic asset name from gh-pages on a miss. Its object URL is
+  // assigned straight onto the clip's `webmUrl`, which resolveClipWebmUrl()
+  // honors before consulting the source map.
+  function readCustomOelRecord() {
+    return openOelWebmCacheDB().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(OEL_WEBM_CACHE_STORE, "readonly");
+      const req = tx.objectStore(OEL_WEBM_CACHE_STORE).get(CUSTOM_OEL_IDB_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    }));
+  }
+
+  function writeCustomOelRecord(record) {
+    return openOelWebmCacheDB().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(OEL_WEBM_CACHE_STORE, "readwrite");
+      tx.objectStore(OEL_WEBM_CACHE_STORE).put(record, CUSTOM_OEL_IDB_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+
+  function deleteCustomOelRecord() {
+    return openOelWebmCacheDB().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(OEL_WEBM_CACHE_STORE, "readwrite");
+      tx.objectStore(OEL_WEBM_CACHE_STORE).delete(CUSTOM_OEL_IDB_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+
+  function readCustomOelMeta() {
+    const raw = safeReturn(() => window.localStorage.getItem(CUSTOM_OEL_META_STORAGE_KEY), null);
+    if (!raw) return null;
+    const parsed = safeReturn(() => JSON.parse(raw), null);
+    if (!parsed || typeof parsed !== "object" || !parsed.size) return null;
+    return parsed;
+  }
+
+  function writeCustomOelMeta(meta) {
+    safe(() => window.localStorage.setItem(CUSTOM_OEL_META_STORAGE_KEY, JSON.stringify(meta)));
+  }
+
+  function clearCustomOelMeta() {
+    safe(() => window.localStorage.removeItem(CUSTOM_OEL_META_STORAGE_KEY));
+  }
+
+  function customClipDisplayName(fileName) {
+    const base = String(fileName || "").replace(/\.webm$/i, "").trim();
+    if (!base) return "CUSTOM WEBM";
+    return base.slice(0, 14).toUpperCase() || "CUSTOM WEBM";
+  }
+
+  function buildCustomClipObject(meta) {
+    return {
+      id: CUSTOM_OEL_CLIP_ID,
+      label: "CUSTOM",
+      name: customClipDisplayName(meta && meta.fileName),
+      assetName: CUSTOM_OEL_ASSET_NAME,
+      custom: true,
+      // Filled once the blob hydrates from IndexedDB; resolveClipWebmUrl()
+      // returns "" (loading state) until then.
+      webmUrl: ""
+    };
+  }
+
+  function revokeCustomClipUrl() {
+    if (customOelClip && customOelClip.webmUrl && customOelClip.webmUrl.startsWith("blob:")) {
+      safe(() => URL.revokeObjectURL(customOelClip.webmUrl));
+    }
+  }
+
+  // Remove the runtime custom slot. If it was the active clip, fall back to the
+  // first built-in (persisted), otherwise just keep the (still-valid) built-in
+  // index and re-sync.
+  function dropCustomOelSlot(fallbackIfActive) {
+    const wasActive = isCustomOelClip(getActiveOelClip());
+    revokeCustomClipUrl();
+    customOelClip = null;
+    if (fallbackIfActive && wasActive) {
+      setActiveClip(0, true);
+    } else {
+      clipIdx = Math.min(clipIdx, OEL_WEBM_CLIPS.length - 1);
+      safe(() => syncOelVideoPlayback(true));
+      safe(() => updateMenuPanel());
+    }
+  }
+
+  // Synchronous: build the slot from localStorage meta so it's part of
+  // getOelClips() before readClipIdx() restores the saved selection.
+  function hydrateCustomOelClipMeta() {
+    const meta = readCustomOelMeta();
+    customOelClip = meta ? buildCustomClipObject(meta) : null;
+  }
+
+  // Async: pull the blob out of IndexedDB and wire up the object URL.
+  function hydrateCustomOelClipBlob() {
+    if (!customOelClip) return;
+    readCustomOelRecord()
+      .then((record) => {
+        if (!record || !record.blob) {
+          console.warn("[PVFD] custom OEL: metadata present but blob missing; dropping custom clip");
+          clearCustomOelMeta();
+          dropCustomOelSlot(true);
+          return;
+        }
+        revokeCustomClipUrl();
+        customOelClip.webmUrl = URL.createObjectURL(record.blob);
+        console.log(`[PVFD] custom OEL: hydrated blob (${record.blob.size} bytes)`);
+        safe(() => syncOelVideoPlayback(true));
+        safe(() => updateMenuPanel());
+      })
+      .catch((err) => {
+        console.warn("[PVFD] custom OEL: blob hydrate failed", err && err.message || err);
+        dropCustomOelSlot(true);
+      });
+  }
+
+  // Resolve on a decodable WebM, reject(Error) with a user-facing message.
+  function validateAndDecodeWebm(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) return reject(new Error("No file selected."));
+      const name = String(file.name || "");
+      const type = String(file.type || "");
+      if (!/\.webm$/i.test(name)) return reject(new Error("Not a .webm file."));
+      if (type && type !== "video/webm") return reject(new Error("File is not a WebM video."));
+      if (!file.size) return reject(new Error("File is empty."));
+      if (file.size > CUSTOM_OEL_MAX_BYTES) {
+        return reject(new Error(`File is too large (max ${Math.round(CUSTOM_OEL_MAX_BYTES / (1024 * 1024))} MB).`));
+      }
+      const probeUrl = URL.createObjectURL(file);
+      const probe = document.createElement("video");
+      probe.muted = true;
+      probe.preload = "metadata";
+      let settled = false;
+      const cleanup = () => {
+        probe.removeAttribute("src");
+        safe(() => probe.load());
+        safe(() => URL.revokeObjectURL(probeUrl));
+      };
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error("Timed out decoding the WebM."));
+      }, 10000);
+      probe.addEventListener("loadedmetadata", () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        const ok = probe.videoWidth > 0 && probe.videoHeight > 0;
+        cleanup();
+        if (ok) resolve(true);
+        else reject(new Error("WebM has no decodable video track."));
+      }, { once: true });
+      probe.addEventListener("error", () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        cleanup();
+        reject(new Error("Could not decode this WebM (unsupported codec?)."));
+      }, { once: true });
+      probe.src = probeUrl;
+    });
+  }
+
+  async function importCustomOelWebm(file) {
+    try {
+      await validateAndDecodeWebm(file);
+    } catch (err) {
+      notifyPvfd(`Custom OEL import rejected: ${err && err.message || err}`);
+      return false;
+    }
+    const meta = {
+      fileName: String(file.name || "custom.webm"),
+      mimeType: file.type || "video/webm",
+      size: file.size,
+      updatedAt: Date.now(),
+    };
+    const record = Object.assign({ blob: file }, meta);
+    try {
+      await writeCustomOelRecord(record);
+    } catch (err) {
+      // Storage failure leaves the previous clip and its records untouched.
+      notifyPvfd(`Custom OEL import failed (storage): ${err && err.message || err}`);
+      return false;
+    }
+    writeCustomOelMeta(meta);
+    revokeCustomClipUrl();
+    customOelClip = buildCustomClipObject(meta);
+    customOelClip.webmUrl = URL.createObjectURL(file);
+    // Append index = built-in count → the custom slot. Persist the selection.
+    setActiveClip(OEL_WEBM_CLIPS.length, true);
+    safe(() => syncOelVideoPlayback(true));
+    safe(() => updateMenuPanel());
+    notifyPvfd(`Custom OEL clip imported: ${meta.fileName}`);
+    return true;
+  }
+
+  async function removeCustomOelWebm() {
+    if (!customOelClip && !readCustomOelMeta()) {
+      notifyPvfd("No custom OEL clip to remove.");
+      return;
+    }
+    try {
+      await deleteCustomOelRecord();
+    } catch (err) {
+      console.warn("[PVFD] custom OEL: delete failed", err && err.message || err);
+    }
+    clearCustomOelMeta();
+    dropCustomOelSlot(true);
+    notifyPvfd("Custom OEL clip removed.");
+  }
+
+  function pickCustomOelFile() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".webm,video/webm";
+    input.style.display = "none";
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      safe(() => input.remove());
+      if (file) importCustomOelWebm(file);
+    }, { once: true });
+    document.body.appendChild(input);
+    input.click();
+  }
+
+  function openCustomOelImport() {
+    const hasClip = !!customOelClip || !!readCustomOelMeta();
+    if (!window.Spicetify || !Spicetify.PopupModal || typeof Spicetify.PopupModal.display !== "function") {
+      pickCustomOelFile();
+      return;
+    }
+    const btn = "padding:8px 14px;border:0;border-radius:4px;cursor:pointer;font-weight:600";
+    const container = document.createElement("div");
+    container.className = "pvfd-custom-oel-modal";
+    container.innerHTML =
+      '<p style="margin:0 0 12px 0;line-height:1.45">' +
+      "Import your own looping <b>.webm</b> clip for the OEL display. It joins the " +
+      "normal OEL rotation, cycles in DEMO, and obeys the COLOR/TINT toggle." +
+      "</p>" +
+      '<p style="margin:0 0 14px 0;line-height:1.45;opacity:0.8;font-size:12.5px">' +
+      "Max 25 MB. Animated GIFs must be converted to WebM first. " +
+      (hasClip ? "Importing replaces your current custom clip." : "") +
+      "</p>" +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+      '<button type="button" data-pvfd-custom-oel="pick" style="' + btn + ';background:#1db954;color:#000">' +
+      (hasClip ? "Replace clip…" : "Choose .webm…") + "</button>" +
+      (hasClip ? '<button type="button" data-pvfd-custom-oel="remove" style="' + btn + ';background:#a31d1d;color:#fff">Remove clip</button>' : "") +
+      '<button type="button" data-pvfd-custom-oel="cancel" style="' + btn + ';background:#444;color:#fff">Cancel</button>' +
+      "</div>";
+
+    const close = () => safe(() => Spicetify.PopupModal.hide && Spicetify.PopupModal.hide());
+    container.addEventListener("click", (ev) => {
+      const t = ev.target;
+      if (!(t instanceof HTMLElement)) return;
+      const action = t.getAttribute("data-pvfd-custom-oel");
+      if (!action) return;
+      if (action === "pick") { close(); pickCustomOelFile(); }
+      else if (action === "remove") { close(); removeCustomOelWebm(); }
+      else if (action === "cancel") { close(); }
+    });
+
+    safe(() => Spicetify.PopupModal.display({
+      title: "PioneerVFD — Custom OEL clip",
+      content: container,
+      isLarge: false,
+    }));
+  }
+
+  // ----- Custom user-imported font -----
+  //
+  // The theme faces cover Latin only. Every theme font stack ends in
+  // var(--pvfd-font-local) (see user.css), so pointing that variable at a
+  // font the user supplies gives their script that font while Latin keeps the
+  // theme look, on Spotify's text and the console alike. The file is stored
+  // and restored exactly like the custom OEL clip: the same IndexedDB store
+  // under its own key, a small localStorage record for the menu readout, and
+  // the FontFace API instead of a stylesheet so nothing about the theme's
+  // files changes. Marketplace users get the same thing as manual installs.
+  let customFontFace = null;
+
+  function readCustomFontRecord() {
+    return openOelWebmCacheDB().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(OEL_WEBM_CACHE_STORE, "readonly");
+      const req = tx.objectStore(OEL_WEBM_CACHE_STORE).get(CUSTOM_FONT_IDB_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    }));
+  }
+
+  function writeCustomFontRecord(record) {
+    return openOelWebmCacheDB().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(OEL_WEBM_CACHE_STORE, "readwrite");
+      tx.objectStore(OEL_WEBM_CACHE_STORE).put(record, CUSTOM_FONT_IDB_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+
+  function deleteCustomFontRecord() {
+    return openOelWebmCacheDB().then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(OEL_WEBM_CACHE_STORE, "readwrite");
+      tx.objectStore(OEL_WEBM_CACHE_STORE).delete(CUSTOM_FONT_IDB_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+
+  function readCustomFontMeta() {
+    const raw = safeReturn(() => window.localStorage.getItem(CUSTOM_FONT_META_STORAGE_KEY), null);
+    if (!raw) return null;
+    const parsed = safeReturn(() => JSON.parse(raw), null);
+    if (!parsed || typeof parsed !== "object" || !parsed.size) return null;
+    return parsed;
+  }
+
+  function writeCustomFontMeta(meta) {
+    safe(() => window.localStorage.setItem(CUSTOM_FONT_META_STORAGE_KEY, JSON.stringify(meta)));
+  }
+
+  function clearCustomFontMeta() {
+    safe(() => window.localStorage.removeItem(CUSTOM_FONT_META_STORAGE_KEY));
+  }
+
+  function customFontDisplayName(fileName) {
+    const base = String(fileName || "").replace(/\.(ttf|otf|ttc|woff2?)$/i, "").replace(/[-_]+/g, " ").trim();
+    if (!base) return "SET";
+    return base.slice(0, 12).toUpperCase() || "SET";
+  }
+
+  function customFontLabel() {
+    const meta = readCustomFontMeta();
+    return meta ? customFontDisplayName(meta.fileName) : "OFF";
+  }
+
+  // Register the bytes as a font face and point the theme's fallback slot at
+  // it. Rejects when the bytes are not a font the browser can use, which is
+  // also the import's validation.
+  function applyCustomFontFace(buffer) {
+    if (typeof FontFace !== "function" || !document.fonts) return Promise.reject(new Error("This client cannot load fonts at runtime."));
+    const face = new FontFace(CUSTOM_FONT_FAMILY, buffer);
+    return face.load().then(() => {
+      if (customFontFace) safe(() => document.fonts.delete(customFontFace));
+      document.fonts.add(face);
+      customFontFace = face;
+      document.documentElement.style.setProperty("--pvfd-font-local", '"' + CUSTOM_FONT_FAMILY + '", monospace');
+      safe(() => updateMenuPanel());
+    });
+  }
+
+  function clearCustomFontFace() {
+    if (customFontFace) safe(() => document.fonts.delete(customFontFace));
+    customFontFace = null;
+    document.documentElement.style.removeProperty("--pvfd-font-local");
+    safe(() => updateMenuPanel());
+  }
+
+  async function importCustomFont(file) {
+    if (!file) return false;
+    const name = String(file.name || "");
+    if (!/\.(ttf|otf|ttc|woff2?)$/i.test(name)) { notifyPvfd("Font import rejected: use a .ttf, .otf, .ttc, .woff or .woff2 file."); return false; }
+    if (file.size > CUSTOM_FONT_MAX_BYTES) { notifyPvfd("Font import rejected: over 40 MB."); return false; }
+    let buffer;
+    try {
+      buffer = await file.arrayBuffer();
+      await applyCustomFontFace(buffer);
+    } catch (err) {
+      notifyPvfd("Font import rejected: the file is not a usable font.");
+      return false;
+    }
+    const meta = { fileName: name, mimeType: file.type || "", size: file.size, updatedAt: Date.now() };
+    try {
+      await writeCustomFontRecord(Object.assign({ blob: file }, meta));
+    } catch (err) {
+      // The face is already live for this session; only persistence failed.
+      notifyPvfd("Font imported for this session only (storage failed): " + (err && err.message || err));
+      return true;
+    }
+    writeCustomFontMeta(meta);
+    safe(() => updateMenuPanel());
+    notifyPvfd("Font imported: " + name);
+    return true;
+  }
+
+  async function removeCustomFont() {
+    if (!customFontFace && !readCustomFontMeta()) { notifyPvfd("No custom font to remove."); return; }
+    try { await deleteCustomFontRecord(); } catch (err) { console.warn("[PVFD] custom font: delete failed", err && err.message || err); }
+    clearCustomFontMeta();
+    clearCustomFontFace();
+    notifyPvfd("Custom font removed.");
+  }
+
+  function pickCustomFontFile() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".ttf,.otf,.ttc,.woff,.woff2,font/ttf,font/otf,font/collection,font/woff,font/woff2";
+    input.style.display = "none";
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      safe(() => input.remove());
+      if (file) importCustomFont(file);
+    }, { once: true });
+    document.body.appendChild(input);
+    input.click();
+  }
+
+  function openCustomFontImport() {
+    const hasFont = !!customFontFace || !!readCustomFontMeta();
+    if (!window.Spicetify || !Spicetify.PopupModal || typeof Spicetify.PopupModal.display !== "function") {
+      pickCustomFontFile();
+      return;
+    }
+    const btn = "padding:8px 14px;border:0;border-radius:4px;cursor:pointer;font-weight:600";
+    const container = document.createElement("div");
+    container.className = "pvfd-custom-font-modal";
+    container.innerHTML =
+      '<p style="margin:0 0 12px 0;line-height:1.45">' +
+      "Add a font for a language the theme fonts do not cover. Latin text keeps the " +
+      "theme look; your language uses the font you pick, on Spotify's text and on the console." +
+      "</p>" +
+      '<p style="margin:0 0 14px 0;line-height:1.45;opacity:0.8;font-size:12.5px">' +
+      ".ttf, .otf, .ttc, .woff or .woff2, max 40 MB. Windows keeps its fonts in C:\Windows\Fonts. " +
+      (hasFont ? "Importing replaces your current font." : "") +
+      "</p>" +
+      '<div data-pvfd-custom-font="drop" style="margin:0 0 14px 0;padding:18px;border:1px dashed rgba(255,255,255,0.35);border-radius:6px;text-align:center;opacity:0.85">' +
+      "Drop the font file here" +
+      "</div>" +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+      '<button type="button" data-pvfd-custom-font="pick" style="' + btn + ';background:#1db954;color:#000">' +
+      (hasFont ? "Replace font\u2026" : "Choose font file\u2026") + "</button>" +
+      (hasFont ? '<button type="button" data-pvfd-custom-font="remove" style="' + btn + ';background:#a31d1d;color:#fff">Remove font</button>' : "") +
+      '<button type="button" data-pvfd-custom-font="cancel" style="' + btn + ';background:#444;color:#fff">Cancel</button>' +
+      "</div>";
+
+    const close = () => safe(() => Spicetify.PopupModal.hide && Spicetify.PopupModal.hide());
+    container.addEventListener("click", (ev) => {
+      const t = ev.target;
+      if (!(t instanceof HTMLElement)) return;
+      const action = t.getAttribute("data-pvfd-custom-font");
+      if (action === "pick") { close(); pickCustomFontFile(); }
+      else if (action === "remove") { close(); removeCustomFont(); }
+      else if (action === "cancel") { close(); }
+    });
+    container.addEventListener("dragover", (ev) => { ev.preventDefault(); });
+    container.addEventListener("drop", (ev) => {
+      ev.preventDefault();
+      const file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+      if (!file) return;
+      close();
+      importCustomFont(file);
+    });
+
+    safe(() => Spicetify.PopupModal.display({
+      title: "PioneerVFD \u2014 Font",
+      content: container,
+      isLarge: false,
+    }));
+  }
+
+  // Boot: the readout knows the font from localStorage at once; the face
+  // itself arrives when IndexedDB answers, like the custom clip's blob.
+  function hydrateCustomFont() {
+    const meta = readCustomFontMeta();
+    if (!meta) return;
+    readCustomFontRecord()
+      .then((record) => {
+        if (!record || !record.blob) {
+          console.warn("[PVFD] custom font: metadata present but file missing; dropping it");
+          clearCustomFontMeta();
+          safe(() => updateMenuPanel());
+          return;
+        }
+        return record.blob.arrayBuffer().then((buffer) => applyCustomFontFace(buffer));
+      })
+      .catch((err) => {
+        console.warn("[PVFD] custom font: restore failed", err && err.message || err);
+        clearCustomFontMeta();
+        clearCustomFontFace();
+      });
+  }
+
+  async function resolveClipUrlViaCache(clip) {
+    const assetName = clip.assetName;
+    const githubUrl = OEL_WEBM_GITHUB_BASE + assetName;
+
+    try {
+      const cachedBlob = await readOelWebmFromCache(assetName);
+      if (cachedBlob) {
+        console.log(`[PVFD] OEL WebM cache hit: ${assetName} (${cachedBlob.size} bytes)`);
+        return URL.createObjectURL(cachedBlob);
+      }
+    } catch (err) {
+      console.warn(`[PVFD] OEL WebM cache read failed for ${assetName}:`, err);
+    }
+
+    fetch(githubUrl)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.blob();
+      })
+      .then((blob) => writeOelWebmToCache(assetName, blob)
+        .then(() => console.log(`[PVFD] OEL WebM cached: ${assetName} (${blob.size} bytes)`)))
+      .catch((err) => console.warn(`[PVFD] OEL WebM cache populate failed for ${assetName}:`, err && err.message || err));
+
+    return githubUrl;
+  }
+
+  function startOelWebmCachePopulation() {
+    if (oelWebmCachePopulationStarted) return;
+    oelWebmCachePopulationStarted = true;
+    oelWebmSourceMap = {};
+    console.log("[PVFD] OEL WebM cache: starting population");
+
+    // EJECTING.webm rides the same IndexedDB + gh-pages pipeline as
+    // the OEL clips — no special-cased URL discovery, no link-element
+    // scraping. We just pass a clip-shaped object to the resolver.
+    const extras = [
+      { id: "ejecting-easter-egg", assetName: "EJECTING.webm" },
+      // State-flash beds — ride the same IndexedDB + gh-pages pipeline.
+      { id: "sf-bed-particles", assetName: "pvfd_bed_particles.webm" },
+      { id: "sf-bed-streaks",   assetName: "pvfd_bed_streaks.webm" },
+      { id: "sf-bed-helix",     assetName: "pvfd_bed_helix.webm" },
+      { id: "sf-bed-wave",      assetName: "pvfd_bed_wave.webm" },
+    ];
+    const all = OEL_WEBM_CLIPS.concat(extras);
+
+    for (const clip of all) {
+      if (!clip || !clip.assetName) continue;
+      if (clip.gauges) continue; // canvas-rendered; no webm asset to fetch
+      resolveClipUrlViaCache(clip)
+        .then((url) => {
+          oelWebmSourceMap[clip.assetName] = url;
+          console.log(`[PVFD] OEL WebM ready: ${clip.assetName} → ${url.startsWith("blob:") ? "blob" : "github"}`);
+          // Only the clip on screen needs a forced re-sync when its own URL
+          // lands. Forcing on every asset re-assigned the active clip's src
+          // once per cached file: a dozen loads, canplay events and LCD
+          // filter passes at boot, each one a whole-document style flush.
+          const active = safeReturn(() => getActiveOelClip(), null);
+          const isActive = !!active && active.assetName === clip.assetName;
+          safe(() => syncOelVideoPlayback(isActive));
+        })
+        .catch((err) => console.warn(`[PVFD] OEL WebM resolve failed: ${clip.assetName}`, err && err.message || err));
+    }
+  }
+
+  function resolveOelWebmSourceMap() {
+    if (!oelWebmSourceMap) {
+      const injectedMap = OEL_WEBM_SOURCE_MAP;
+      if (
+        injectedMap &&
+        injectedMap !== OEL_WEBM_SOURCE_MAP_PLACEHOLDER &&
+        typeof injectedMap === "object" &&
+        !Array.isArray(injectedMap)
+      ) {
+        oelWebmSourceMap = injectedMap;
+        console.log(`[PVFD] OEL WebM registry ready: clips=${Object.keys(injectedMap).length}`);
+      } else {
+        startOelWebmCachePopulation();
+      }
+    }
+    return oelWebmSourceMap;
+  }
+
+  async function logOelWebmSourceCheck(clip, url) {
+    if (!url || url === oelWebmLastCheckedUrl) return;
+    oelWebmLastCheckedUrl = url;
+    const clipKey = clipStorageId(clip);
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const contentType = response.headers.get("content-type") || blob.type || "unknown";
+      console.log(`[PVFD] OEL WebM proof: fetch check clip=${clipKey} status=${response.status} content-type=${contentType} blob-size=${blob.size}`);
+    } catch (err) {
+      const detail = err && err.message ? err.message : err;
+      console.warn(`[PVFD] OEL WebM proof: fetch check failed clip=${clipKey}`, detail);
+    }
+  }
+
+  function requestOelVideoPlay(video) {
+    if (!video || video.dataset.pvfdPlayPending === "1") return;
+    video.dataset.pvfdPlayPending = "1";
+    let playResult = null;
+    try {
+      playResult = video.play();
+    } catch (err) {
+      delete video.dataset.pvfdPlayPending;
+      console.warn("[PVFD] OEL WebM proof: play() rejected", err);
+      pauseOelVideoPlayback("error");
+      return;
+    }
+    if (!playResult || typeof playResult.then !== "function") {
+      delete video.dataset.pvfdPlayPending;
+      console.log("[PVFD] OEL WebM proof: play() resolved");
+      return;
+    }
+    playResult.then(() => {
+      delete video.dataset.pvfdPlayPending;
+      console.log("[PVFD] OEL WebM proof: play() resolved");
+    }).catch((err) => {
+      delete video.dataset.pvfdPlayPending;
+      console.warn("[PVFD] OEL WebM proof: play() rejected", err);
+      pauseOelVideoPlayback("error");
+    });
+  }
+
+  function resolveClipWebmUrl(clip) {
+    const assetName = clipWebmAssetName(clip);
+    if (!assetName) return "";
+    if (clip.webmUrl) return clip.webmUrl;
+    const sourceMap = resolveOelWebmSourceMap();
+    if (!sourceMap) return "";
+
+    const url = String(sourceMap[assetName] || "");
+    if (!url) return "";
+
+    const sourceType = url.startsWith("data:video/webm;base64,")
+      ? "data"
+      : (url.startsWith("blob:") ? "blob" : "other");
+    console.log(`[PVFD] OEL WebM proof: clip=${clip.id} source-type=${sourceType} length=${url.length}`);
+    clip.webmUrl = url;
+    return url;
+  }
+
+  function isPvfdPlaylistScrollStressActive(now = performance.now()) {
+    return now < pvfdPlaylistScrollStressUntil;
+  }
+
+  function installPvfdPlaylistScrollStressDetector() {
+    if (pvfdPlaylistScrollStressInstalled) return;
+
+    pvfdPlaylistScrollStressInstalled = true;
+
+    document.addEventListener(
+      "scroll",
+      (event) => {
+        const target = event.target;
+
+        if (
+          target &&
+          target.nodeType === 1 &&
+          (
+            target.matches?.(".main-view-container__scroll-node, [data-overlayscrollbars-viewport]") ||
+            target.closest?.(".main-view-container__scroll-node, [data-overlayscrollbars-viewport]")
+          )
+        ) {
+          pvfdPlaylistScrollStressUntil = performance.now() + 240;
+        }
+      },
+      true
+    );
+  }
+
+  function syncOelVideoPlayback(force = false) {
+    const perfAt = pvfdPerfStart();
+    if (!chassis) {
+      pvfdPerfEnd("webmOelSync", perfAt);
+      return false;
+    }
+    // EJECT easter egg owns the LCD for the duration of its sequence.
+    // The render loop must not race the pause we issued from
+    // startEjectSequence() — without this gate, the next tick's
+    // readyState/paused check would immediately restart the webm.
+    if (!force && chassis.getAttribute("data-pvfd-state") === "ejecting") {
+      pvfdPerfEnd("webmOelSync", perfAt);
+      return false;
+    }
+    ensureOelVideoMarkup();
+    logOelCanvasRendererDisabled();
+
+    const dom = getPvfdDom();
+    const video = dom.lcdVideo;
+    if (!dom.lcd || !video) {
+      pvfdPerfEnd("webmOelSync", perfAt);
+      return false;
+    }
+
+    // The full screen display is an opaque takeover, so the deck behind it is
+    // not merely unseen, it is unreachable. visibility:hidden stops the chassis
+    // PAINTING and nothing else: the webm keeps decoding at full rate on the
+    // media thread, which no main-thread profiler can even see. Gauge clips
+    // return through here too, so their canvas render stops with it.
+    //
+    // Resume needs no bookkeeping. The readyState/paused check at the end of
+    // this function restarts playback on the first frame after the display
+    // closes, and the exit curtain covers that beat.
+    if (pvfdCinemaOpen) {
+      if (!video.paused) safe(() => video.pause());
+      pvfdPerfEnd("webmOelSync", perfAt);
+      return false;
+    }
+
+    if (!oelDisplayEnabled) {
+      pauseOelVideoPlayback("off");
+      pvfdPerfEnd("webmOelSync", perfAt);
+      return false;
+    }
+
+    if (!force && dom.lcd.getAttribute("data-pvfd-video-state") === "error") {
+      pvfdPerfEnd("webmOelSync", perfAt);
+      return false;
+    }
+
+    const activeClip = getActiveOelClip();
+    if (!activeClip) {
+      pauseOelVideoPlayback("error");
+      pvfdPerfEnd("webmOelSync", perfAt);
+      return false;
+    }
+
+    syncOelColorModeAttributes();
+
+    // Time-synced gauge clips render on the LCD canvas (two PULSE-driven
+    // needles), not via the webm <video>. Handled before any webm resolution.
+    if (isGaugeClip(activeClip)) {
+      renderGaugeClip(activeClip);
+      pvfdPerfEnd("webmOelSync", perfAt);
+      return true;
+    }
+
+    const clipKey = clipStorageId(activeClip, clipIdx);
+    const webmUrl = resolveClipWebmUrl(activeClip);
+
+    if (!webmUrl) {
+      console.warn(`[PVFD] OEL WebM proof: ${activeClip.assetName} URL unavailable`);
+      pauseOelVideoPlayback("error");
+      pvfdPerfEnd("webmOelSync", perfAt);
+      return false;
+    }
+
+    if (force || video.dataset.pvfdClipKey !== clipKey || video.getAttribute("src") !== webmUrl) {
+      oelVideoActiveClipKey = "";
+      setOelVideoState("loading", clipKey);
+      safe(() => video.pause());
+      delete video.dataset.pvfdPlayPending;
+      video.dataset.pvfdClipKey = clipKey;
+      video.dataset.pvfdClipLabel = activeClip.label;
+      video.src = webmUrl;
+      const assignedSrcType = video.src.startsWith("data:video/webm;base64,")
+        ? "data"
+        : (video.src.startsWith("blob:") ? "blob" : "other");
+      console.log(`[PVFD] OEL WebM proof: assigned clip=${clipKey} src-type=${assignedSrcType} length=${video.src.length}`);
+      logOelWebmSourceCheck(activeClip, video.src);
+      safe(() => { video.currentTime = 0; });
+      safe(() => video.load());
+      video.addEventListener("canplay", () => {
+        if (isClipPulseLocked(getActiveOelClip())) freezeOelVideoForLock(video, video.dataset.pvfdClipKey || "");
+        else requestOelVideoPlay(video);
+      }, { once: true });
+      pvfdPerfEnd("webmOelSync", perfAt);
+      return false;
+    }
+
+    // PULSE-locked clips stay frozen on their poster frame even once loaded.
+    if (isClipPulseLocked(activeClip)) {
+      freezeOelVideoForLock(video, clipKey);
+      pvfdPerfEnd("webmOelSync", perfAt);
+      return false;
+    }
+
+    if (oelVideoActiveClipKey === clipKey && !video.paused && !video.ended) {
+      pvfdPerfEnd("webmOelSync", perfAt);
+      return true;
+    }
+
+    if (video.readyState >= 3 && video.paused) {
+      requestOelVideoPlay(video);
+    }
+
+    const active = oelVideoActiveClipKey === clipKey && !video.paused && !video.ended;
+    pvfdPerfEnd("webmOelSync", perfAt);
+    return active;
+  }
+
+  function readClipIdx() {
+    const saved = String(safeReturn(() => window.localStorage.getItem(CLIP_STORAGE_KEY), "") || "");
+    const clips = getOelClips();
+    if (!clips.length) return 0;
+    if (!saved) return 0;
+    const savedUpper = saved.toUpperCase();
+    const exactIdx = clips.findIndex((clip, idx) => clipStorageId(clip, idx) === saved);
+    if (exactIdx >= 0) return exactIdx;
+    const nameIdx = clips.findIndex(clip => String(clip && clip.name || "").toUpperCase() === savedUpper);
+    if (nameIdx >= 0) return nameIdx;
+    const numericIdx = Number(saved);
+    return Number.isInteger(numericIdx) && numericIdx >= 0 && numericIdx < clips.length ? numericIdx : 0;
+  }
+
+  function readPerformanceModeIdx() {
+    const saved = safeReturn(() => window.localStorage.getItem(PERF_STORAGE_KEY), "");
+    const idx = PERFORMANCE_MODES.findIndex(p => p.label === saved);
+    return idx >= 0 ? idx : 0;
+  }
+
+  function readLogoGlowEnabled() {
+    // PULSE should always boot idle so Chromium/system-audio capture never
+    // re-engages itself on startup.
+    return false;
+  }
+
+  function getActiveOelClip() {
+    const clips = getOelClips();
+    if (!clips.length) return null;
+    return clips[clipIdx] || clips[0];
+  }
+
+  function readOelDisplayEnabled() {
+    const saved = safeReturn(() => window.localStorage.getItem(OEL_DISPLAY_STORAGE_KEY), null);
+    // Default ON when nothing has been saved yet.
+    return saved !== "OFF";
+  }
+
+  function readRacingColorEnabled() {
+    const saved = safeReturn(() => {
+      return window.localStorage.getItem(RACING_COLOR_STORAGE_KEY) ||
+        window.localStorage.getItem(LEGACY_RACING_COLOR_STORAGE_KEY);
+    }, null);
+    const value = String(saved || "").toUpperCase();
+    return value === "COLOR" || value === "ON" || value === "TRUE" || value === "1";
+  }
+
+  function isPulseClip(clip) {
+    return !!(clip && clip.pulse);
+  }
+
+  // A pulse:true clip is "shown but locked" until the existing PULSE toggle
+  // (logoGlowEnabled — live audio capture / logo glow) is enabled. It still
+  // appears in the OEL cycle and shows a tinted poster frame, but its video is
+  // frozen at frame 0 and overlaid with the PULSE lock badge. One PULSE, reused.
+  function isClipPulseLocked(clip) {
+    return isPulseClip(clip) && !logoGlowEnabled;
+  }
+
+  // DEMO auto-cycle skips clips that are currently PULSE-locked (e.g. the gauges
+  // while PULSE is off) so the showroom never lands on a frozen, badge-covered
+  // clip. Manual OEL cycling still reaches them (shown-but-locked). Returns the
+  // next non-locked clip index after fromIdx (wrapping); if every clip is locked
+  // it falls back to fromIdx+1.
+  function nextDemoClipIdx(fromIdx) {
+    const clips = getOelClips();
+    const n = clips.length;
+    if (!n) return fromIdx;
+    for (let step = 1; step <= n; step++) {
+      const idx = (fromIdx + step) % n;
+      if (!isClipPulseLocked(clips[idx])) return idx;
+    }
+    return (fromIdx + 1) % n;
+  }
+
+  function freezeOelVideoForLock(video, clipKey) {
+    if (!video) return;
+    delete video.dataset.pvfdPlayPending;
+    safe(() => video.pause());
+    safe(() => { if (video.currentTime > 0.01) video.currentTime = 0; });
+    // Keep state "active" so the tinted poster frame renders under the badge.
+    setOelVideoState("active", clipKey);
+  }
+
+  function isGaugeClip(clip) {
+    return !!(clip && clip.gauges);
+  }
+
+  function resolveGaugeSpriteUrl(clip) {
+    const g = clip && clip.gauge;
+    if (!g) return "";
+    if (g.src) return g.src;
+    const assetName = String(g.assetName || "").trim();
+    return assetName ? OEL_WEBM_GITHUB_BASE + assetName : "";
+  }
+
+  function ensureGaugeSprite(clip) {
+    let entry = gaugeSpriteCache.get(clip.id);
+    if (entry) return entry;
+    entry = { img: new Image(), ready: false };
+    const src = resolveGaugeSpriteUrl(clip);
+    if (!src) {
+      console.warn("[PVFD] gauge sprite has no source:", clip.id);
+      gaugeSpriteCache.set(clip.id, entry);
+      return entry;
+    }
+    entry.img.decoding = "async";
+    entry.img.crossOrigin = "anonymous";
+    entry.img.onload = () => { entry.ready = true; lastGaugeFrameKey = ""; };
+    entry.img.onerror = () => console.warn("[PVFD] gauge sprite failed to load:", clip.id, src);
+    entry.img.src = src;
+    gaugeSpriteCache.set(clip.id, entry);
+    return entry;
+  }
+
+  // Renders a time-synced gauge/meter clip onto the LCD canvas. The two channels
+  // (ch0 = low/bass, ch1 = high/treble) are driven independently by the smoothed
+  // PULSE band envelopes (0..1, already 0 when PULSE is off) and eased so they
+  // sweep/settle. Per-clip geometry lives on clip.gauge { assetName/src, cellW, cellH,
+  // layout, ch[] }, so needles (li_06), stacked bar pairs (li_07) and L/R rings
+  // (level_03) all share one path.
+  function renderGaugeClip(clip) {
+    const dom = getPvfdDom();
+    // Hand the LCD to the canvas. The webm <video> (z-index 3) sits ABOVE the
+    // canvas, so it must be fully released or the previous clip's frozen frame
+    // shows through: pause it, drop its src (so it has no frame and can't fire
+    // 'playing' to steal the LCD back), and force a fresh canvas redraw.
+    if (dom.lcd && dom.lcd.getAttribute("data-pvfd-video-state") !== "gauges") {
+      const v = dom.lcdVideo;
+      if (v) {
+        safe(() => v.pause());
+        if (v.getAttribute("src")) { v.removeAttribute("src"); safe(() => v.load()); }
+        delete v.dataset.pvfdClipKey;
+      }
+      oelVideoActiveClipKey = "";
+      lastGaugeFrameKey = "";
+      gaugeDisp[0] = 0; gaugeDisp[1] = 0;
+      if (ctx && canvasCssW && canvasCssH) ctx.clearRect(0, 0, canvasCssW, canvasCssH);
+      setOelVideoState("gauges");
+    }
+    const g = clip.gauge;
+    if (!g) return;
+    const sprite = ensureGaugeSprite(clip);
+    if (!sprite.ready || !ctx || !canvasCssW || !canvasCssH) return;
+
+    gaugeDisp[0] += (logoLiveLowEnv  - gaugeDisp[0]) * GAUGE_NEEDLE_EASE; // low  -> ch0
+    gaugeDisp[1] += (logoLiveHighEnv - gaugeDisp[1]) * GAUGE_NEEDLE_EASE; // high -> ch1
+
+    const cells = [0, 0];
+    for (let k = 0; k < 2; k++) {
+      const c = g.ch[k];
+      const idx = Math.max(0, Math.min(c.frames - 1, Math.round(gaugeDisp[k] * (c.frames - 1))));
+      cells[k] = c.base + idx;
+    }
+    const frameKey = clip.id + ":" + cells[0] + ":" + cells[1];
+    if (frameKey === lastGaugeFrameKey) return;
+    lastGaugeFrameKey = frameKey;
+
+    const w = canvasCssW, h = canvasCssH;
+    ctx.clearRect(0, 0, w, h);
+    let dest;
+    if (g.layout === "stacked") {
+      const hh = Math.floor(h / 2);
+      dest = [ [0, 0, w, hh], [0, hh, w, h - hh] ];     // ch0 top, ch1 bottom
+    } else {
+      const ww = Math.floor(w / 2);
+      dest = [ [0, 0, ww, h], [ww, 0, w - ww, h] ];     // ch0 left, ch1 right
+    }
+    for (let k = 0; k < 2; k++) {
+      const c = g.ch[k], d = dest[k];
+      ctx.drawImage(sprite.img, cells[k] * g.cellW + c.sx, c.sy, c.sw, c.sh, d[0], d[1], d[2], d[3]);
+    }
+  }
+
+  function activePerformanceConfig() {
+    return PERFORMANCE_MODES[performanceModeIdx] || PERFORMANCE_MODES[0];
+  }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function bindNowPlayingShortcut(el) {
+    if (!el) return;
+    if (el.dataset.pvfdNowPlayingShortcutBound === "1") return;
+    el.dataset.pvfdNowPlayingShortcutBound = "1";
+    el.setAttribute("role", "button");
+    el.setAttribute("tabindex", "0");
+    el.setAttribute("title", "Open now playing; right-click for Spotify menu");
+    el.addEventListener("click", () => {
+      openPlaybackSource();
+    });
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
+        e.preventDefault();
+        openSpotifyNowPlayingContextMenu(e);
+        return;
+      }
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      openPlaybackSource();
+    });
+    el.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openSpotifyNowPlayingContextMenu(e);
+    });
+  }
+
+  function bindMetaPlaybackGlyph(el) {
+    if (!el) return;
+    if (el.dataset.pvfdMetaPlaybackBound === "1") return;
+    el.dataset.pvfdMetaPlaybackBound = "1";
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      invokePlayerAction(() => Spicetify.Player.togglePlay());
+    });
+    el.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openSpotifyNowPlayingContextMenu(e);
+    });
+  }
+
+  function activeClipName(maxLen = 12) {
+    const activeClip = getActiveOelClip();
+    const label = String(activeClip && (activeClip.label || activeClip.name) || "WEBM");
+    return label.slice(0, maxLen).toUpperCase();
+  }
+
+  function logOelCanvasRendererDisabled() {
+    if (oelCanvasRendererDisabledLogged) return;
+    oelCanvasRendererDisabledLogged = true;
+    console.log("[PVFD] hard-disabled old LKD canvas renderer");
+  }
+
+  function notifyPvfd(message) {
+    console.warn("[PVFD]", message);
+    safe(() => Spicetify.showNotification && Spicetify.showNotification(message));
+  }
+
+  function clickFirst(selectors) {
+    for (const selector of selectors) {
+      const el = safeReturn(() => document.querySelector(selector), null);
+      if (el && typeof el.click === "function") {
+        el.click();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function clickFirstOutsideChassis(selectors, reject = null) {
+    for (const selector of selectors) {
+      const els = safeReturn(() => Array.from(document.querySelectorAll(selector)), []);
+      const el = els.find((candidate) => (
+        (!candidate.closest || !candidate.closest(".pvfd-chassis")) &&
+        !(reject && reject(candidate))
+      ));
+      if (el && typeof el.click === "function") {
+        el.click();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function buttonLabelText(el) {
+    return [
+      el && el.id,
+      el && el.getAttribute && el.getAttribute("aria-label"),
+      el && el.getAttribute && el.getAttribute("title"),
+      el && el.getAttribute && el.getAttribute("data-tippy-content"),
+      el && el.textContent
+    ].map((value) => String(value || "").replace(/\s+/g, " ").trim().toLowerCase()).filter(Boolean).join(" ");
+  }
+
+  function pvfdButtonDescriptor(el) {
+    if (!el) return null;
+    const rect = safeReturn(() => el.getBoundingClientRect(), null);
+    const style = safeReturn(() => window.getComputedStyle(el), null);
+    return {
+      tag: String(el.tagName || "").toLowerCase(),
+      id: el.id || "",
+      testid: el.getAttribute && el.getAttribute("data-testid") || "",
+      role: el.getAttribute && el.getAttribute("role") || "",
+      aria: el.getAttribute && el.getAttribute("aria-label") || "",
+      title: el.getAttribute && el.getAttribute("title") || "",
+      text: String(el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80),
+      disabled: !!(el.disabled || el.getAttribute && el.getAttribute("aria-disabled") === "true"),
+      display: style && style.display || "",
+      visibility: style && style.visibility || "",
+      rect: rect ? {
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        w: Math.round(rect.width),
+        h: Math.round(rect.height)
+      } : null
+    };
+  }
+
+  function pvfdElementIsDisplayHidden(el) {
+    const style = safeReturn(() => window.getComputedStyle(el), null);
+    if (style && (style.display === "none" || style.visibility === "hidden")) return true;
+    const rect = safeReturn(() => el.getBoundingClientRect(), null);
+    return !!(rect && (!rect.width || !rect.height));
+  }
+
+  function scoreDevicePickerCandidate(el) {
+    if (!el || el.closest && el.closest(".pvfd-chassis")) return -1000;
+    const desc = pvfdButtonDescriptor(el) || {};
+    const testid = String(desc.testid || "").toLowerCase();
+    const label = buttonLabelText(el);
+    const restoreKey = String(safeReturn(() => el.getAttribute("data-restore-focus-key"), "") || "");
+    const className = String((el && el.className && el.className.baseVal) || el.className || "");
+    const inScope = !!(el.closest && safeReturn(() => el.closest(DEVICE_PICKER_SCOPE_SELECTOR), null));
+    const isGenericButton = /\bmain-genericButton-button\b/.test(className);
+    let score = 0;
+
+    // Tier 1: explicit testid hits (legacy Spotify builds that still carry the testid).
+    if (testid === "control-button-connect-picker") score += 100;
+    if (testid.includes("connect-picker")) score += 80;
+    if (testid.includes("device-picker")) score += 75;
+    if (testid.includes("connect-device")) score += 70;
+    if (testid.includes("connect") && testid.includes("button")) score += 45;
+
+    // Tier 2: data-restore-focus-key='DevicePicker' — set by Spotify when picker is open.
+    // Reliable signal even when testid is empty and locale is non-English.
+    if (restoreKey === "DevicePicker") score += 90;
+
+    // Tier 3: English-locale aria-label matches (kept for any pre-localization labels).
+    if (/connect to a device|devices available|device picker|connect picker|select a device/.test(label)) score += 80;
+    if (/\bdevices?\b/.test(label)) score += 20;
+    if (/\bconnect\b/.test(label)) score += 18;
+    if (/speaker|speakers|spotify connect|cast/.test(label)) score += 8;
+
+    // Tier 4 (NEW — Spotify 1.2.89.x DOM signature): a .main-genericButton-button
+    // inside the now-playing-bar with NO data-testid and a non-empty aria-label is
+    // almost certainly the connect-picker. Other generic buttons (queue/lyrics/sleep
+    // timer/etc.) all carry a control-button-* testid. Locale-independent.
+    if (inScope && isGenericButton && !testid && desc.aria) {
+      if (!DEVICE_PICKER_SIBLING_TESTIDS.has(testid)) {
+        score += 60;
+      }
+    }
+
+    if (inScope) score += 12;
+
+    // Soft penalty for disabled. Spotify can disable the connect button briefly
+    // (a few hundred ms) while it enumerates devices on first mount. Our retry
+    // loop in openDevicePicker() tries again at +90ms and +330ms, by which point
+    // the button is usually re-enabled. Old code used -80 here which permanently
+    // disqualified the candidate, so the retry loop had nothing to click on
+    // the second/third attempt. -15 keeps it as the top scored candidate across
+    // all three attempts. (Note: a persistently-disabled button — no Connect
+    // devices on the network — still won't open anything, since browsers no-op
+    // click() on disabled elements. The picker requires devices to exist.)
+    if (desc.disabled) score -= 15;
+    if (pvfdElementIsDisplayHidden(el)) score -= 80;
+
+    return score;
+  }
+
+  function uniqueElements(elements) {
+    const seen = new Set();
+    const out = [];
+    elements.forEach((el) => {
+      if (!el || seen.has(el)) return;
+      seen.add(el);
+      out.push(el);
+    });
+    return out;
+  }
+
+  function findDevicePickerCandidates() {
+    const elements = [];
+    DEVICE_PICKER_SELECTORS.forEach((selector) => {
+      elements.push(...safeReturn(() => Array.from(document.querySelectorAll(selector)), []));
+    });
+    // Scan all generic buttons inside the now-playing bar — covers Spotify 1.2.89.x
+    // where the connect-picker has no testid and only the localized aria-label.
+    elements.push(...safeReturn(() => Array.from(document.querySelectorAll(
+      "[data-testid='now-playing-bar'] .main-genericButton-button, " +
+      ".Root__now-playing-bar .main-genericButton-button, " +
+      ".main-nowPlayingBar-container .main-genericButton-button"
+    )), []));
+    elements.push(...safeReturn(() => Array.from(document.querySelectorAll(DEVICE_PICKER_SCAN_SELECTOR)), []));
+
+    return uniqueElements(elements)
+      .map((el) => ({ el, score: scoreDevicePickerCandidate(el) }))
+      .filter((item) => item.score >= 20)
+      .sort((a, b) => b.score - a.score);
+  }
+
+  function activateDevicePickerCandidate(el) {
+    if (!el || typeof el.click !== "function") return false;
+    safe(() => el.focus && el.focus({ preventScroll: true }));
+    const eventOptions = { bubbles: true, cancelable: true, composed: true, view: window };
+    ["pointerdown", "mousedown", "pointerup", "mouseup"].forEach((type) => {
+      const EventCtor = type.indexOf("pointer") === 0 && typeof PointerEvent === "function" ? PointerEvent : MouseEvent;
+      safe(() => el.dispatchEvent(new EventCtor(type, eventOptions)));
+    });
+    el.click();
+    return true;
+  }
+
+  function tryOpenDevicePicker() {
+    const candidate = findDevicePickerCandidates()[0];
+    if (!candidate) return false;
+    window.__PVFD_LAST_DEVICE_PICKER_TARGET__ = {
+      score: candidate.score,
+      target: pvfdButtonDescriptor(candidate.el)
+    };
+    return activateDevicePickerCandidate(candidate.el);
+  }
+
+  function diagnoseDevicePickerTargets(limit = 12) {
+    const candidates = findDevicePickerCandidates().slice(0, limit).map((candidate) => ({
+      score: candidate.score,
+      ...pvfdButtonDescriptor(candidate.el)
+    }));
+    if (console.table) console.table(candidates);
+    else console.log("[PVFD] device picker candidates", candidates);
+
+    // Locale/version drift dump: every button in the now-playing bar with its
+    // identifying attributes, regardless of score. Lets users (or me) read off
+    // what their Spotify build is actually rendering even when 0 candidates score.
+    const allButtons = safeReturn(() => Array.from(document.querySelectorAll(
+      "[data-testid='now-playing-bar'] button, " +
+      ".Root__now-playing-bar button, " +
+      ".main-nowPlayingBar-container button"
+    )), []);
+    const buttonDump = allButtons
+      .filter((el) => !el.closest || !el.closest(".pvfd-chassis"))
+      .map((el) => {
+        const desc = pvfdButtonDescriptor(el) || {};
+        const className = String((el && el.className && el.className.baseVal) || el.className || "");
+        return {
+          testid: desc.testid || "",
+          aria: desc.aria || "",
+          title: desc.title || "",
+          tippy: safeReturn(() => el.getAttribute("data-tippy-content"), "") || "",
+          rfk: safeReturn(() => el.getAttribute("data-restore-focus-key"), "") || "",
+          disabled: desc.disabled,
+          generic: /\bmain-genericButton-button\b/.test(className),
+          score: scoreDevicePickerCandidate(el)
+        };
+      });
+    if (console.table) console.table(buttonDump);
+    else console.log("[PVFD] now-playing-bar button dump", buttonDump);
+
+    return candidates;
+  }
+
+  function pushSpotifyPath(path) {
+    const history = Spicetify.Platform && Spicetify.Platform.History;
+    if (history && typeof history.push === "function") {
+      history.push(path);
+      return true;
+    }
+    const app = Spicetify.Platform && Spicetify.Platform.Application;
+    if (app && typeof app.navigate === "function") {
+      app.navigate(path);
+      return true;
+    }
+    return false;
+  }
+
+  function routeFromSpotifyUri(uri) {
+    const parts = String(uri || "").split(":");
+    if (parts[0] !== "spotify" || !parts[1] || !parts[2]) return "";
+    if (!/^(album|artist|playlist|show|episode|track)$/.test(parts[1])) return "";
+    return `/${parts[1]}/${parts[2]}`;
+  }
+
+  function findSpotifyNowPlayingContextTarget() {
+    const selectors = [
+      "[data-testid='now-playing-widget'] [data-testid='cover-art-button']",
+      "[data-testid='now-playing-bar'] [data-testid='cover-art-button']",
+      ".Root__now-playing-bar [data-testid='cover-art-button']",
+      ".main-nowPlayingBar-container [data-testid='cover-art-button']",
+      "[data-testid='now-playing-widget'] button"
+    ];
+    for (const selector of selectors) {
+      const candidates = safeReturn(() => Array.from(document.querySelectorAll(selector)), []);
+      const target = candidates.find((candidate) => !candidate.closest || !candidate.closest(".pvfd-chassis"));
+      if (target) return target;
+    }
+    return null;
+  }
+
+  function openSpotifyNowPlayingContextMenu(sourceEvent = null) {
+    const target = findSpotifyNowPlayingContextTarget();
+    if (!target) return false;
+    let clientX = Number.isFinite(sourceEvent && sourceEvent.clientX) ? sourceEvent.clientX : null;
+    let clientY = Number.isFinite(sourceEvent && sourceEvent.clientY) ? sourceEvent.clientY : null;
+    if (clientX === null || clientY === null) {
+      const rect = target.getBoundingClientRect();
+      clientX = rect.left + rect.width / 2;
+      clientY = rect.top + rect.height / 2;
+    }
+    target.dispatchEvent(new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      button: 2,
+      buttons: 2,
+      clientX,
+      clientY
+    }));
+    return true;
+  }
+
+  function openPlaybackSource() {
+    const item = safeReturn(() => Spicetify.Player.data && Spicetify.Player.data.item, null);
+    const route = item && routeFromSpotifyUri(item.uri || item.link);
+    if (route && safeReturn(() => pushSpotifyPath(route), false)) return true;
+    return clickFirst([
+      "[data-testid='now-playing-widget']",
+      "[class*='nowPlayingWidget']",
+      "[aria-label*='Now playing' i]"
+    ]);
+  }
+
+  // DAB ▲: navigate to the current track's primary artist. Falls back to the
+  // album/context page when the item carries no artist URI (only .name is
+  // guaranteed on Player.data.item.artists), so the button is never dead.
+  function openCurrentArtist() {
+    const item = safeReturn(() => Spicetify.Player.data && Spicetify.Player.data.item, null);
+    const artist = item && item.artists && item.artists[0];
+    const route = artist && routeFromSpotifyUri(artist.uri || artist.link);
+    if (route && safeReturn(() => pushSpotifyPath(route), false)) return true;
+    return openPlaybackSource();
+  }
+
+  function openDevicePicker() {
+    if (tryOpenDevicePicker()) return true;
+
+    window.setTimeout(() => {
+      if (tryOpenDevicePicker()) return;
+      window.setTimeout(() => {
+        if (tryOpenDevicePicker()) return;
+        const candidates = diagnoseDevicePickerTargets(8);
+        notifyPvfd(`DEV: Spotify device picker not found. Diagnostics found ${candidates.length} candidate(s).`);
+      }, 240);
+    }, 90);
+
+    return false;
+  }
+
+  // Progressive-lag investigation: knob/scrubber drag + EJECT standby text
+  // get choppy after ~1 min of use, persists across window close (Windows
+  // tray keeps the JS context alive), clears only on `spicetify apply`.
+  // Run diagnosePerf() at fresh launch, use Spotify for ~90s, run again,
+  // diff. Anything growing faster than uptime is the leak.
+  function diagnosePerf() {
+    const uptimeSec = (Date.now() - pvfdDiag.bootAt) / 1000;
+    const safeRate = (n) => (uptimeSec > 0 ? +(n / uptimeSec).toFixed(3) : 0);
+    const snapshot = {
+      uptime_s: +uptimeSec.toFixed(1),
+
+      // Should each be 1 across the entire session. >1 means we are
+      // duplicating init paths — re-bound listeners, multiple rAF loops,
+      // multiple MutationObservers all firing on every Spotify DOM mutation.
+      injectChassis_calls: pvfdDiag.injectChassisCalls,
+      wireControls_calls: pvfdDiag.wireControlsCalls,
+      attachUnsafe_calls: pvfdDiag.attachUnsafeCalls,
+      mutationObservers_created: pvfdDiag.mutationObserversCreated,
+      recover_fatals: pvfdDiag.recoverFatals,
+
+      // Rate-based. If mutation_flushes_per_sec climbs over the session,
+      // Spotify's DOM churn is growing AND we are processing it all
+      // synchronously — top candidate for the progressive lag.
+      loop_frames: pvfdDiag.loopFrames,
+      loop_fps_avg: safeRate(pvfdDiag.loopFrames),
+      mutation_queues: pvfdDiag.mutationQueues,
+      mutation_queues_per_sec: safeRate(pvfdDiag.mutationQueues),
+      mutation_flushes: pvfdDiag.mutationFlushes,
+      mutation_flushes_per_sec: safeRate(pvfdDiag.mutationFlushes),
+
+      pending_mutation_work: { ...pvfdMutationWork },
+
+      // Each entry is total addEventListener calls on that element since
+      // boot. If wireControls ever ran twice on the same DOM node, these
+      // are 2x their fresh-launch values and every pointer event during
+      // drag is dispatching through duplicated handlers.
+      listeners_added: { ...pvfdDiag.listenersAdded },
+      // Bubble-block hit count. >0 confirms the new block is wired. If you
+      // run a 3-sec drag with active mouse movement this should land in the
+      // hundreds (one per pointermove). 0 means installation failed.
+      pointer_bubble_blocks: pvfdDiag.pointerBubbleBlocks,
+      pointer_bubble_blocks_per_sec: safeRate(pvfdDiag.pointerBubbleBlocks),
+
+      active_intervals: {
+        bandTuning: !!bandTuningInterval,
+        lyricsProgress: !!pvfdLyricsProgressTimer,
+      },
+      active_timeouts: {
+        mutation: !!pvfdMutationTimer,
+        mutationFlush: !!pvfdMutationFlushTimer,
+        volumeCommit: !!volumeCommitTimer,
+        ejectFinish: !!ejectFinishTimer,
+        ejectBlanked: !!ejectBlankedTimer,
+        librarySearchFix: !!librarySearchFixTimer,
+        lyricsSyncFix: !!lyricsSyncFixTimer,
+        globalSearchFocus: !!globalSearchFocusTimer,
+        pvfdCinemaTransition: !!pvfdCinemaTransitionTimer,
+        specialProfileCheck: !!pvfdSpecialProfileCheckTimer,
+        specialProfileHearts: !!pvfdSpecialProfileHeartsTimer,
+        logoLiveAudioResume: !!logoLiveAudioResumeTimer,
+      },
+      active_rafs: {
+        metaTrackRepaint: !!metaTrackRepaintRaf,
+        canvasResize: !!canvasResizeRaf,
+        standby: !!standbyRafId,
+        logoLiveAudioScheduler: !!logoLiveAudioSchedulerRaf,
+      },
+
+      chassis_connected: !!(chassis && chassis.isConnected),
+      // Identity changes if chassis was rebuilt mid-session. Compare
+      // across runs — if it shifts, injectChassis ran and DOM listeners
+      // on the old nodes are orphaned but the per-element instrumentation
+      // counters above will tell you whether wireControls re-ran too.
+      chassis_id: chassis ? (chassis.dataset.pvfdInstance || "unset") : null,
+    };
+    try { console.table(snapshot); } catch (_e) { console.log(snapshot); }
+    return snapshot;
+  }
+
+  const pioneerVfdDebugApi = typeof window.PioneerVFD === "object" && window.PioneerVFD ? window.PioneerVFD : {};
+  pioneerVfdDebugApi.openDevicePicker = openDevicePicker;
+  pioneerVfdDebugApi.diagnoseDevicePicker = diagnoseDevicePickerTargets;
+  pioneerVfdDebugApi.diagnosePerf = diagnosePerf;
+  pioneerVfdDebugApi._diag = pvfdDiag;
+  window.PioneerVFD = pioneerVfdDebugApi;
+
+  // EJECT button — formerly OPEN (GitHub issue #8: OPEN had no handler).
+  // Current sequence: a state-flash "EJECT" takeover on the LCD, then the
+  // chassis and the whole Spotify shell blank out — sweeping tint scan-line
+  // into total darkness — and a STANDING BY indicator settles in. Any user
+  // input wakes it back through the reverse sweep. The old vault-boy
+  // EJECTING.webm src-swap is retired (state-flash replaced it); the asset
+  // still registers with the OEL cache pipeline, it just no longer plays.
+  //
+  // Spotify desktop's window minimize is not reachable from renderer
+  // JS in this build (OS-rendered title bar, no Platform API), so we
+  // do a thematic on-chassis blackout instead.
+  const EJECT_SEQUENCE_MS = 2000; // was 3900 (EJECTING.webm runtime); now ~= state-flash length
+  const EJECT_BLANK_TRANSITION_MS = 700;
+  // ejectInFlight covers the *entire* easter-egg lifecycle: from click
+  // through webm playback, blanking transition, blanked hold, and up
+  // until a wake-input fires. The EJECT button click handler bails on
+  // this flag, so re-clicking during any phase is a no-op.
+  let ejectInFlight = false;
+  let ejectFinishTimer = 0;
+  let ejectBlankActive = false;
+  // Captures Spotify's playback state at click-time so wake can put
+  // playback back to exactly where the user left it.
+  let ejectSavedWasPlaying = false;
+  // Page-level blackout overlay (single fullscreen div mounted to body).
+  // Created lazily on first eject, removed on wake.
+  let pageBlanket = null;
+  // Pending timer that promotes blanking → blanked. We hold the handle
+  // so wake can cancel it; otherwise it races wake and re-imposes the
+  // blanked state after wake has already started restoring.
+  let ejectBlankedTimer = 0;
+  // Tracks whether the input-filter listeners are attached. They stay
+  // armed for the entire eject lifecycle (blanking → blanked →
+  // restoring) so every input during that window is filtered, not just
+  // the first one — otherwise post-mousedown click events leak through
+  // to Spotify's content handlers.
+  let ejectListenersAttached = false;
+
+  // Spotify shell containers that should each get their own scan-line
+  // strip during the page-level blackout. Probed in order; missing ones
+  // are skipped without affecting the backdrop.
+  const EJECT_PANEL_SELECTORS = [
+    ".Root__nav-bar",                       // left library/nav column
+    ".Root__main-view",                     // central content area
+    ".Root__right-sidebar",                 // right sidebar (newer Spotify)
+    "aside[aria-label='Now playing view']", // right sidebar fallback
+    ".Root__top-bar",                       // top global nav (older builds)
+    ".main-globalNav-container",            // top global nav (newer builds)
+  ];
+
+  function ensurePageBlanket() {
+    if (pageBlanket && pageBlanket.isConnected) return;
+    pageBlanket = document.createElement("div");
+    pageBlanket.className = "pvfd-page-blanket";
+    pageBlanket.setAttribute("aria-hidden", "true");
+
+    // Mount the backdrop as a SIBLING of the now-playing-bar (which is
+    // where the chassis lives). This puts them in the same stacking
+    // context so the chassis's z:1000 actually paints above the
+    // backdrop's z:999. If we appended to <body> instead, the chassis
+    // would be inside Spotify's Root subtree at a lower body-level
+    // stacking position than the backdrop, and the chassis would
+    // disappear behind the blackout.
+    const npb = document.querySelector(".Root__now-playing-bar") ||
+                document.querySelector("[data-testid='now-playing-bar']");
+    if (npb && npb.parentNode) {
+      npb.parentNode.insertBefore(pageBlanket, npb);
+    } else {
+      // Fallback: still attach somewhere so the feature degrades to
+      // "backdrop visible, chassis might be covered" rather than
+      // "feature absent." Better to have the easter egg work
+      // imperfectly than not at all.
+      document.body.appendChild(pageBlanket);
+    }
+  }
+
+  function spawnPanelScanlines(direction = "down") {
+    // Strip everything from prior runs first — defensive against a race
+    // where wake teardown didn't fire (e.g., chassis got re-mounted
+    // mid-sequence). Also called when reversing direction for the
+    // restore sweep — we want a clean slate before adding new strips
+    // with the reverse animation.
+    document.querySelectorAll(".pvfd-panel-scanline").forEach((el) => el.remove());
+
+    // Panel rects often extend down to the top of the now-playing-bar,
+    // but the chassis visually starts ABOVE that (the meta-LCD strip
+    // sits above the playbar's top edge). Clamp every scan-line's travel
+    // bottom to the chassis's real top so the sweep lands exactly at the
+    // chassis edge instead of bleeding into the chassis chrome.
+    const chassisRect = chassis ? chassis.getBoundingClientRect() : null;
+    const chassisTop = chassisRect ? chassisRect.top : Infinity;
+
+    for (const sel of EJECT_PANEL_SELECTORS) {
+      const el = document.querySelector(sel);
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      // Skip panels that are collapsed/off-screen — no visual value in
+      // sweeping a zero-size strip.
+      if (rect.width < 8 || rect.height < 8) continue;
+
+      // Travel = min(panel bottom, chassis top) − panel top. Anything
+      // below the chassis top is the chassis's domain.
+      const visibleBottom = Math.min(rect.top + rect.height, chassisTop);
+      const travel = Math.max(0, visibleBottom - rect.top);
+      if (travel < 8) continue;
+
+      const strip = document.createElement("div");
+      strip.className = "pvfd-panel-scanline";
+      if (direction === "up") strip.classList.add("pvfd-panel-scanline--reverse");
+      strip.setAttribute("aria-hidden", "true");
+      strip.style.left = rect.left + "px";
+      strip.style.width = rect.width + "px";
+      strip.style.setProperty("--pvfd-panel-top", rect.top + "px");
+      strip.style.setProperty("--pvfd-panel-h", travel + "px");
+      document.body.appendChild(strip);
+    }
+  }
+
+  function tearDownPageBlanket() {
+    if (pageBlanket) {
+      pageBlanket.remove();
+      pageBlanket = null;
+    }
+    document.querySelectorAll(".pvfd-panel-scanline").forEach((el) => el.remove());
+    hideStandby();
+  }
+
+  // "STANDING BY..." indicator that appears centered on the dark LCD
+  // once the scan-line has finished its travel. Two effects layered:
+  //   1) A left-to-right character-shuffle reveal (à la "Flibbertigibbeting…")
+  //   2) After the reveal locks, a CSS chromatic-aberration glitch whose
+  //      offset colors are derived from var(--pvfd-cyan) via hue-rotate
+  //      filters — so the split colors always track the active chassis tint.
+  const STANDBY_TEXT = "STANDING BY...";
+  const STANDBY_SHUFFLE_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*<>/\\";
+  const STANDBY_LOCK_STAGGER_MS = 60;
+  const STANDBY_LOCK_DURATION_MS = 280;
+  let standbyEl = null;
+  let standbyRafId = 0;
+
+  function showStandby() {
+    if (standbyEl) return;
+    // Mount inside the page blanket so it shares the blanket's stacking
+    // context (z:999) — meaning the chassis (z:1000) still paints above
+    // it. If the blanket failed to mount for some reason, fall back to
+    // body and accept that the chassis layering may be imperfect.
+    const host = pageBlanket && pageBlanket.isConnected ? pageBlanket : document.body;
+    standbyEl = document.createElement("div");
+    standbyEl.className = "pvfd-standby";
+    standbyEl.setAttribute("aria-hidden", "true");
+    standbyEl.setAttribute("data-text", "");
+    standbyEl.textContent = "";
+    host.appendChild(standbyEl);
+    startStandbyShuffle();
+  }
+
+  function startStandbyShuffle() {
+    if (!standbyEl) return;
+    const target = STANDBY_TEXT;
+    const startMs = performance.now();
+    // Characters we preserve verbatim (don't shuffle through random
+    // alpha-numeric for these — keeps the lock-in feeling deliberate).
+    const PRESERVE = new Set([" ", ".", ":", "/", "-"]);
+
+    function tick() {
+      if (!standbyEl) return;
+      const elapsed = performance.now() - startMs;
+      let out = "";
+      let allLocked = true;
+      for (let i = 0; i < target.length; i++) {
+        const startAt = i * STANDBY_LOCK_STAGGER_MS;
+        const lockAt = startAt + STANDBY_LOCK_DURATION_MS;
+        if (elapsed < startAt) {
+          out += " ";
+          allLocked = false;
+        } else if (elapsed >= lockAt) {
+          out += target[i];
+        } else {
+          const c = target[i];
+          if (PRESERVE.has(c)) {
+            out += c;
+          } else {
+            out += STANDBY_SHUFFLE_CHARSET[
+              Math.floor(Math.random() * STANDBY_SHUFFLE_CHARSET.length)
+            ];
+          }
+          allLocked = false;
+        }
+      }
+      standbyEl.textContent = out;
+      // data-text feeds the glitch ::before/::after pseudo elements
+      // so they stay in sync with the visible text during the shuffle.
+      standbyEl.setAttribute("data-text", out);
+      if (!allLocked) {
+        standbyRafId = requestAnimationFrame(tick);
+      } else {
+        standbyEl.textContent = target;
+        standbyEl.setAttribute("data-text", target);
+        // Switching on the glitch class only after the shuffle has
+        // resolved keeps the chromatic-aberration effect from
+        // distracting during the reveal.
+        standbyEl.classList.add("pvfd-standby--glitch");
+      }
+    }
+    standbyRafId = requestAnimationFrame(tick);
+  }
+
+  function hideStandby() {
+    if (standbyRafId) {
+      cancelAnimationFrame(standbyRafId);
+      standbyRafId = 0;
+    }
+    if (standbyEl) {
+      standbyEl.remove();
+      standbyEl = null;
+    }
+  }
+
+  function startEjectSequence() {
+    if (ejectInFlight) return;
+    if (!chassis) return;
+
+    const dom = getPvfdDom();
+    const video = dom.lcdVideo;
+    if (!video) {
+      console.warn("[PVFD-EJECT] LCD video element not found");
+      return;
+    }
+
+    ejectInFlight = true;
+    playStateFlash("eject"); // new state-flash replaces the vault-boy EJECT overlay
+
+    // Eject cancels BAND too — fm audio is "media" by the same metaphor.
+    if (bandPresetIdx >= 0) {
+      bandPresetIdx = -1;
+      applyBandPreset(true, false);
+    }
+
+    // Capture Spotify playback state and pause it. The easter egg is
+    // "ejecting media," so playback halting matches the metaphor; wake
+    // restores whatever state the user was in pre-eject (was-playing →
+    // play; was-paused → stay paused).
+    ejectSavedWasPlaying = false;
+    safe(() => {
+      ejectSavedWasPlaying = !!(Spicetify.Player && Spicetify.Player.isPlaying && Spicetify.Player.isPlaying());
+      if (ejectSavedWasPlaying) Spicetify.Player.pause();
+    });
+
+
+    // State-flash replaces the vault-boy easter egg — no EJECTING.webm swap and
+    // no "COME BACK SOON" overlay. Freeze the OEL video (pvfdEjectActive keeps
+    // the OEL sync from touching it); the flash + scanline blank carry the visual.
+    video.dataset.pvfdEjectActive = "1";
+    safe(() => video.pause());
+
+    // Publish the active tint's hue-rotate amount as a CSS var so the
+    // eject filter chain can apply it directly to the video.
+    const ejectDeg = (typeof TINT_HUE_DEG !== "undefined" && TINT_HUE_DEG[tintIdx]) || 0;
+    chassis.style.setProperty("--pvfd-eject-tint-deg", ejectDeg + "deg");
+
+    chassis.setAttribute("data-pvfd-state", "ejecting");
+
+    if (ejectFinishTimer) {
+      window.clearTimeout(ejectFinishTimer);
+      ejectFinishTimer = 0;
+    }
+    ejectFinishTimer = window.setTimeout(() => {
+      ejectFinishTimer = 0;
+      finishEjectSequence();
+    }, EJECT_SEQUENCE_MS);
+  }
+
+  function finishEjectSequence() {
+    if (!chassis) { ejectInFlight = false; return; }
+
+    // Transition: ejecting → blanking. Keep tint-deg around for the
+    // scan-line color. The CSS @keyframes for the scan-line runs once
+    // (EJECT_BLANK_TRANSITION_MS); after that the LCDs stay black via
+    // the data-pvfd-state="blanked" rules.
+    chassis.setAttribute("data-pvfd-state", "blanking");
+
+    // Mirror onto <html> so page-level CSS scopes (html[data-pvfd-state=…])
+    // can target the Spotify shell containers without touching their
+    // markup. The mirror is removed in wakeFromEjectBlank.
+    document.documentElement.setAttribute("data-pvfd-state", "blanking");
+
+    // Page-level blackout: full-viewport backdrop fades --pvfd-lcd-void → #000,
+    // and per-panel scan-line strips sweep through each major Spotify
+    // shell region (left nav, main view, right sidebar, top nav).
+    ensurePageBlanket();
+    spawnPanelScanlines();
+
+    const dom = getPvfdDom();
+    const video = dom.lcdVideo;
+    if (video) {
+      delete video.dataset.pvfdEjectActive;
+      video.loop = true;
+      safe(() => video.pause());
+    }
+
+    // Arm wake listeners NOW — at the start of the blanking phase —
+    // so any click/key during the 700ms transition also restores
+    // (closes the previous race where clicks landed in the gap).
+    // ejectInFlight stays true until wake fires, keeping the EJECT
+    // button a no-op for the whole window.
+    armEjectWakeListeners();
+
+    // After the scan-line animation completes, settle into "blanked"
+    // and reveal the STANDING BY indicator. The shuffle reveal kicks
+    // off here — strictly AFTER the sweep has finished traversing.
+    // Hold the handle in ejectBlankedTimer so wake can cancel this
+    // if the user wakes during the blanking transition (otherwise the
+    // timer keeps running and re-imposes blanked state on top of a
+    // wake-in-progress).
+    if (ejectBlankedTimer) {
+      window.clearTimeout(ejectBlankedTimer);
+      ejectBlankedTimer = 0;
+    }
+    ejectBlankedTimer = window.setTimeout(() => {
+      ejectBlankedTimer = 0;
+      if (!chassis) return;
+      // Defensive: if a wake fired during the transition, ejectBlankActive
+      // is false and we should NOT re-blank. (The timer cancellation in
+      // wakeFromEjectBlank should normally catch this, but a race window
+      // between the clearTimeout and a scheduled fire is possible.)
+      if (!ejectBlankActive) return;
+      chassis.setAttribute("data-pvfd-state", "blanked");
+      document.documentElement.setAttribute("data-pvfd-state", "blanked");
+      showStandby();
+    }, EJECT_BLANK_TRANSITION_MS);
+  }
+
+  // Event names the filter cares about. `click` must be in here too —
+  // mousedown/pointerdown fire FIRST and we stop them, but the `click`
+  // event is a separate event that fires later and would otherwise
+  // reach Spotify's song-row / playlist handlers and trigger playback.
+  const EJECT_WAKE_EVENTS = ["keydown", "pointerdown", "mousedown", "click", "wheel"];
+
+  function armEjectWakeListeners() {
+    if (ejectBlankActive) return;
+    ejectBlankActive = true;
+    console.warn("[PVFD-EJECT] blanked. Press any key or click anywhere to restore.");
+    attachEjectInputFilter();
+    attachEjectPlayerBackstop();
+  }
+
+  // Spicetify.Player event backstop: catches state changes that
+  // bypass our keyboard listeners. Spotify's xpui registers keyboard
+  // shortcut handlers during init (long before this extension loads)
+  // and at least some of them call stopImmediatePropagation at a level
+  // above our window/document capture listeners — meaning our keydown
+  // handler never fires for Space, etc., even though we registered at
+  // capture phase. We can't beat their registration timing for direct
+  // event capture, so we listen for the *downstream effect* instead:
+  // when Spotify's handler toggles playback or switches tracks, the
+  // Player fires its own events and we wake from those.
+  function playerWakeBackstop() {
+    if (!ejectBlankActive) return;
+    // Synthesize a wake. event=null means we have no propagation to
+    // stop (Spotify's action already happened) and no classification
+    // to do — treat it as a passive "something happened" wake.
+    wakeFromEjectBlank(null);
+  }
+
+  function attachEjectPlayerBackstop() {
+    const player = window.Spicetify && Spicetify.Player;
+    if (!player || typeof player.addEventListener !== "function") return;
+    safe(() => player.addEventListener("onplaypause", playerWakeBackstop));
+    safe(() => player.addEventListener("songchange", playerWakeBackstop));
+  }
+
+  function detachEjectPlayerBackstop() {
+    const player = window.Spicetify && Spicetify.Player;
+    if (!player || typeof player.removeEventListener !== "function") return;
+    safe(() => player.removeEventListener("onplaypause", playerWakeBackstop));
+    safe(() => player.removeEventListener("songchange", playerWakeBackstop));
+  }
+
+  function attachEjectInputFilter() {
+    if (ejectListenersAttached) return;
+    ejectListenersAttached = true;
+    // Listen at BOTH window-capture and document-capture so we fire
+    // before Spotify's keyboard handlers wherever they're attached.
+    // Window-capture fires earliest in the capture phase; document is
+    // a fallback in case Spotify's stopImmediatePropagation runs there.
+    for (const target of [window, document]) {
+      for (const name of EJECT_WAKE_EVENTS) {
+        target.addEventListener(name, wakeFromEjectBlank, {
+          capture: true,
+          passive: name === "wheel",
+        });
+      }
+    }
+  }
+
+  function detachEjectInputFilter() {
+    if (!ejectListenersAttached) return;
+    ejectListenersAttached = false;
+    for (const target of [window, document]) {
+      for (const name of EJECT_WAKE_EVENTS) {
+        target.removeEventListener(name, wakeFromEjectBlank, { capture: true });
+      }
+    }
+  }
+
+  // Wake is a 2-stage sequence so the restore feels cinematic instead
+  // of snapping:
+  //   Stage 1 (this function) — fires on the first user input. Hides
+  //     standby instantly, flips chassis + <html> to "restoring" state,
+  //     re-spawns the panel scan-lines with reverse animation, and
+  //     defers the real teardown by EJECT_BLANK_TRANSITION_MS so the
+  //     reverse sweep + backdrop unfade can play out.
+  //   Stage 2 (finishEjectRestore) — after the reverse sweep completes,
+  //     this performs the actual restore: tear down the page blanket,
+  //     resume playback, re-sync OEL, clear ejectInFlight.
+  function wakeFromEjectBlank(event) {
+    // Classify every event the filter sees, regardless of whether this
+    // is the first one or a follow-up during the restoring transition.
+    //
+    //   - Keyboard: always deliberate. Allow propagation so Spotify
+    //     shortcuts (Space, Ctrl+L, arrow keys) take effect.
+    //   - Pointer / mouse / click / wheel INSIDE the chassis: chassis
+    //     controls are visible above the blackout, so user intent is
+    //     clear. Allow propagation so chassis handlers fire normally.
+    //   - Everything else (events landing on Spotify content under the
+    //     blanket): user can't see the target. Block propagation so
+    //     they don't accidentally play a song or open a playlist.
+    const isKeyboard = event && event.type === "keydown";
+    const isChassisInput = !!(event && event.target && event.target.closest &&
+                              event.target.closest(".pvfd-chassis"));
+    const allowPropagate = isKeyboard || isChassisInput;
+
+    if (!allowPropagate && event) {
+      if (typeof event.stopImmediatePropagation === "function") {
+        event.stopImmediatePropagation();
+      }
+      if (typeof event.preventDefault === "function") {
+        event.preventDefault();
+      }
+    }
+
+    // Only the FIRST event during the standby window triggers wake.
+    // Subsequent events during the 700ms restoring transition just
+    // get filtered (so post-mousedown `click` doesn't leak through to
+    // a Spotify song row, for example).
+    if (!ejectBlankActive) return;
+    ejectBlankActive = false;
+
+    // Cancel the pending blanking → blanked transition. Without this
+    // it would still fire and re-impose blanked state + recreate the
+    // standby element AFTER wake had already removed them.
+    if (ejectBlankedTimer) {
+      window.clearTimeout(ejectBlankedTimer);
+      ejectBlankedTimer = 0;
+    }
+
+    if (!chassis) {
+      // Defensive: if the chassis is gone (rare race during a re-mount),
+      // skip the cinematic phase and tear down hard.
+      finishEjectRestore();
+      return;
+    }
+
+    // STANDING BY disappears first.
+    hideStandby();
+
+    // Flip into restoring state. CSS keys off this:
+    //   - Chassis LCD ::after pseudos run pvfd-eject-scanline-reverse
+    //   - Chassis LCD backgrounds fade from #000 back to --pvfd-lcd-void
+    //   - Page blanket fades from #000 back to transparent
+    //   - Panel scan-lines re-spawned with reverse animation
+    chassis.setAttribute("data-pvfd-state", "restoring");
+    document.documentElement.setAttribute("data-pvfd-state", "restoring");
+    spawnPanelScanlines("up");
+
+    // After the reverse sweep finishes, do the real restore.
+    window.setTimeout(finishEjectRestore, EJECT_BLANK_TRANSITION_MS);
+  }
+
+  function finishEjectRestore() {
+    if (chassis) {
+      chassis.removeAttribute("data-pvfd-state");
+      chassis.style.removeProperty("--pvfd-eject-tint-deg");
+    }
+
+    document.documentElement.removeAttribute("data-pvfd-state");
+    tearDownPageBlanket();
+    // Filter listeners stay attached through the entire blanking →
+    // blanked → restoring → cleared sequence. Detach them now that
+    // we're fully cleared.
+    detachEjectInputFilter();
+    detachEjectPlayerBackstop();
+
+    // Restore the pre-eject playback state — but ONLY if nothing
+    // already kicked playback back on during the 700ms restoring
+    // window. The user's wake input may have been a deliberate
+    // play-toggle (Space, chassis play button click, etc.) that's
+    // already started the music; firing play() again would either be
+    // a no-op (best case) or a race against a user pause toggled in
+    // the meantime (worst case). Reading isPlaying() at this point
+    // gives us the post-user-action truth.
+    if (ejectSavedWasPlaying) {
+      safe(() => {
+        const player = window.Spicetify && Spicetify.Player;
+        const playing = !!(player && typeof player.isPlaying === "function" && player.isPlaying());
+        if (!playing && player && typeof player.play === "function") {
+          player.play();
+        }
+      });
+    }
+
+    ejectSavedWasPlaying = false;
+
+    // Re-issue OEL playback. force=true so the sync resets src + play
+    // cleanly even though dataset state may already match.
+    safe(() => syncOelVideoPlayback(true));
+    safe(() => applyLcdFilter());
+
+    // Now release the in-flight gate so EJECT can be re-armed.
+    ejectInFlight = false;
+    console.warn("[PVFD-EJECT] restored.");
+  }
+
+  // Where we were before opening a lyrics surface, so the button can close back
+  // to it. Snapshotted case-preserved (Spotify entity IDs are case-sensitive
+  // base62). Used by both the Spicy branch and the native one — when the native
+  // click is inert we push /lyrics ourselves, and a route we pushed is a route
+  // we have to be able to pop. Falls back to "/" if lyrics were opened by some
+  // other means, so closing always lands somewhere valid.
+  let preLyricsPath = "";
+
+  // Silk Lyrics button: routes to / toggles the active lyrics surface. Clicking
+  // Spotify's own lyrics-button is a toggle (Show/Hide), so calling this
+  // function while already on /lyrics closes the view back to the song.
+  //
+  // Spicy Lyrics (issue #17): when installed, Spicy REPLACES Spotify's native
+  // lyrics button and opens the full page only via its own Spotify history
+  // route "/SpicyLyrics" — which its app.tsx matches with an EXACT,
+  // case-sensitive `pathname === "/SpicyLyrics"`. So we must push the raw
+  // exact-case route (never the lowercased currentSpotifyPath()), or Spicy
+  // silently ignores it. Detect Spicy and route/toggle it directly; the native
+  // path below still handles the no-Spicy case unchanged.
+  // Is a lyrics view currently open? Cheap point-in-time check (Spicy route/
+  // page node + native /lyrics route + native "Hide lyrics" control). Reused
+  // for the lyrics button lamp and entry-only flash gating — no observer.
+  function isLyricsViewOpen() {
+    return safeReturn(() =>
+      currentSpotifyPathRaw() === "/SpicyLyrics" ||
+      currentSpotifyPath().includes("/lyrics") ||
+      !!document.querySelector(".Root__main-view #SpicyLyricsPage") ||
+      !!document.querySelector("button[aria-label='Hide lyrics'], button[aria-label='Hide Lyrics']"),
+      false);
+  }
+  // The route/DOM settles async after a toggle; re-run the button-state sync a
+  // few times so the lamp snaps on/off promptly (the 1200ms static cadence is
+  // too slow for press feedback).
+  // Is a native lyrics surface up? Route first, with the Hide-lyrics control as
+  // a second opinion for the sidebar case where the path does not change.
+  function nativeLyricsSurfaceOpen() {
+    return safeReturn(() =>
+      currentSpotifyPath().includes("/lyrics") ||
+      !!document.querySelector(
+        "button[aria-label='Hide lyrics'], button[aria-label='Hide Lyrics']"),
+      false);
+  }
+
+  function scheduleLyricsLampSync() {
+    [180, 600, 1200].forEach((ms) => setTimeout(() => safe(() => updateButtonStates()), ms));
+  }
+
+  function openLyrics() {
+    // Detect Spicy by signals that stay true AFTER its init. Do NOT key on
+    // `_spicy_lyrics_metadata.LoadedVersion`: Spicy's app.tsx reads it into a
+    // store then immediately resets `window._spicy_lyrics_metadata = {}`, so
+    // LoadedVersion is undefined moments after load (this caused "works once,
+    // then defaults to native"). `window.SpicyLyrics` (frozen public API, set
+    // by exposeToWindow at init) is never wiped; the metadata object still
+    // EXISTS as {}; the page node appears after first open.
+    const spicyPresent = safeReturn(
+      () =>
+        !!window.SpicyLyrics ||
+        typeof window._spicy_lyrics_metadata !== "undefined" ||
+        !!document.getElementById("SpicyLyricsPage"),
+      false
+    );
+    if (spicyPresent) {
+      // Full-page open state uses Spicy's own selector (.Root__main-view
+      // #SpicyLyricsPage) so the right-sidebar widget doesn't read as "open".
+      const spicyFullPageOpen = safeReturn(
+        () =>
+          currentSpotifyPathRaw() === "/SpicyLyrics" ||
+          !!document.querySelector(".Root__main-view #SpicyLyricsPage"),
+        false
+      );
+      let spicyOk;
+      if (spicyFullPageOpen) {
+        spicyOk = pushSpotifyPath(preLyricsPath || "/");
+      } else {
+        playStateFlash("lyrics"); // entry only — opening Spicy full page
+        preLyricsPath = currentSpotifyPathRaw();
+        spicyOk = pushSpotifyPath("/SpicyLyrics");
+      }
+      scheduleLyricsLampSync(); // lamp reflects actual open/closed state
+      if (!spicyOk) console.warn("[PVFD] Spicy Lyrics route unavailable");
+      return spicyOk;
+    }
+
+    // Entry-only: fire the flash only when about to OPEN (native lyrics toggles,
+    // so skip it when a "Hide lyrics" control / lyrics route is already present).
+    const wasOpen = nativeLyricsSurfaceOpen();
+    if (!wasOpen) {
+      playStateFlash("lyrics");
+      // Remember where to come back to, so the button can always close again.
+      // Shared with the Spicy branch above — same job, same restore.
+      preLyricsPath = currentSpotifyPathRaw();
+    }
+    const clicked = clickFirstOutsideChassis([
+      "button[data-testid='lyrics-button']",
+      "button[data-testid='control-button-lyrics']",
+      "[data-testid='lyrics-button']",
+      "[data-testid='control-button-lyrics']",
+      "button[data-testid='lyrics-cta-button']",
+      "button[aria-label='Lyrics']",
+      "button[aria-label='Show lyrics']",
+      "button[aria-label='Hide lyrics']",
+      "button[aria-label*='Lyrics' i]",
+      "[role='button'][aria-label*='Lyrics' i]"
+    ]);
+
+    // Drive the route ourselves whenever the click did not actually change the
+    // surface. The old code only fell back when the click FAILED, which missed
+    // the case that matters: on a track with no lyrics Spotify still renders a
+    // lyrics control, so .click() succeeds and returns true while nothing
+    // happens — the LYRICS key looked dead on exactly the tracks users then
+    // asked about. Spotify does serve /lyrics for those tracks; only its button
+    // declines. Checking the OUTCOME rather than the click also covers a
+    // renamed testid or an aria-label we matched too eagerly, without needing
+    // to know which went wrong.
+    const drive = () =>
+      safeReturn(() => pushSpotifyPath(wasOpen ? (preLyricsPath || "/") : "/lyrics"), false);
+
+    if (!clicked) {
+      const ok = drive();
+      scheduleLyricsLampSync();
+      if (!ok) console.warn("[PVFD] lyrics control unavailable");
+      return ok;
+    }
+    // A route change is not synchronous, so the verdict has to wait a beat.
+    setTimeout(() => safe(() => {
+      if (nativeLyricsSurfaceOpen() === wasOpen) {
+        drive();
+        scheduleLyricsLampSync();
+      }
+    }), 260);
+    scheduleLyricsLampSync(); // lamp reflects actual open/closed state
+    return true;
+  }
+
+  const NPV_TOGGLE_SELECTORS = [
+    "button[data-testid='control-button-npv']",
+    "[data-testid='control-button-npv']",
+    "button[aria-label='Now playing view']",
+    "button[aria-label*='Now playing view' i]",
+    "[role='button'][aria-label*='Now playing view' i]"
+  ];
+
+  function flashChassisButton(name) {
+    const el = chassis && chassis.querySelector(`[data-pvfd='${name}']`);
+    if (el) {
+      el.classList.add("active");
+      setTimeout(() => el.classList.remove("active"), 850);
+    }
+  }
+
+  // INFO button: toggles Spotify's Now Playing View (the right sidebar with
+  // art / lyrics / credits / queue). The chassis replaces the native playbar
+  // and hides its children (opacity:0; pointer-events:none), which removes the
+  // album-art click and the native NPV button users normally reach for — so we
+  // surface this affordance and click the hidden native toggle programmatically
+  // (pointer-events:none doesn't block .click()). control-button-npv is itself
+  // a toggle, so this opens AND closes. Mirrors openLyrics().
+  //
+  // Spicy Lyrics sidebar-mode recovery (issue #17): Spicy's sidebar mode mounts
+  // its lyrics into the QUEUE panel and latches `SpicySidebarLyrics__Active` on
+  // <body>, holding the right sidebar so a plain control-button-npv click can't
+  // surface the NPV — INFO looks dead until you re-enter Spicy's lyrics. Spicy
+  // watches the queue button and tears down its OWN sidebar mode
+  // (CloseSidebarLyrics, which resets its internal isSpicySidebarMode) when that
+  // button is clicked. So: click queue to let Spicy clean up, poll for the latch
+  // to clear (its teardown awaits PageView.Destroy, so it's async), then open
+  // NPV. Using Spicy's own listener avoids desyncing its private state.
+  function openNowPlayingView() {
+    if (document.body.classList.contains("SpicySidebarLyrics__Active")) {
+      flashChassisButton("npv");
+      clickFirstOutsideChassis([
+        "button[data-testid='control-button-queue']",
+        "[data-testid='control-button-queue']"
+      ]);
+      let tries = 0;
+      const openNpvWhenReleased = () => {
+        if (document.body.classList.contains("SpicySidebarLyrics__Active") && tries++ < 12) {
+          setTimeout(openNpvWhenReleased, 60);
+          return;
+        }
+        clickFirstOutsideChassis(NPV_TOGGLE_SELECTORS);
+      };
+      setTimeout(openNpvWhenReleased, 60);
+      return true;
+    }
+
+    const opened = clickFirstOutsideChassis(NPV_TOGGLE_SELECTORS);
+    flashChassisButton("npv");
+    if (!opened) console.warn("[PVFD] now-playing-view control unavailable");
+    return opened;
+  }
+
+  function setMenuOpen(next) {
+    menuOpen = !!next;
+    if (!chassis) return;
+    chassis.classList.toggle("pvfd-menu-open", menuOpen);
+    const panel = chassis.querySelector("[data-pvfd='menu-panel']");
+    if (panel) panel.setAttribute("aria-hidden", menuOpen ? "false" : "true");
+    const menuBtn = chassis.querySelector("[data-pvfd='menu']");
+    if (menuBtn) menuBtn.classList.toggle("active", menuOpen);
+    if (menuOpen && tintMenuOpen) setTintMenuOpen(false);
+    if (!menuOpen) setCustomizeMenuView(false);
+    updateMenuPanel();
+  }
+
+  // Pioneer Menu has two views: "main" and "customize". A single panel swaps
+  // its body via data-view; the X in the header always closes the panel
+  // entirely, BACK returns to main.
+  function setCustomizeMenuView(next) {
+    customizeMenuOpen = !!next;
+    if (!chassis) return;
+    const panel = chassis.querySelector("[data-pvfd='menu-panel']");
+    const title = chassis.querySelector("[data-pvfd='menu-title']");
+    const mainView = chassis.querySelector("[data-pvfd='menu-main']");
+    const customizeView = chassis.querySelector("[data-pvfd='menu-customize']");
+    if (panel) panel.setAttribute("data-view", customizeMenuOpen ? "customize" : "main");
+    if (title) title.textContent = customizeMenuOpen ? "CUSTOMIZE MENU" : "PIONEER MENU";
+    if (mainView) mainView.hidden = customizeMenuOpen;
+    if (customizeView) customizeView.hidden = !customizeMenuOpen;
+  }
+
+  function setTintMenuOpen(next) {
+    tintMenuOpen = !!next;
+    if (!chassis) return;
+    chassis.classList.toggle("pvfd-tint-menu-open", tintMenuOpen);
+    const panel = chassis.querySelector("[data-pvfd='tint-menu-panel']");
+    if (panel) panel.setAttribute("aria-hidden", tintMenuOpen ? "false" : "true");
+    if (tintMenuOpen && menuOpen) setMenuOpen(false);
+    refreshTintMenuSelection();
+  }
+
+  function openTintMenu() {
+    setTintMenuOpen(true);
+  }
+
+  function refreshTintMenuSelection() {
+    if (!chassis) return;
+    chassis.querySelectorAll(".pvfd-tint-swatch:not(.pvfd-tint-adaptive)").forEach((sw) => {
+      const idx = Number(sw.dataset.pvfdTintIdx);
+      sw.classList.toggle("active", !adaptiveTintActive && idx === tintIdx);
+    });
+    const adaptiveBtn = chassis.querySelector(".pvfd-tint-adaptive");
+    if (adaptiveBtn) adaptiveBtn.classList.toggle("active", adaptiveTintActive);
+  }
+
+  function populateTintMenu() {
+    if (!chassis) return;
+    const grid = chassis.querySelector("[data-pvfd='tint-menu-grid']");
+    if (!grid || grid.dataset.pvfdPopulated === "1") return;
+    grid.innerHTML = TINT_LABELS.map((label, idx) => {
+      const name = mapTintNameForCss(idx);
+      return `<button class="pvfd-tint-swatch" type="button" data-pvfd-tint-idx="${idx}" data-pvfd-tint-name="${name}" title="Set tint: ${label}" aria-label="Set tint: ${label}"><span class="pvfd-tint-swatch-color" data-pvfd-tint-name="${name}"></span><span class="pvfd-tint-swatch-label">${label}</span></button>`;
+    }).join("");
+    grid.dataset.pvfdPopulated = "1";
+    grid.querySelectorAll(".pvfd-tint-swatch").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const idx = Number(btn.dataset.pvfdTintIdx);
+        if (Number.isInteger(idx) && idx >= 0 && idx < TINT_LABELS.length) {
+          tintIdx = idx;
+          applyTintMode(true);
+          setTintMenuOpen(false);
+        }
+      });
+    });
+  }
+
+  let pvfdDom = null;
+  const playerStateCache = { at: -Infinity, playing: false, shuffle: false, repeat: "OFF" };
+  const playerTimingCache = { at: -Infinity, progressMs: 0, durationMs: 0, playing: false };
+  const volumeStateCache = { at: -Infinity, value: 0.5 };
+  // ATT (Attenuator) state. Dedicated ATT pill on the chassis flank toggles
+  // mute (volume → 0); pressing again restores the snapshotted prior volume.
+  // Matches the real Pioneer DEH-P7600MP ATT button behavior — a rapid
+  // single-button safety mute, not a long-press gesture.
+  let attActive = false;
+  let attPriorVolume = 0;
+  let browseFontPresetKey = "";
+  let staticReadoutsDirty = true;
+  let knobLedDirty = true;
+
+  function getPvfdDom() {
+    if (!chassis) return {};
+    if (pvfdDom && pvfdDom.chassis === chassis) return pvfdDom;
+    pvfdDom = {
+      chassis,
+      menuPanel: chassis.querySelector("[data-pvfd='menu-panel']"),
+      menuMain: chassis.querySelector("[data-pvfd='menu-main']"),
+      menu: {
+        oel: chassis.querySelector("[data-pvfd='menu-oel']"),
+        demo: chassis.querySelector("[data-pvfd='menu-demo']"),
+        tint: chassis.querySelector("[data-pvfd='menu-tint']"),
+        type: chassis.querySelector("[data-pvfd='menu-type']"),
+        lcdFont: chassis.querySelector("[data-pvfd='menu-lcd-font']"),
+        artPixel: chassis.querySelector("[data-pvfd='menu-art-pixel']"),
+        perf: chassis.querySelector("[data-pvfd='menu-perf']"),
+        logoGlow: chassis.querySelector("[data-pvfd='menu-logo-glow']"),
+        oelDisplay: chassis.querySelector("[data-pvfd='menu-oel-display']"),
+        racingColor: chassis.querySelector("[data-pvfd='menu-racing-color']"),
+        customOel: chassis.querySelector("[data-pvfd='menu-custom-oel']"),
+        customFont: chassis.querySelector("[data-pvfd='menu-custom-font']"),
+        chromeMode: chassis.querySelector("[data-pvfd='menu-chrome']"),
+        logoStyle: chassis.querySelector("[data-pvfd='menu-logo-style']"),
+        everScroll: chassis.querySelector("[data-pvfd='menu-ever-scroll']"),
+        ledGlow: chassis.querySelector("[data-pvfd='menu-led-glow']"),
+      },
+      buttons: {
+        lyrics: chassis.querySelector("[data-pvfd='lyrics']"),
+        play: chassis.querySelector("[data-pvfd='play']"),
+        shuffle: chassis.querySelector("[data-pvfd='shuffle']"),
+        repeat: chassis.querySelector("[data-pvfd='repeat']"),
+        love: chassis.querySelector("[data-pvfd='love']"),
+        demo: chassis.querySelector("[data-pvfd='demo']"),
+        menu: chassis.querySelector("[data-pvfd='menu']"),
+      },
+      // Play/repeat glyphs live in their own spans so rewriting them doesn't
+      // wipe the sibling .pvfd-led-strip (textContent/innerHTML clear children).
+      playGlyph: chassis.querySelector("[data-pvfd='play'] .pvfd-tab-glyph"),
+      repeatGlyph: chassis.querySelector("[data-pvfd='repeat'] .pvfd-tab-glyph"),
+      // Ticking readouts write into the .pvfd-ro inner box, not the host: the
+      // inner is a Blink relayout boundary (explicit size, clipped overflow,
+      // strict containment, and NOT itself a flex/grid item, which is what
+      // disqualified the hosts). Without it every readout text change re-laid
+      // out Spotify's whole Home main view (~23ms) when its idle rect poller
+      // next forced a layout; with it, ~0.3ms. See user.css .pvfd-ro.
+      side: {
+        vol: ro(chassis, "[data-pvfd='side-vol']"),
+        mode: ro(chassis, "[data-pvfd='side-mode']"),
+        tint: ro(chassis, "[data-pvfd='side-tint']"),
+        dim: ro(chassis, "[data-pvfd='side-dim']"),
+        ecoModel: chassis.querySelector("[data-pvfd='side-eco-model']"),
+        prog: ro(chassis, "[data-pvfd='side-prog']"),
+        left: ro(chassis, "[data-pvfd='side-left']"),
+        repeat: ro(chassis, "[data-pvfd='side-repeat']"),
+        shuffle: ro(chassis, "[data-pvfd='side-shuffle']"),
+        status: chassis.querySelector("[data-pvfd='side-status']"),
+        playbadge: chassis.querySelector("[data-pvfd='side-playbadge']"),
+        badgeLive: chassis.querySelector("[data-pvfd='badge-live']"),
+        badgeVfd: chassis.querySelector("[data-pvfd='badge-vfd']"),
+      },
+      sideVu: Array.from(chassis.querySelectorAll("[data-pvfd='side-vu'] span")),
+      meta: chassis.querySelector(".pvfd-meta-track"),
+      metaGlyph: chassis.querySelector("[data-pvfd='meta-play-toggle']"),
+      metaTitle: chassis.querySelector(".pvfd-meta-title-window"),
+      metaInner: chassis.querySelector(".pvfd-meta-track-inner"),
+      time: ro(chassis, ".pvfd-meta-time"),
+      progress: chassis.querySelector(".pvfd-meta-progress"),
+      progressText: chassis.querySelector(".pvfd-progress-text"),
+      lcd: chassis.querySelector(".pvfd-lcd"),
+      lcdCanvas: chassis.querySelector(".pvfd-lcd-canvas"),
+      lcdStatus: chassis.querySelector("[data-pvfd='lcd-status']"),
+      lcdClock: chassis.querySelector("[data-pvfd='lcd-clock']"),
+      lcdVideo: chassis.querySelector("[data-pvfd='lcd-video']"),
+      lcdVideoProbe: chassis.querySelector("[data-pvfd='lcd-video-probe']"),
+      oelSting: chassis.querySelector("[data-pvfd='oel-sting']"),
+      pulseLock: chassis.querySelector("[data-pvfd='pulse-lock']"),
+      knobArc: chassis.querySelector(".pvfd-knob-led-arc"),
+      knobIndicator: chassis.querySelector(".pvfd-knob-indicator"),
+    };
+    return pvfdDom;
+  }
+
+  // A readout's write target: the .pvfd-ro relayout-boundary box inside the
+  // host when the markup has one, else the host itself.
+  function ro(root, sel) {
+    const host = root && root.querySelector(sel);
+    return (host && host.querySelector(".pvfd-ro")) || host;
+  }
+
+  function setTextIfChanged(el, txt) {
+    if (!el || el.textContent === txt) return;
+    // Assigning textContent REPLACES the text node, and that is a childList
+    // mutation. Spicetify's wrapper watches <body> for childList to run its
+    // applyScrollingFix: a querySelectorAll("*") + getComputedStyle walk of
+    // the whole document, about 40ms here, whose Spotify-version gate fails
+    // on 1.3.x so it runs on every mutation. A readout ticking five times a
+    // second was buying five of those walks. Writing the existing text node's
+    // data is a characterData change, which that observer does not watch, and
+    // it is what a readout means anyway: the same node, new digits.
+    const first = el.firstChild;
+    if (first && first.nodeType === 3 && !first.nextSibling) {
+      first.data = txt;
+      return;
+    }
+    el.textContent = txt;
+  }
+
+  // The ONLY sanctioned way to swap the transport play key's ▶/⏸ glyph.
+  // Writes into the .pvfd-tab-glyph child span — writing textContent on the
+  // button itself deletes its .pvfd-led-strip child (this bug shipped three
+  // times: updateButtonStates, onTrackChange, onplaypause).
+  function setPlayButtonGlyph(playing) {
+    const dom = getPvfdDom();
+    const target = dom.playGlyph || (dom.buttons && dom.buttons.play);
+    setTextIfChanged(target, playing ? PVFD_PAUSE_GLYPH : PVFD_PLAY_GLYPH);
+    // Published so CSS can hold the lyric sweep still while paused. The sweep
+    // is a browser-run animation with no JS driving it, so pausing the song
+    // would otherwise leave it walking off on its own. Written only when the
+    // glyph changes, i.e. on actual play/pause, never on a tick.
+    if (document.body) setAttrIfChanged(document.body, "data-pvfd-playing", playing ? "1" : "0");
+  }
+
+  function setLcdCornerTextIfChanged(el, txt) {
+    setTextIfChanged(el, txt);
+    setAttrIfChanged(el, "data-pvfd-label", txt);
+  }
+
+  /* Ever Scroll plumbing.
+     1. Writes the title into the inner span as plain title text. The playback
+        glyph is a fixed sibling button so it can be clicked without joining
+        the scroll animation or duplicated LOOP text.
+     2. Measures whether that single-copy title overflows the visible window.
+     3. If overflowing AND mode is LOOP, re-writes the inner as "TEXT  •  TEXT"
+        so animating to -50% in CSS lands seamlessly on the second copy.
+     4. If overflowing AND mode is ONCE or BOUNCE, computes the exact pixel
+        scroll distance (textWidth - containerWidth) and sets it as a CSS
+        custom property --pvfd-scroll-distance on the parent so the keyframe
+        scrolls just enough to expose the last character at the right edge,
+        not over-scroll past it.
+     5. Stores label + playing in module state so applyEverScrollMode can
+        re-paint without needing to call back into sync logic.
+     6. On title change, force-restarts the animation so the new text plays
+        from the start instead of picking up mid-cycle. */
+  let pvfdLastMetaLabel = "";
+  let pvfdLastMetaPlaying = true;
+  /* Separator-width cache: the LOOP separator is a fixed string and its
+     rendered width is invariant for a given font. Was previously measured
+     on every setMetaTrackContent call, which forced a synchronous layout
+     flush (3× DOM write + getBoundingClientRect on the mirror, each tick
+     of the 1.7Hz player sync). That single call site was the dominant
+     forced-reflow source per Performance recordings. Cache here, invalidate
+     when the LCD font preset changes (see applyLcdFontPreset). */
+  let pvfdCachedSepWidth = -1;
+  let pvfdMetaMirror = null;
+
+  /* Reusable off-screen mirror element for measuring the meta-track text
+     width. Created once on first use and parked inside the meta track so it
+     INHERITS font-family / font-size / letter-spacing / etc from the same CSS
+     context as the real title — no need to copy computed styles every call.
+     Reused across all measurement passes; never destroyed. */
+  function getMetaMirror(dom) {
+    if (!dom || !dom.meta) return null;
+    if (!pvfdMetaMirror) {
+      pvfdMetaMirror = document.createElement("span");
+      const s = pvfdMetaMirror.style;
+      s.position = "absolute";
+      s.visibility = "hidden";
+      s.pointerEvents = "none";
+      s.top = "-9999px";
+      s.left = "-9999px";
+      s.whiteSpace = "nowrap";
+      s.display = "inline-block";
+      s.padding = "0";
+      s.margin = "0";
+      s.border = "0";
+      pvfdMetaMirror.setAttribute("aria-hidden", "true");
+      pvfdMetaMirror.dataset.pvfd = "meta-mirror";
+    }
+    if (pvfdMetaMirror.parentNode !== dom.meta) dom.meta.appendChild(pvfdMetaMirror);
+    return pvfdMetaMirror;
+  }
+
+  /* Ever Scroll plumbing.
+     1. Writes the title into the inner span as plain title text.
+     2. Measures whether that single-copy title overflows the visible window.
+     3. If overflowing AND mode is LOOP, re-writes the inner as "TEXT  •  TEXT"
+        so animating to -50% in CSS lands seamlessly on the second copy.
+     4. If overflowing AND mode is ONCE or BOUNCE, computes the exact pixel
+        scroll distance (textWidth - containerWidth) and sets it as a CSS
+        custom property --pvfd-scroll-distance on the parent so the keyframe
+        scrolls just enough to expose the last character at the right edge,
+        not over-scroll past it.
+     5. Stores label + playing in module state so applyEverScrollMode can
+        re-paint without needing to call back into sync logic.
+     6. On title change, force-restarts the animation so the new text plays
+        from the start instead of picking up mid-cycle.
+
+     `force` parameter: callers that need to re-measure even when the label
+     hasn't changed (mode change, font change, window resize) pass true.
+     Otherwise the function early-exits when nothing relevant changed —
+     critical for performance because syncCurrentTrackFromPlayer calls this
+     ~1.7×/sec and the measurement triggers a forced layout. */
+  function metaPlaybackGlyph(playing) {
+    // Action semantics, matching the transport play key (and this glyph's own
+    // Pause/Play tooltip): show the action a press will take. Previously this
+    // was status semantics (▶ while playing), which read as "unsynced" next
+    // to the transport key showing ⏸ at the same moment.
+    return playing ? PVFD_META_PAUSE_GLYPH : PVFD_PLAY_GLYPH;
+  }
+
+  function makeMetaSingleText(label) {
+    return label;
+  }
+
+  function makeMetaFinalText(singleText, overflows) {
+    return (overflows && everScrollMode === "LOOP")
+      ? `${singleText}${EVER_SCROLL_LOOP_SEPARATOR}${singleText}${EVER_SCROLL_LOOP_SEPARATOR}`
+      : singleText;
+  }
+
+  function updateMetaPlaybackGlyph(dom, playing) {
+    if (!dom || !dom.metaGlyph) return;
+    const glyph = metaPlaybackGlyph(playing);
+    setTextIfChanged(dom.metaGlyph, glyph);
+    dom.metaGlyph.classList.toggle("playing", !!playing);
+    dom.metaGlyph.classList.toggle("paused", !playing);
+    setAttrIfChanged(dom.metaGlyph, "title", playing ? "Pause" : "Play");
+    setAttrIfChanged(dom.metaGlyph, "aria-label", playing ? "Pause" : "Play");
+    setAttrIfChanged(dom.metaGlyph, "aria-pressed", playing ? "true" : "false");
+  }
+
+  function setMetaTrackContent(label, playing, force = false) {
+    const dom = getPvfdDom();
+    if (!dom || !dom.meta || !dom.metaInner) return;
+    const labelChanged = pvfdLastMetaLabel !== label;
+    const playingChanged = pvfdLastMetaPlaying !== playing;
+    pvfdLastMetaLabel = label;
+    pvfdLastMetaPlaying = playing;
+    updateMetaPlaybackGlyph(dom, playing);
+
+    if (!force && playingChanged && !labelChanged) {
+      return;
+    }
+
+    /* Fast path: nothing relevant changed and the caller didn't force a
+       re-measure. Skip the entire write + measurement + animation-restart
+       pipeline. This is the main lag fix — was previously re-measuring
+       and creating/destroying a mirror DOM element on every sync tick. */
+    if (!force && !labelChanged && !playingChanged) return;
+
+    const singleText = makeMetaSingleText(label);
+
+    /* Measure on the off-screen mirror only — never touch the visible inner
+       span for measurement. The mirror always holds singleText (one copy);
+       the visible inner holds either singleText or the LOOP duplicate. This
+       avoids the previous flash bug where writing singleText to the inner
+       before duplicating it caused a one-frame visible snap when force-mode
+       remeasures hit during the animation cycle. */
+    const titleViewport = dom.metaTitle || dom.meta;
+    const containerWidth = titleViewport.clientWidth;
+    let singleTextWidth = 0;
+    const mirror = getMetaMirror(dom);
+    if (mirror) {
+      mirror.textContent = singleText;
+      singleTextWidth = mirror.getBoundingClientRect().width;
+    } else {
+      /* Fallback if mirror creation failed: write to inner once and measure,
+         accepting the flash risk in this degenerate path. */
+      dom.metaInner.textContent = singleText;
+      singleTextWidth = dom.metaInner.scrollWidth || titleViewport.scrollWidth;
+    }
+    const overflows = singleTextWidth > containerWidth + 1;
+    /* End-guard — stop scrolling N px short of flush-right so the last
+       character (plus its text-shadow halo) clears the title window's
+       overflow:hidden clip edge. Without this, BOUNCE/ONCE park the final
+       glyph touching the right wall and it reads as clipped. */
+    const SCROLL_END_GUARD_PX = 6;
+    const scrollDistance = overflows
+      ? Math.max(0, singleTextWidth - containerWidth + SCROLL_END_GUARD_PX)
+      : 0;
+
+    /* Compute the FINAL text once, based on mode + overflow status. For
+       LOOP, duplicate as `(text + sep) + (text + sep)` — the trailing
+       separator after the second copy is critical for seamless wraparound.
+       Total width = 2 × (textW + sepW), so translateX(-50%) translates by
+       exactly one (textW + sepW) unit, landing the visible window on the
+       start of the second copy. Without the trailing separator,
+       translateX(-50%) would land halfway through the separator and cause
+       a visible jump at the wrap point. */
+    const finalText = makeMetaFinalText(singleText, overflows);
+
+    /* Single write to the visible inner span — no intermediate state, so no
+       chance of the user seeing singleText flash before duplication. */
+    if (dom.metaInner.textContent !== finalText) {
+      dom.metaInner.textContent = finalText;
+    }
+
+    setAttrIfChanged(dom.meta, "data-pvfd-overflow", overflows ? "yes" : "no");
+    if (overflows) {
+      dom.meta.style.setProperty("--pvfd-scroll-distance", `-${scrollDistance}px`);
+      /* Distance-proportional duration so long titles don't blur past at
+         freight-train speed. Target ~40 px/sec scroll speed (Pioneer-authentic
+         VFD pacing). Floor/ceiling clamps keep edge cases sane. ONCE/BOUNCE
+         travel scrollDistance; LOOP travels (textW + sepW) since the keyframe
+         is translateX(-50%) on the duplicated content. Mode-change CSS
+         keyframe swap auto-restarts the animation. Separator width is
+         measured on the same mirror as singleText, then restored so the
+         mirror keeps singleText for future width comparisons. */
+      const PX_PER_SEC = 25;
+      /* ONCE and BOUNCE both travel scrollDistance twice (out + back) in
+         their keyframes; multiply one-way time by 2 then by 1.15 for the
+         hold pads at start/middle/end so net travel speed stays ~25 px/sec. */
+      const oneWay = Math.max(3, scrollDistance / PX_PER_SEC);
+      const roundTrip = oneWay * 2 * 1.15;
+      dom.meta.style.setProperty("--pvfd-scroll-duration-once", `${roundTrip.toFixed(2)}s`);
+      dom.meta.style.setProperty("--pvfd-scroll-duration-bounce", `${roundTrip.toFixed(2)}s`);
+      /* Use cached separator width — invalidated on font preset change.
+         Measuring fresh here would force a layout flush on every player
+         sync tick (~1.7Hz), which Performance recordings flagged as the
+         dominant forced-reflow source while Ever Scroll is animating. */
+      if (pvfdCachedSepWidth < 0 && mirror) {
+        mirror.textContent = EVER_SCROLL_LOOP_SEPARATOR;
+        pvfdCachedSepWidth = mirror.getBoundingClientRect().width;
+        mirror.textContent = singleText;
+      }
+      const loopTravel = singleTextWidth + Math.max(0, pvfdCachedSepWidth);
+      const loopDuration = Math.max(8, loopTravel / PX_PER_SEC);
+      dom.meta.style.setProperty("--pvfd-scroll-duration-loop", `${loopDuration.toFixed(2)}s`);
+    } else {
+      dom.meta.style.removeProperty("--pvfd-scroll-distance");
+      dom.meta.style.removeProperty("--pvfd-scroll-duration-once");
+      dom.meta.style.removeProperty("--pvfd-scroll-duration-loop");
+      dom.meta.style.removeProperty("--pvfd-scroll-duration-bounce");
+    }
+
+    /* Restart animation ONLY when the track label actually changes. Playback
+       glyph-only changes update the fixed sibling button, so Ever Scroll keeps
+       its current transform and iteration. CSS handles mode-change restarts
+       automatically (different keyframe name triggers a new animation). */
+    if (labelChanged) {
+      const inner = dom.metaInner;
+      const prev = inner.style.animation;
+      inner.style.animation = "none";
+      void inner.offsetWidth; /* force reflow so the next assignment restarts the CSS animation */
+      inner.style.animation = prev || "";
+    }
+  }
+
+  function repaintMetaTrackForMode() {
+    /* Re-runs setMetaTrackContent with force=true so the measurement re-runs
+       even though the label hasn't changed. Used when scroll mode changes
+       (need to re-decide duplication), when LCD font changes (text width
+       shifts), and on window resize (container width shifts). */
+    if (pvfdLastMetaLabel) setMetaTrackContent(pvfdLastMetaLabel, pvfdLastMetaPlaying, true);
+  }
+
+  function setDataIfChanged(el, name, value) {
+    if (el && el.dataset && el.dataset[name] !== value) el.dataset[name] = value;
+  }
+
+  function setAttrIfChanged(el, name, value) {
+    if (el && el.getAttribute(name) !== value) el.setAttribute(name, value);
+  }
+
+  function setStyleIfChanged(el, name, value, priority) {
+    if (!el || el.style.getPropertyValue(name) === value) return;
+    el.style.setProperty(name, value, priority || "");
+  }
+
+  function getSampledPlayerState(now = performance.now()) {
+    if (now - playerStateCache.at > PLAYER_STATE_SAMPLE_MS) {
+      playerStateCache.at = now;
+      playerStateCache.playing = safePlayerIsPlaying(playerStateCache.playing);
+      playerStateCache.shuffle = getShuffleState();
+      playerStateCache.repeat = getRepeatState();
+    }
+    return playerStateCache;
+  }
+
+  function markStaticReadoutsDirty() {
+    staticReadoutsDirty = true;
+  }
+
+  function markPlayerStateDirty() {
+    playerStateCache.at = -Infinity;
+    markStaticReadoutsDirty();
+  }
+
+  function schedulePlayerStateRefresh(delay = 140) {
+    markPlayerStateDirty();
+    window.setTimeout(markPlayerStateDirty, delay);
+  }
+
+  function markVolumeReadoutsDirty() {
+    knobLedDirty = true;
+    markStaticReadoutsDirty();
+  }
+
+  function updateMenuPanel() {
+    const perfAt = pvfdPerfStart();
+    if (!chassis) {
+      pvfdPerfEnd("menuRefreshUpdate", perfAt);
+      return;
+    }
+    const dom = getPvfdDom();
+    setTextIfChanged(dom.menu && dom.menu.oel, activeClipName(12));
+    setAttrIfChanged(dom.buttons && dom.buttons.lyrics, "title", "Open lyrics");
+    setAttrIfChanged(dom.buttons && dom.buttons.lyrics, "aria-label", "Open lyrics");
+    setTextIfChanged(dom.menu && dom.menu.demo, demoAutoMode ? "AUTO" : "OFF");
+    setTextIfChanged(dom.menu && dom.menu.tint, currentTintLabel());
+    setTextIfChanged(dom.menu && dom.menu.type, FONT_PRESETS[fontPresetIdx].label);
+    setTextIfChanged(dom.menu && dom.menu.lcdFont, LCD_FONT_PRESETS[lcdFontPresetIdx].label);
+    setTextIfChanged(dom.menu && dom.menu.artPixel, artPixelEnabled ? "ON" : "OFF");
+    setTextIfChanged(dom.menu && dom.menu.perf, activePerformanceConfig().label);
+    setTextIfChanged(dom.menu && dom.menu.logoGlow, currentPulseModeLabel());
+    setTextIfChanged(dom.menu && dom.menu.oelDisplay, oelDisplayEnabled ? "ON" : "OFF");
+    setTextIfChanged(dom.menu && dom.menu.racingColor, racingColorModeLabel());
+    setTextIfChanged(dom.menu && dom.menu.customOel, customOelClip ? "SET" : "IMPORT");
+    setTextIfChanged(dom.menu && dom.menu.customFont, customFontLabel());
+    setTextIfChanged(dom.menu && dom.menu.chromeMode, chromeDarkEnabled ? "ON" : "OFF");
+    setTextIfChanged(dom.menu && dom.menu.logoStyle, LOGO_STYLES[logoStyleIdx] || "MODERN");
+    setTextIfChanged(dom.menu && dom.menu.everScroll, everScrollMode);
+    setTextIfChanged(dom.menu && dom.menu.ledGlow, ledGlowMode);
+    refreshTintMenuSelection();
+    pvfdPerfEnd("menuRefreshUpdate", perfAt);
+  }
+
+  // Mirrors the Chromium live-audio path so the menu shows the same source the logo
+  // pulse loop is trying to use.
+  function currentPulseModeLabel() {
+    if (!logoGlowEnabled) return "OFF";
+    if (hlprBridgeActive) return "HLPR";
+    if (hlprBridgePending || (desktopCapturePending && isLinuxLikePlatform())) return "WAIT";
+    if (desktopCapturePending || logoLiveAudioPending) return "...";
+    if (desktopCaptureActive) return "LIVE";
+    return "...";
+  }
+
+  function buildPulseProbeSnapshot() {
+    return {
+      enabled: logoGlowEnabled,
+      label: currentPulseModeLabel(),
+      liveAudioActive: logoLiveAudioActive,
+      liveAudioPending: logoLiveAudioPending,
+      desktopCaptureActive,
+      desktopCapturePending,
+      linuxLike: isLinuxLikePlatform(),
+      hlprBridgeActive,
+      hlprBridgePending,
+      hlprSocketReady: !!(hlprSocket && hlprSocket.readyState === 1),
+      hlprProtocolMismatched,
+      hlprHelperVersion: (hlprHelloInfo && hlprHelloInfo.version) || "",
+      hasAnalyser: !!logoLiveAudioAnalyser,
+      hasBins: !!(logoLiveAudioBins && logoLiveAudioBins.length),
+      playerDataReady: !!safeReturn(() => Spicetify.Player && Spicetify.Player.data, null),
+      playerPlaying: safePlayerIsPlaying(false),
+      failure: pulseLiveFailureReason || "",
+      lastLiveAudioUpdateAt: Number.isFinite(lastLogoLiveAudioUpdateAt) ? Math.round(lastLogoLiveAudioUpdateAt) : null
+    };
+  }
+
+  async function diagnosePulseCapture(options = {}) {
+    const attemptPortalCapture = !!(options && options.attemptPortalCapture);
+    const out = {
+      generatedAt: new Date().toISOString(),
+      attemptPortalCapture,
+      ua: String(safeReturn(() => navigator.userAgent, "") || ""),
+      platform: String(safeReturn(() => navigator.platform, "") || ""),
+      href: String(safeReturn(() => location.href, "") || ""),
+      supportedConstraints: safeReturn(() => (
+        navigator.mediaDevices && typeof navigator.mediaDevices.getSupportedConstraints === "function"
+          ? navigator.mediaDevices.getSupportedConstraints()
+          : null
+      ), null),
+      chromeTabCapture: safeReturn(() => (typeof chrome === "undefined" ? "chrome unavailable" : typeof chrome.tabCapture), "unavailable"),
+      pulse: buildPulseProbeSnapshot(),
+      captureOptions: pulseDisplayMediaOptions(),
+      devices: [],
+      devicesError: "",
+      portalCaptureAttempt: attemptPortalCapture ? null : "skipped; pass { diagnose: true, attemptPortalCapture: true } to open the portal picker"
+    };
+
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === "function") {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        out.devices = devices.map((device) => ({
+          kind: device.kind || "",
+          label: device.label || "",
+          deviceId: device.deviceId ? "[present]" : "",
+          groupId: device.groupId ? "[present]" : ""
+        }));
+        if (!out.devices.some((device) => device.label)) {
+          out.note = "enumerateDevices labels may be blank until media permission has been granted.";
+        }
+      } catch (err) {
+        out.devicesError = safeErrorSummary(err);
+      }
+    } else {
+      out.devicesError = "enumerateDevices not available";
+    }
+
+    if (attemptPortalCapture) {
+      let stream = null;
+      let attemptTracks = [];
+      try {
+        stream = await requestPulseDisplayMediaStream();
+        stream.getVideoTracks().forEach((track) => safe(() => track.stop()));
+        attemptTracks = stream.getTracks().map((track) => ({
+          kind: track.kind || "",
+          label: track.label || "",
+          settings: safeReturn(() => track.getSettings && track.getSettings(), null)
+        }));
+        selectPulseAudioTrack(stream);
+        out.portalCaptureAttempt = {
+          ok: true,
+          tracks: attemptTracks
+        };
+      } catch (err) {
+        out.portalCaptureAttempt = {
+          ok: false,
+          error: safeErrorSummary(err),
+          name: err && err.name ? String(err.name) : "",
+          message: err && err.message ? String(err.message) : "",
+          tracks: attemptTracks
+        };
+      } finally {
+        if (stream && stream.getTracks) stream.getTracks().forEach((track) => safe(() => track.stop()));
+      }
+    }
+
+    return out;
+  }
+
+  window.pvfdPulseProbe = function pvfdPulseProbe(options) {
+    if (options && options.diagnose) return diagnosePulseCapture(options);
+    return buildPulseProbeSnapshot();
+  };
+
+  function updateRoleButtonStates() {
+    if (!chassis) return;
+    const dom = getPvfdDom();
+    const demoBtn = dom.buttons && dom.buttons.demo;
+    if (demoBtn) {
+      demoBtn.classList.toggle("active", demoAutoMode);
+      demoBtn.title = demoAutoMode ? "Showroom auto-cycle: on" : "Toggle showroom auto-cycle";
+    }
+    const menuBtn = dom.buttons && dom.buttons.menu;
+    if (menuBtn) menuBtn.classList.toggle("active", menuOpen);
+  }
+
+  function applyDimMode(persist = false) {
+    applyLcdFilter();
+    const dimBtn = chassis && chassis.querySelector("[data-pvfd='dim']");
+    if (dimBtn) dimBtn.classList.toggle("active", lcdDimmed);
+    if (persist) safe(() => window.localStorage.setItem(DIM_STORAGE_KEY, lcdDimmed ? "ON" : "OFF"));
+    markStaticReadoutsDirty();
+    updateMenuPanel();
+  }
+
+  function toggleDimMode() {
+    lcdDimmed = !lcdDimmed;
+    applyDimMode(true);
+  }
+
+  function applyChromeMode(persist = false) {
+    const mode = chromeDarkEnabled ? "dark" : "light";
+    if (document.body) {
+      if (chromeDarkEnabled) document.body.setAttribute("data-pvfd-chrome", "dark");
+      else document.body.removeAttribute("data-pvfd-chrome");
+    }
+    if (chassis) chassis.setAttribute("data-pvfd-chrome", mode);
+    if (persist) safe(() => window.localStorage.setItem(CHROME_STORAGE_KEY, chromeDarkEnabled ? "ON" : "OFF"));
+    updateMenuPanel();
+  }
+
+  function toggleChromeMode() {
+    chromeDarkEnabled = !chromeDarkEnabled;
+    applyChromeMode(true);
+  }
+
+  function applyLogoStyle(persist = false) {
+    const style = LOGO_STYLES[logoStyleIdx] || "MODERN";
+    if (document.body) document.body.setAttribute("data-pvfd-logo-style", style.toLowerCase());
+    if (persist) safe(() => window.localStorage.setItem(LOGO_STYLE_STORAGE_KEY, style));
+    updateMenuPanel();
+  }
+
+  function cycleLogoStyle() {
+    logoStyleIdx = (logoStyleIdx + 1) % LOGO_STYLES.length;
+    applyLogoStyle(true);
+  }
+
+  function applyEverScrollMode(persist = false) {
+    if (document.body) {
+      if (everScrollMode === "OFF") document.body.removeAttribute("data-pvfd-scroll");
+      else document.body.setAttribute("data-pvfd-scroll", everScrollMode.toLowerCase());
+    }
+    if (persist) safe(() => window.localStorage.setItem(EVER_SCROLL_STORAGE_KEY, everScrollMode));
+    /* Re-paint the meta track so a mode change immediately picks up the right
+       content (LOOP needs duplicated text, ONCE/BOUNCE need single text +
+       pixel-precise scroll distance). */
+    repaintMetaTrackForMode();
+    updateMenuPanel();
+  }
+
+  function toggleEverScrollMode() {
+    const idx = EVER_SCROLL_MODES.indexOf(everScrollMode);
+    everScrollMode = EVER_SCROLL_MODES[(idx + 1) % EVER_SCROLL_MODES.length];
+    applyEverScrollMode(true);
+  }
+
+  function applyEeqTint(persist = false) {
+    if (document.body) document.body.setAttribute("data-pvfd-eeq-tint", eeqTinted ? "ON" : "OFF");
+    if (persist) safe(() => window.localStorage.setItem(EEQ_TINT_STORAGE_KEY, eeqTinted ? "ON" : "OFF"));
+  }
+
+  function toggleEeqTint() {
+    eeqTinted = !eeqTinted;
+    applyEeqTint(true);
+  }
+
+  function applyLedGlow(persist = false) {
+    if (document.body) document.body.setAttribute("data-pvfd-led-glow", ledGlowMode);
+    if (persist) safe(() => window.localStorage.setItem(LED_GLOW_STORAGE_KEY, ledGlowMode));
+    updateMenuPanel();
+  }
+
+  function toggleLedGlow() {
+    const currentIdx = LED_GLOW_MODES.indexOf(ledGlowMode);
+    ledGlowMode = LED_GLOW_MODES[(currentIdx + 1) % LED_GLOW_MODES.length];
+    applyLedGlow(true);
+  }
+
+  function applyKnobGlow(persist = false) {
+    if (document.body) document.body.setAttribute("data-pvfd-knob-glow", knobGlowEnabled ? "on" : "off");
+    if (persist) safe(() => window.localStorage.setItem(KNOB_GLOW_STORAGE_KEY, knobGlowEnabled ? "ON" : "OFF"));
+  }
+
+  function toggleKnobGlow() {
+    knobGlowEnabled = !knobGlowEnabled;
+    applyKnobGlow(true);
+    updateMcMenuRows();
+  }
+
+  function applyAttMode(persist = false) {
+    if (chassis) chassis.setAttribute("data-pvfd-att-mode", attMode);
+    if (persist) safe(() => window.localStorage.setItem(ATT_MODE_STORAGE_KEY, attMode));
+  }
+
+  function cycleAttMode() {
+    attMode = attMode === "mute" ? "soft" : "mute";
+    applyAttMode(true);
+    updateMcMenuRows();
+  }
+
+  function setFmFreqText(text) {
+    const el = chassis && chassis.querySelector("[data-pvfd='fm-freq']");
+    if (el) el.textContent = text;
+  }
+
+  function pickNoiseString(length) {
+    let s = "";
+    for (let i = 0; i < length; i++) {
+      s += BAND_NOISE_GLYPHS[Math.floor(Math.random() * BAND_NOISE_GLYPHS.length)];
+    }
+    return s;
+  }
+
+  function clearBandTuning() {
+    if (bandTuningTimer) { clearTimeout(bandTuningTimer); bandTuningTimer = null; }
+    if (bandTuningInterval) { clearInterval(bandTuningInterval); bandTuningInterval = null; }
+    if (chassis) chassis.removeAttribute("data-pvfd-band-tuning");
+  }
+
+  function applyBandPreset(persist = false, animate = false, userInitiated = false) {
+    clearBandTuning();
+    const overlay = chassis && chassis.querySelector("[data-pvfd='fm-overlay']");
+    const isOn = bandPresetIdx >= 0;
+    if (chassis) {
+      if (isOn) chassis.setAttribute("data-pvfd-band", String(bandPresetIdx));
+      else chassis.removeAttribute("data-pvfd-band");
+    }
+    if (overlay) overlay.setAttribute("aria-hidden", isOn ? "false" : "true");
+    const bandPill = chassis && chassis.querySelector("[data-pvfd='band']");
+    if (bandPill) bandPill.classList.toggle("active", isOn);
+
+    // Stop any in-flight FM audio + restore Spotify before re-deciding state.
+    // Spotify gets paused once on the very first BAND-on tick (handled below).
+    const hadAudio = fmAudioEl && fmAudioEl.src;
+    if (hadAudio) stopFmAudio();
+
+    if (isOn) {
+      const finalText = BAND_PRESETS[bandPresetIdx];
+      const hasAudio = !!BAND_AUDIO_PRESETS[bandPresetIdx];
+
+      // Pause Spotify on the BAND-on transition (only the first time we
+      // enter BAND mode from off; cycling between presets keeps it paused).
+      if (hasAudio) {
+        if (!spotifyWasPlayingBeforeBand) pauseSpotifyForBand();
+        seedFmVolumeFromSpotify();
+      }
+
+      if (animate) {
+        if (chassis) chassis.setAttribute("data-pvfd-band-tuning", "on");
+        bandTuningInterval = setInterval(() => {
+          setFmFreqText(pickNoiseString(finalText.length));
+        }, 55);
+        bandTuningTimer = setTimeout(() => {
+          clearBandTuning();
+          setFmFreqText(finalText);
+          // Kick off audio AFTER the tuning-static finishes so the static
+          // visual reads as "the tuner finding the station", then audio drops.
+          if (hasAudio) startFmEpisodeForPreset(bandPresetIdx, userInitiated);
+        }, BAND_TUNING_MS);
+      } else {
+        setFmFreqText(finalText);
+        if (hasAudio) startFmEpisodeForPreset(bandPresetIdx, userInitiated);
+      }
+    } else {
+      // BAND off: blank text, resume Spotify if we paused it.
+      setFmFreqText("");
+      resumeSpotifyAfterBand();
+    }
+    if (persist) safe(() => window.localStorage.setItem(BAND_STORAGE_KEY, String(bandPresetIdx)));
+  }
+
+  function cycleBandPreset() {
+    // -1 → 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → -1 (off)
+    const wasOff = bandPresetIdx < 0;
+    bandPresetIdx = bandPresetIdx + 1;
+    if (bandPresetIdx >= BAND_PRESETS.length) bandPresetIdx = -1;
+    primeFmPresetGainForUserGesture(bandPresetIdx);
+    applyBandPreset(true, true, true);
+    // TUNER state-flash fires only when entering BAND from off (not while
+    // cycling stations, and never when turning it back off — the "earned" rule).
+    if (wasOff && bandPresetIdx >= 0) playStateFlash("tuner");
+  }
+
+  // Directional tuning for the nav ring: step ±1 station, staying among the
+  // stations (0..N-1) with wraparound — never into the -1 "off" slot (turning
+  // the tuner off stays a BAND-button action). No TUNER flash while tuning,
+  // matching the "not while cycling stations" rule in cycleBandPreset. Caller
+  // gates on bandPresetIdx >= 0, so idx is always a real station here.
+  function stepBandPreset(dir) {
+    if (bandPresetIdx < 0) return;
+    const n = BAND_PRESETS.length;
+    bandPresetIdx = ((bandPresetIdx + (dir < 0 ? -1 : 1)) % n + n) % n;
+    primeFmPresetGainForUserGesture(bandPresetIdx);
+    applyBandPreset(true, true, true);
+  }
+
+  // ================================================================
+  // STATE-FLASH engine — transient "changing state" VFD takeover.
+  // A bed webm (tint-washed) + a flicker word (PVFD AlphaQ) energize
+  // over the LCD, hold, then collapse out. Fires on EJECT / BAND
+  // (TUNER) / LYRICS / CINEMA. Overlay markup lives inside .pvfd-lcd;
+  // styling + Y2K keyframes are in user.css (.pvfd-stateflash*).
+  // ================================================================
+  const STATE_FLASH_CONFIG = {
+    eject:  { word: "EJECTING", bed: "pvfd_bed_streaks.webm",   hold: 1100 },
+    tuner:  { word: "TUNER",    bed: "pvfd_bed_particles.webm", hold: 900 },
+    lyrics: { word: "LYRICS",   bed: "pvfd_bed_wave.webm",      hold: 900 },
+    cinema: { word: "CINEMA",   bed: "pvfd_bed_helix.webm",     hold: 1200 },
+  };
+  const STATE_FLASH_IN_MS = 520;
+  const STATE_FLASH_OUT_MS = 380;
+  let sfEl = null, sfWord = null, sfBed = null;
+  let sfTimers = [];
+  function getStateFlashEls() {
+    if (sfEl && document.contains(sfEl)) return true;
+    sfEl = document.querySelector('[data-pvfd="stateflash"]');
+    sfWord = sfEl && sfEl.querySelector('[data-pvfd="stateflash-word"]');
+    sfBed = sfEl && sfEl.querySelector('[data-pvfd="stateflash-bed"]');
+    return !!(sfEl && sfWord && sfBed);
+  }
+  // Resolve a bed webm to a playable URL: cached blob if the OEL registry
+  // has warmed it, else the gh-pages URL (which also warms the cache).
+  function stateFlashBedUrl(assetName) {
+    const map = resolveOelWebmSourceMap() || {};
+    return map[assetName] || (OEL_WEBM_GITHUB_BASE + assetName);
+  }
+  function clearStateFlashTimers() {
+    sfTimers.forEach((t) => clearTimeout(t));
+    sfTimers = [];
+  }
+  function closeStateFlash() {
+    clearStateFlashTimers();
+    if (!getStateFlashEls()) return;
+    sfEl.classList.remove("is-active");
+    sfEl.setAttribute("aria-hidden", "true");
+    sfWord.className = "pvfd-stateflash-word";
+    safe(() => sfBed.pause());
+  }
+  function playStateFlash(key) {
+    const c = STATE_FLASH_CONFIG[key];
+    if (!c || !getStateFlashEls()) return;
+    clearStateFlashTimers();
+    // Bed: swap src only when it actually changes, then restart + play.
+    const url = stateFlashBedUrl(c.bed);
+    if (sfBed.getAttribute("src") !== url) sfBed.setAttribute("src", url);
+    safe(() => { sfBed.currentTime = 0; });
+    safe(() => { const p = sfBed.play(); if (p && p.catch) p.catch(() => {}); });
+    // Word energize-in → hold → collapse-out.
+    sfWord.textContent = c.word;
+    sfWord.className = "pvfd-stateflash-word";
+    sfEl.classList.add("is-active");
+    sfEl.setAttribute("aria-hidden", "false");
+    void sfEl.offsetWidth;
+    sfWord.classList.add("sf-in");
+    sfTimers.push(setTimeout(() => {
+      sfWord.classList.remove("sf-in");
+      sfWord.classList.add("sf-hold");
+      sfTimers.push(setTimeout(() => {
+        sfWord.classList.remove("sf-hold");
+        sfWord.classList.add("sf-out");
+        sfTimers.push(setTimeout(closeStateFlash, STATE_FLASH_OUT_MS));
+      }, c.hold));
+    }, STATE_FLASH_IN_MS));
+  }
+
+  // Real-audio playback for BAND presets that have episodes in
+  // BAND_AUDIO_PRESETS. Pauses Spotify so the broadcast plays alone,
+  // resumes Spotify when BAND turns off. Random episode + random cut-in
+  // point sells the "flipped the dial mid-broadcast" feel.
+  let fmAudioEl = null;
+  let fmAudioCtx = null;
+  let fmAudioSourceNode = null;
+  let fmAudioSourceEl = null;
+  let fmAudioGainNode = null;
+  let fmAudioGraphWarned = false;
+  let spotifyWasPlayingBeforeBand = false;
+  function getFmAudio() {
+    if (fmAudioEl) return fmAudioEl;
+    fmAudioEl = chassis && chassis.querySelector("[data-pvfd='fm-audio']");
+    if (fmAudioEl && !fmAudioEl.dataset.pvfdInit) {
+      fmAudioEl.dataset.pvfdInit = "1";
+      fmAudioEl.addEventListener("ended", () => {
+        // Episode finished — pick a fresh random episode for the same preset.
+        if (bandPresetIdx >= 0 && BAND_AUDIO_PRESETS[bandPresetIdx]) {
+          startFmEpisodeForPreset(bandPresetIdx);
+        }
+      });
+      fmAudioEl.addEventListener("loadedmetadata", () => {
+        const range = fmAudioEl.dataset.pvfdCutInRange;
+        if (!range || !Number.isFinite(fmAudioEl.duration) || fmAudioEl.duration <= 0) return;
+        let [start, end] = range.split(",").map(Number);
+        // null-range (encoded as "auto") = first half of the actual duration.
+        if (range === "auto") { start = 0; end = fmAudioEl.duration / 2; }
+        // Clamp to actual duration in case our manifest exceeds it.
+        end = Math.min(end, fmAudioEl.duration);
+        start = Math.min(start, end);
+        const seek = start + Math.random() * Math.max(0, end - start);
+        try { fmAudioEl.currentTime = seek; } catch (_) {}
+        safe(() => fmAudioEl.play());
+      });
+    }
+    return fmAudioEl;
+  }
+
+  function seedFmVolumeFromSpotify() {
+    const audio = getFmAudio();
+    if (!audio) return;
+    const volume = pendingVolume !== null ? pendingVolume : getSpotifyVolumeSafe(performance.now(), true);
+    applyFmVolume(volume);
+  }
+
+  function warnFmAudioGraphFailure(err) {
+    if (fmAudioGraphWarned) return;
+    fmAudioGraphWarned = true;
+    console.warn("[PVFD] BAND audio gain unavailable:", err);
+  }
+
+  function ensureFmAudioGraph(audio, allowResume = false) {
+    if (!audio) return null;
+    if (fmAudioSourceNode) {
+      if (fmAudioSourceEl !== audio) {
+        warnFmAudioGraphFailure("FM media source already bound");
+        return null;
+      }
+      if (allowResume && fmAudioCtx && fmAudioCtx.state === "suspended" && typeof fmAudioCtx.resume === "function") {
+        const resumed = fmAudioCtx.resume();
+        if (resumed && typeof resumed.catch === "function") resumed.catch(warnFmAudioGraphFailure);
+      }
+      return fmAudioGainNode;
+    }
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return null;
+    try {
+      if (!fmAudioCtx) fmAudioCtx = new AudioCtor();
+      fmAudioSourceEl = audio;
+      fmAudioSourceNode = fmAudioCtx.createMediaElementSource(audio);
+      fmAudioGainNode = fmAudioCtx.createGain();
+      fmAudioSourceNode.connect(fmAudioGainNode);
+      fmAudioGainNode.connect(fmAudioCtx.destination);
+      if (allowResume && fmAudioCtx.state === "suspended" && typeof fmAudioCtx.resume === "function") {
+        const resumed = fmAudioCtx.resume();
+        if (resumed && typeof resumed.catch === "function") resumed.catch(warnFmAudioGraphFailure);
+      }
+      return fmAudioGainNode;
+    } catch (err) {
+      warnFmAudioGraphFailure(err);
+      return null;
+    }
+  }
+
+  function applyFmPresetGain(audio, gain, allowResume = false) {
+    const rawGain = Number(gain);
+    const presetGain = Number.isFinite(rawGain) && rawGain > 0 ? rawGain : 1;
+    if (presetGain <= 1) {
+      if (fmAudioGainNode) safe(() => { fmAudioGainNode.gain.value = 1; });
+      return;
+    }
+    const gainNode = ensureFmAudioGraph(audio, allowResume);
+    if (gainNode) safe(() => { gainNode.gain.value = presetGain; });
+  }
+
+  function primeFmPresetGainForUserGesture(presetIdx) {
+    const preset = BAND_AUDIO_PRESETS[presetIdx];
+    if (!preset || !(Number(preset.gain) > 1)) return;
+    const audio = getFmAudio();
+    if (!audio) return;
+    audio.crossOrigin = "anonymous";
+    applyFmPresetGain(audio, preset.gain, true);
+  }
+
+  function fetchArchiveCollectionFiles(collectionId, extensions) {
+    if (archiveFilesCache.has(collectionId)) {
+      return Promise.resolve(archiveFilesCache.get(collectionId));
+    }
+    const url = ARCHIVE_META_BASE + encodeURIComponent(collectionId);
+    return fetch(url)
+      .then((r) => r.ok ? r.json() : Promise.reject(new Error(`metadata fetch ${r.status}`)))
+      .then((meta) => {
+        const exts = (extensions || []).map((e) => e.toLowerCase().replace(/^\./, ""));
+        const files = Array.isArray(meta && meta.files) ? meta.files : [];
+        const matches = files
+          .map((f) => f && f.name)
+          .filter((name) => {
+            if (typeof name !== "string") return false;
+            const lower = name.toLowerCase();
+            if (!exts.some((ext) => lower.endsWith("." + ext))) return false;
+            return !isBlockedArchiveFile(collectionId, name);
+          })
+          .sort((a, b) => a.localeCompare(b));
+        archiveFilesCache.set(collectionId, matches);
+        return matches;
+      });
+  }
+
+  function archivePathInfo(path) {
+    const parts = String(path || "").split("/");
+    const collectionId = parts.shift() || "";
+    return {
+      collectionId,
+      filename: parts.length ? decodeURIComponent(parts.join("/")) : ""
+    };
+  }
+
+  function isBlockedArchiveFile(collectionId, filename) {
+    const blocked = BLOCKED_ARCHIVE_FILES[collectionId];
+    return !!(blocked && blocked.has(filename));
+  }
+
+  function isBlockedArchivePath(path) {
+    const info = archivePathInfo(path);
+    return isBlockedArchiveFile(info.collectionId, info.filename);
+  }
+
+  function warnBlockedArchivePath(path) {
+    const info = archivePathInfo(path);
+    const key = `${info.collectionId}/${info.filename}`;
+    if (blockedArchiveWarned.has(key)) return;
+    blockedArchiveWarned.add(key);
+    console.warn("[PVFD] BAND blocked archive file:", key);
+  }
+
+  function playEpisodeOnAudio(audio, path, cutInRange, gain, allowAudioContextResume = false) {
+    if (isBlockedArchivePath(path)) {
+      warnBlockedArchivePath(path);
+      safe(() => audio.pause());
+      audio.removeAttribute("src");
+      audio.load();
+      return;
+    }
+    audio.dataset.pvfdCutInRange = cutInRange ? `${cutInRange[0]},${cutInRange[1]}` : "auto";
+    audio.crossOrigin = "anonymous";
+    applyFmVolume(getActiveHardwareVolume());
+    applyFmPresetGain(audio, gain, allowAudioContextResume);
+    audio.src = ARCHIVE_DL_BASE + path;
+    audio.load();
+    // play() is invoked from loadedmetadata after seek lands.
+  }
+
+  function startFmEpisodeForPreset(presetIdx, allowAudioContextResume = false) {
+    const preset = BAND_AUDIO_PRESETS[presetIdx];
+    if (!preset) return false;
+    const audio = getFmAudio();
+    if (!audio) return false;
+
+    if (Array.isArray(preset.episodes) && preset.episodes.length) {
+      const episodes = preset.episodes.filter((episode) => episode && !isBlockedArchivePath(episode.path));
+      if (!episodes.length) return false;
+      const pick = episodes[Math.floor(Math.random() * episodes.length)];
+      playEpisodeOnAudio(audio, pick.path, pick.cutInRange, preset.gain, allowAudioContextResume);
+      return true;
+    }
+
+    if (preset.archiveCollection) {
+      // Capture the preset idx at fetch time so a race with rapid BAND cycling
+      // doesn't start audio for a preset the user already left.
+      const requestedIdx = presetIdx;
+      fetchArchiveCollectionFiles(preset.archiveCollection, preset.fileExtensions)
+        .then((files) => {
+          if (bandPresetIdx !== requestedIdx) return;          // user cycled away
+          const limit = Number(preset.archiveFileLimit);
+          const candidates = Number.isFinite(limit) && limit > 0 ? (files || []).slice(0, limit) : (files || []);
+          const safeFiles = candidates.filter((filename) => !isBlockedArchiveFile(preset.archiveCollection, filename));
+          if (!safeFiles.length) return;
+          const filename = safeFiles[Math.floor(Math.random() * safeFiles.length)];
+          const path = `${preset.archiveCollection}/${encodeURIComponent(filename)}`;
+          playEpisodeOnAudio(audio, path, preset.cutInRange, preset.gain, allowAudioContextResume);
+        })
+        .catch((err) => {
+          console.warn("[PVFD] BAND manifest fetch failed:", err);
+        });
+      return true;
+    }
+
+    return false;
+  }
+
+  function stopFmAudio() {
+    if (!fmAudioEl) return;
+    safe(() => fmAudioEl.pause());
+    fmAudioEl.removeAttribute("src");
+    fmAudioEl.load();
+  }
+
+  function pauseSpotifyForBand() {
+    const isPlaying = safeReturn(() => Spicetify.Player.isPlaying && Spicetify.Player.isPlaying(), false);
+    spotifyWasPlayingBeforeBand = !!isPlaying;
+    if (spotifyWasPlayingBeforeBand) safe(() => Spicetify.Player.pause());
+  }
+
+  function resumeSpotifyAfterBand() {
+    if (spotifyWasPlayingBeforeBand) safe(() => Spicetify.Player.play());
+    spotifyWasPlayingBeforeBand = false;
+  }
+
+  // Cached so we can move the M.C. menu back to its original parent on close.
+  // Open path appends it to <body> so it has zero ancestor clipping/stacking
+  // interference from the now-playing bar.
+  let mcMenuOriginalParent = null;
+  function setMcMenuOpen(open) {
+    const next = !!open;
+    if (mcMenuOpen === next) return;
+    mcMenuOpen = next;
+    const knobEl = chassis && chassis.querySelector("[data-pvfd='lknob']");
+    if (knobEl) knobEl.classList.toggle("mc-active", mcMenuOpen);
+    // The menu may currently live in either its original parent OR <body>,
+    // depending on prior open/close state — query both places.
+    const menuEl = (chassis && chassis.querySelector("[data-pvfd='mc-menu']"))
+                || document.querySelector("body > [data-pvfd='mc-menu']");
+    if (menuEl) menuEl.setAttribute("aria-hidden", mcMenuOpen ? "false" : "true");
+    if (chassis) {
+      if (mcMenuOpen) chassis.setAttribute("data-pvfd-mc-open", "on");
+      else chassis.removeAttribute("data-pvfd-mc-open");
+    }
+    if (mcMenuOpen && menuEl && knobEl) {
+      // Re-parent to <body> so no ancestor's overflow/transform/stacking
+      // context can interfere. Cache the original parent for restore.
+      if (menuEl.parentElement !== document.body) {
+        mcMenuOriginalParent = menuEl.parentElement;
+        document.body.appendChild(menuEl);
+      }
+      const rect = knobEl.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const bottomFromViewportBottom = window.innerHeight - rect.top + 8;
+      menuEl.style.setProperty("--pvfd-mc-x", `${Math.round(cx)}px`);
+      menuEl.style.setProperty("--pvfd-mc-bottom", `${Math.round(bottomFromViewportBottom)}px`);
+      updateMcMenuRows();
+    } else if (!mcMenuOpen && menuEl && mcMenuOriginalParent && menuEl.parentElement === document.body) {
+      mcMenuOriginalParent.appendChild(menuEl);
+    }
+  }
+
+  // DISP prompt — clicking the Pioneer logo opens a YES/NO confirm above
+  // it asking whether to enter Spotify's full-screen now-playing view.
+  // The prompt element is created lazily and appended to <body> so it
+  // escapes the chassis's overflow:hidden (same pattern as M.C. menu).
+  let dispPromptEl = null;
+  let dispPromptOpen = false;
+  function getDispPromptEl() {
+    if (dispPromptEl) return dispPromptEl;
+    dispPromptEl = document.createElement("div");
+    dispPromptEl.className = "pvfd-disp-prompt";
+    dispPromptEl.setAttribute("role", "dialog");
+    dispPromptEl.setAttribute("aria-hidden", "true");
+    dispPromptEl.innerHTML = `
+      <div class="pvfd-disp-prompt-title">ENTER FULL SCREEN DISPLAY?</div>
+      <div class="pvfd-disp-prompt-row">
+        <button class="pvfd-disp-prompt-btn" type="button" data-pvfd-disp="yes">YES</button>
+        <button class="pvfd-disp-prompt-btn" type="button" data-pvfd-disp="no">NO</button>
+      </div>
+    `;
+    dispPromptEl.querySelector("[data-pvfd-disp='yes']").addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      setDispPromptOpen(false);
+      // CINEMA state-flash pre-roll on the LCD, then the cinema takeover.
+      playStateFlash("cinema");
+      setTimeout(() => setPvfdCinemaOpen(true), 1500);
+    });
+    dispPromptEl.querySelector("[data-pvfd-disp='no']").addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      setDispPromptOpen(false);
+    });
+    document.body.appendChild(dispPromptEl);
+    return dispPromptEl;
+  }
+  // PVFD Cinema Mode — full-viewport PVFD-themed "now playing" takeover.
+  // Replaces Spotify's stock fullscreen with our own giant-chassis layout:
+  // album art (left), track info + lyrics/OEL + controls (right), animated
+  // scanline backdrop, tint-aware. Mounted to <body> so it escapes the
+  // now-playing bar's overflow:hidden, controls live inside it (chassis is
+  // hidden via body class while active).
+  let pvfdCinemaEl = null;
+  let pvfdCinemaOpen = false;
+  function getPvfdCinemaEl() {
+    if (pvfdCinemaEl) return pvfdCinemaEl;
+    pvfdCinemaEl = document.createElement("div");
+    pvfdCinemaEl.className = "pvfd-cinema";
+    pvfdCinemaEl.setAttribute("aria-hidden", "true");
+    pvfdCinemaEl.innerHTML = `
+      <div class="pvfd-cinema-scanlines" aria-hidden="true"></div>
+      <div class="pvfd-cinema-grain" aria-hidden="true"></div>
+      <div class="pvfd-cinema-vignette" aria-hidden="true"></div>
+      <div class="pvfd-cinema-topstrip" aria-hidden="true">
+        <span class="pvfd-cinema-topstrip-side">EEQ · MOSFET 50w<span class="pvfd-silk-label-x">&times;</span><span class="pvfd-silk-label-4">4</span></span>
+        <span class="pvfd-cinema-topstrip-logo">pioneer</span>
+        <span class="pvfd-cinema-topstrip-side pvfd-cinema-topstrip-side-right">WMA / MP3 · DAB CONTROL</span>
+      </div>
+      <div class="pvfd-cinema-corner-controls">
+        <button class="pvfd-cinema-close" type="button" data-pvfd-cinema="close" title="Exit display (ESC)" aria-label="Exit display">
+          <span class="pvfd-cinema-close-x">&#x2715;</span>
+          <span class="pvfd-cinema-close-hint">ESC</span>
+        </button>
+        <button class="pvfd-cinema-fs" type="button" data-pvfd-cinema="fs" title="Toggle true fullscreen (F)" aria-label="Toggle fullscreen">
+          <span class="pvfd-cinema-fs-icon" data-pvfd-cinema="fs-icon">&#x26F6;</span>
+          <span class="pvfd-cinema-fs-hint" data-pvfd-cinema="fs-hint">FULL</span>
+        </button>
+      </div>
+      <div class="pvfd-cinema-stage">
+        <div class="pvfd-cinema-left">
+          <div class="pvfd-cinema-art-frame">
+            <img class="pvfd-cinema-art" data-pvfd-cinema="art" alt="" />
+            <canvas class="pvfd-cinema-art-px" data-pvfd-cinema="art-px" width="128" height="128" aria-hidden="true"></canvas>
+            <div class="pvfd-cinema-art-scanline" aria-hidden="true"></div>
+            <div class="pvfd-cinema-panel" data-pvfd-cinema="panel" aria-hidden="true">
+              <div class="pvfd-cinema-panel-head">
+                <span class="pvfd-cinema-panel-title" data-pvfd-cinema="panel-title"></span>
+                <button class="pvfd-cinema-panel-close" type="button" data-pvfd-cinema="panel-close" title="Close" aria-label="Close panel">&#x2715;</button>
+              </div>
+              <div class="pvfd-cinema-panel-body" data-pvfd-cinema="panel-body"></div>
+            </div>
+          </div>
+          <div class="pvfd-cinema-mosaic" data-pvfd-cinema="mosaic" aria-hidden="true">
+            <canvas class="pvfd-cinema-mosaic-canvas" data-pvfd-cinema="mosaic-canvas" width="448" height="40"></canvas>
+            <span class="pvfd-cinema-mosaic-tag" data-pvfd-cinema="mosaic-tag" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="pvfd-cinema-right">
+          <div class="pvfd-cinema-header">
+            <div class="pvfd-cinema-title" data-pvfd-cinema="title">—</div>
+            <div class="pvfd-cinema-artist" data-pvfd-cinema="artist">—</div>
+            <div class="pvfd-cinema-subhead">
+              <div class="pvfd-cinema-album" data-pvfd-cinema="album">—</div>
+              <div class="pvfd-cinema-upnext" data-pvfd-cinema="upnext" aria-hidden="true">
+                <span class="pvfd-cinema-upnext-tag">UP NEXT</span>
+                <span class="pvfd-cinema-upnext-title" data-pvfd-cinema="upnext-title"></span>
+              </div>
+            </div>
+          </div>
+          <div class="pvfd-cinema-body" data-pvfd-cinema="body">
+            <div class="pvfd-cinema-lyrics" data-pvfd-cinema="lyrics" hidden></div>
+            <div class="pvfd-cinema-no-lyrics" data-pvfd-cinema="no-lyrics" hidden>
+              <div class="pvfd-cinema-no-lyrics-tag">NO LYRICS AVAILABLE</div>
+              <div class="pvfd-cinema-no-lyrics-title" data-pvfd-cinema="big-title">—</div>
+              <div class="pvfd-cinema-no-lyrics-bars" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+            <div class="pvfd-cinema-body-status" data-pvfd-cinema="body-status">LOADING…</div>
+          </div>
+          <div class="pvfd-cinema-controls">
+            <div class="pvfd-cinema-progress" data-pvfd-cinema="progress-track" title="Seek">
+              <div class="pvfd-cinema-progress-fill" data-pvfd-cinema="progress-fill"></div>
+            </div>
+            <div class="pvfd-cinema-times">
+              <span data-pvfd-cinema="time-elapsed">0:00</span>
+              <span data-pvfd-cinema="time-total">0:00</span>
+            </div>
+            <div class="pvfd-cinema-transport">
+              <button class="pvfd-cinema-btn pvfd-cinema-btn-toggle" type="button" data-pvfd-cinema-ctrl="shuffle" title="Shuffle" aria-label="Shuffle">&#8646;&#xFE0E;</button>
+              <button class="pvfd-cinema-btn" type="button" data-pvfd-cinema-ctrl="prev" title="Previous" aria-label="Previous">&#9198;&#xFE0E;</button>
+              <button class="pvfd-cinema-btn pvfd-cinema-btn-play" type="button" data-pvfd-cinema-ctrl="play" title="Play / pause" aria-label="Play or pause">&#9654;&#xFE0E;</button>
+              <button class="pvfd-cinema-btn" type="button" data-pvfd-cinema-ctrl="next" title="Next" aria-label="Next">&#9197;&#xFE0E;</button>
+              <button class="pvfd-cinema-btn pvfd-cinema-btn-toggle" type="button" data-pvfd-cinema-ctrl="repeat" title="Repeat" aria-label="Repeat">&#8635;&#xFE0E;</button>
+              <button class="pvfd-cinema-btn pvfd-cinema-btn-heart" type="button" data-pvfd-cinema-ctrl="heart" title="Save to liked" aria-label="Save to liked">&#9825;&#xFE0E;</button>
+            </div>
+            <div class="pvfd-cinema-volume">
+              <span class="pvfd-cinema-volume-label">VOL</span>
+              <input class="pvfd-cinema-volume-slider" type="range" min="0" max="100" value="50" data-pvfd-cinema="volume" aria-label="Volume" />
+              <span class="pvfd-cinema-volume-value" data-pvfd-cinema="volume-value">50%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pvfd-cinema-rail" data-pvfd-cinema="rail">
+        <button class="pvfd-cinema-rail-grip" type="button" data-pvfd-cinema="rail-grip" title="Display menus" aria-label="Open display menus"><span class="pvfd-cinema-rail-grip-bar" aria-hidden="true"></span></button>
+        <div class="pvfd-cinema-rail-keys">
+          <button class="pvfd-cinema-rail-key" type="button" data-pvfd-cinema-rail="play">PLAY</button>
+          <button class="pvfd-cinema-rail-key" type="button" data-pvfd-cinema-rail="queue">QUEUE</button>
+          <button class="pvfd-cinema-rail-key" type="button" data-pvfd-cinema-rail="tint">TINT</button>
+          <button class="pvfd-cinema-rail-key pvfd-cinema-rail-toggle" type="button" data-pvfd-cinema-rail="pulse" title="PULSE: live audio reactivity" aria-pressed="false">PULSE</button>
+          <button class="pvfd-cinema-rail-key pvfd-cinema-rail-toggle" type="button" data-pvfd-cinema-rail="scope" title="FACE: pop the display off the deck (DFS)" aria-pressed="false">FACE</button>
+        </div>
+      </div>
+      <div class="pvfd-cinema-curtain" data-pvfd-cinema="curtain" aria-hidden="true">
+        <div class="pvfd-cinema-curtain-scanline" aria-hidden="true"></div>
+      </div>
+    `;
+    pvfdCinemaEl.querySelector("[data-pvfd-cinema='rail-grip']").addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (pvfdCinemaPanel) { setPvfdCinemaPanel(""); return; }
+      setPvfdCinemaRail(!pvfdCinemaRailOpen);
+    });
+    pvfdCinemaEl.querySelectorAll("[data-pvfd-cinema-rail]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const key = btn.getAttribute("data-pvfd-cinema-rail");
+        // PULSE is the one key that is not a door. It runs the same toggle the
+        // chassis menu does - one PULSE machine, two doors, the way TINT works
+        // - and deliberately leaves the rail out, because the whole point of
+        // having it here is watching the matrix deploy without the display
+        // being dismissed to reach the switch. The click is the user gesture
+        // the capture prompt needs.
+        if (key === "pulse") {
+          safe(toggleLogoGlowMode);
+          return;
+        }
+        // FACE pops the display off the deck; like PULSE it is a switch, not
+        // a door, and the click is the user gesture the PiP request requires.
+        if (key === "scope") {
+          safe(togglePvfdScope);
+          return;
+        }
+        setPvfdCinemaPanel(key);
+      });
+    });
+    pvfdCinemaEl.querySelector("[data-pvfd-cinema='panel-close']").addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      setPvfdCinemaPanel("");
+    });
+    // ONE listener for every library row, rather than a listener per row
+    // rebuilt on each render. Rows carry data-pvfd-lib; the play key inside a
+    // row carries its own, and closest() finds the innermost, so pressing the
+    // key plays and pressing the rest of the row opens.
+    const panelBody = pvfdCinemaEl.querySelector("[data-pvfd-cinema='panel-body']");
+    panelBody.addEventListener("click", (e) => {
+      const hit = e.target && e.target.closest && e.target.closest("[data-pvfd-lib]");
+      if (!hit) return;
+      e.preventDefault(); e.stopPropagation();
+      safe(() => handlePvfdLibraryHit(hit));
+    });
+    // Enter only, deliberately: Space stays with the display's play/pause.
+    panelBody.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      const hit = e.target && e.target.closest && e.target.closest("[data-pvfd-lib]");
+      if (!hit) return;
+      e.preventDefault(); e.stopPropagation();
+      safe(() => handlePvfdLibraryHit(hit));
+    });
+    // Pressing the matrix cycles what it shows. The surface being changed is
+    // the one under the finger, the way pressing the artwork toggles the
+    // dither, so this needs no chrome of its own.
+    pvfdCinemaEl.querySelector("[data-pvfd-cinema='mosaic']").addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      safe(cyclePvfdMosaicMode);
+    });
+    // The panel lives inside the art frame, whose own click toggles the
+    // dither - keep panel clicks from bubbling into that.
+    pvfdCinemaEl.querySelector("[data-pvfd-cinema='panel']").addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+    pvfdCinemaEl.querySelector("[data-pvfd-cinema='close']").addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      setPvfdCinemaOpen(false);
+    });
+
+    // True browser fullscreen — element-level requestFullscreen so the cinema
+    // overlay becomes the viewport, hiding window chrome/title bar.
+    pvfdCinemaEl.querySelector("[data-pvfd-cinema='fs']").addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      togglePvfdCinemaFullscreen();
+    });
+
+    // Control surface wiring — Spicetify.Player methods + live state echo.
+    const q = (sel) => pvfdCinemaEl.querySelector(sel);
+    const ctrl = (which, fn) => {
+      const btn = pvfdCinemaEl.querySelector(`[data-pvfd-cinema-ctrl='${which}']`);
+      if (btn) btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); safe(fn); });
+    };
+    // Toggle wrappers also schedule a refresh after the action — Spicetify's
+    // own events sometimes lag behind, leaving the button stale.
+    const tap = (fn) => { safe(fn); setTimeout(refreshPvfdCinemaControlState, 180); };
+    ctrl("play",    () => Spicetify.Player.togglePlay());
+    ctrl("prev",    () => Spicetify.Player.back());
+    ctrl("next",    () => Spicetify.Player.next());
+    ctrl("shuffle", () => tap(() => Spicetify.Player.toggleShuffle()));
+    ctrl("repeat",  () => tap(() => Spicetify.Player.toggleRepeat()));
+    ctrl("heart",   () => tap(() => Spicetify.Player.toggleHeart()));
+
+    // Click the art itself to dither it. This lives here rather than in the
+    // CUSTOMIZE menu on purpose: it only ever affects the full screen display,
+    // so the control belongs on the thing it changes, where you can see the
+    // result as you toggle it. It also keeps the menu at six rows — the panel
+    // fits those exactly, and a seventh would push it into scrolling.
+    // The label is a hover-only ::before on the frame; see user.css.
+    const artFrame = q(".pvfd-cinema-art-frame");
+    if (artFrame) {
+      artFrame.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (pvfdCinemaPanel) return;   // a panel is covering the art
+        cycleArtPixel();
+      });
+    }
+    // Setting src is asynchronous, so the first draw attempt usually finds an
+    // image with no pixels yet. Redraw once it has actually decoded.
+    const artImg = q("[data-pvfd-cinema='art']");
+    if (artImg) artImg.addEventListener("load", () => drawPvfdArtPixels());
+
+    // Progress track — pointerdown + drag + release to seek. While dragging
+    // the fill follows the pointer immediately; final seek fires on release.
+    const progressTrack = q("[data-pvfd-cinema='progress-track']");
+    const progressFill  = q("[data-pvfd-cinema='progress-fill']");
+    if (progressTrack && progressFill) {
+      let dragFrac = null;
+      const fracFromEvent = (e) => {
+        const rect = progressTrack.getBoundingClientRect();
+        return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      };
+      progressTrack.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        progressTrack.setPointerCapture && progressTrack.setPointerCapture(e.pointerId);
+        progressTrack.classList.add("dragging");
+        dragFrac = fracFromEvent(e);
+        progressFill.style.transition = "none";
+        progressFill.style.width = `${(dragFrac * 100).toFixed(2)}%`;
+      });
+      progressTrack.addEventListener("pointermove", (e) => {
+        if (dragFrac == null) return;
+        dragFrac = fracFromEvent(e);
+        progressFill.style.width = `${(dragFrac * 100).toFixed(2)}%`;
+      });
+      const endProgressDrag = (e) => {
+        if (dragFrac == null) return;
+        const frac = dragFrac;
+        dragFrac = null;
+        progressTrack.classList.remove("dragging");
+        progressFill.style.transition = "";
+        const dur = safeReturn(() => Spicetify.Player.getDuration(), 0);
+        if (dur > 0) safe(() => Spicetify.Player.seek(frac * dur));
+      };
+      progressTrack.addEventListener("pointerup", endProgressDrag);
+      progressTrack.addEventListener("pointercancel", endProgressDrag);
+      progressTrack.addEventListener("lostpointercapture", endProgressDrag);
+    }
+
+    // Volume slider — bidirectional. Input fires while dragging; also update
+    // the % display inline so it doesn't wait for the next state-refresh tick.
+    const volSlider = q("[data-pvfd-cinema='volume']");
+    const volValue  = q("[data-pvfd-cinema='volume-value']");
+    if (volSlider) {
+      volSlider.addEventListener("input", (e) => {
+        const pct = Number(e.target.value);
+        if (volValue) volValue.textContent = `${pct}%`;
+        safe(() => Spicetify.Player.setVolume(pct / 100));
+      });
+    }
+
+    document.body.appendChild(pvfdCinemaEl);
+    return pvfdCinemaEl;
+  }
+
+  // Spicetify derives progress as positionAsOfTimestamp + (Date.now() - state
+  // .timestamp). When a context arrives with that state zeroed - the Liked
+  // Songs collection does exactly that on this client - the subtraction leaves
+  // Date.now() itself, and the readout printed the Unix epoch as an elapsed
+  // time: 29765988:41 against a 0:00 duration (owner report).
+  //
+  // Nothing downstream can tell that from a real number, and it does not only
+  // spoil the readout - the same value drives which lyric is lit, so a bad read
+  // parks the sweep on the last line of the song. Caught once, here, so every
+  // consumer gets the same sanitised pair.
+  function pvfdPlaybackTimes() {
+    let dur = safeReturn(() => Spicetify.Player.getDuration(), 0);
+    let prog = safeReturn(() => Spicetify.Player.getProgress(), 0);
+    if (!Number.isFinite(dur) || dur < 0) dur = 0;
+    if (!Number.isFinite(prog) || prog < 0) prog = 0;
+    // A position past the end of the track, or any position at all with no
+    // duration to measure it against, is not a position.
+    if (dur <= 0 || prog > dur + 2000) prog = 0;
+    return { prog, dur };
+  }
+
+  function pvfdFmtTime(ms) {
+    if (!Number.isFinite(ms) || ms < 0) return "0:00";
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m}:${r < 10 ? "0" : ""}${r}`;
+  }
+
+  function tickPvfdCinemaControls() {
+    if (!pvfdCinemaOpen) return;
+    const cinema = getPvfdCinemaEl();
+    const trackEl = cinema.querySelector("[data-pvfd-cinema='progress-track']");
+    const draggingProgress = trackEl && trackEl.classList.contains("dragging");
+    const { prog, dur } = pvfdPlaybackTimes();
+    if (!draggingProgress) {
+      const fillEl = cinema.querySelector("[data-pvfd-cinema='progress-fill']");
+      if (fillEl && dur > 0) {
+        fillEl.style.width = `${Math.min(100, (prog / dur) * 100).toFixed(2)}%`;
+      }
+      // Through setTextIfChanged, not textContent: see the note there. This
+      // tick runs every 200ms, and each direct write was one full-document
+      // walk in Spicetify's wrapper.
+      setTextIfChanged(cinema.querySelector("[data-pvfd-cinema='time-elapsed']"), pvfdFmtTime(prog));
+    }
+    setTextIfChanged(cinema.querySelector("[data-pvfd-cinema='time-total']"), pvfdFmtTime(dur));
+    // Repeat-one changes what is actually next; an open queue panel would
+    // otherwise keep the context's order until something else rebuilt it.
+    const loop = pvfdRepeatOne();
+    if (pvfdRepeatOneWas !== null && loop !== pvfdRepeatOneWas && pvfdCinemaPanel === "queue") {
+      safe(renderPvfdCinemaQueue);
+    }
+    pvfdRepeatOneWas = loop;
+  }
+
+  function refreshPvfdCinemaControlState() {
+    if (!pvfdCinemaOpen) return;
+    const cinema = getPvfdCinemaEl();
+    const playing = safeReturn(() => Spicetify.Player.isPlaying(), false);
+    const playBtn = cinema.querySelector("[data-pvfd-cinema-ctrl='play']");
+    if (playBtn) playBtn.innerHTML = playing ? "&#9208;&#xFE0E;" : "&#9654;&#xFE0E;";
+
+    // Repeat: 0 = off, 1 = repeat-context (all), 2 = repeat-track (one).
+    // Shuffle: boolean. Heart: boolean. Use sync getters when available, fall
+    // back to Player.data shape for older Spicetify builds.
+    const data = safeReturn(() => Spicetify.Player.data, null);
+    const repeatMode = safeReturn(() => Spicetify.Player.getRepeat(), null);
+    let repeatVal;
+    if (typeof repeatMode === "number") repeatVal = repeatMode;
+    else if (data && data.options) {
+      repeatVal = data.options.repeatingTrack ? 2 : data.options.repeatingContext ? 1 : 0;
+    } else { repeatVal = 0; }
+
+    let shuffling = safeReturn(() => Spicetify.Player.getShuffle(), null);
+    if (shuffling === null) shuffling = !!(data && data.options && (data.options.shufflingContext || data.options.shuffling_context));
+
+    let liked = safeReturn(() => Spicetify.Player.getHeart && Spicetify.Player.getHeart(), null);
+    if (liked === null) {
+      const meta = data && data.item && data.item.metadata;
+      liked = !!(meta && (meta.has_liked === "true" || meta.has_liked === true));
+    }
+
+    const shuffleBtn = cinema.querySelector("[data-pvfd-cinema-ctrl='shuffle']");
+    const repeatBtn  = cinema.querySelector("[data-pvfd-cinema-ctrl='repeat']");
+    const heartBtn   = cinema.querySelector("[data-pvfd-cinema-ctrl='heart']");
+    if (shuffleBtn) shuffleBtn.classList.toggle("active", !!shuffling);
+
+    // Shuffle REORDERS what is coming, so an open queue panel is stale the
+    // moment it is pressed - it went on showing the pre-shuffle order until
+    // something else happened to rebuild it (owner report). Read off the state
+    // rather than off our own key, so the chassis control, Spotify's own button
+    // and the keyboard shortcut all count. One boolean compare per tick; the
+    // rebuild only runs on the transition itself.
+    if (pvfdShuffleWas !== null && !!shuffling !== pvfdShuffleWas && pvfdCinemaPanel === "queue") {
+      safe(renderPvfdCinemaQueue);
+      // And again shortly after: the reordered queue can land a beat behind the
+      // flag that announced it, the same lag the songchange rebuild allows for.
+      window.setTimeout(() => {
+        if (pvfdCinemaOpen && pvfdCinemaPanel === "queue") safe(renderPvfdCinemaQueue);
+      }, 350);
+    }
+    pvfdShuffleWas = !!shuffling;
+    if (repeatBtn) {
+      // ↻ for repeat-all, ↻ + ONE label for repeat-track, plain when off.
+      repeatBtn.classList.toggle("active", repeatVal > 0);
+      repeatBtn.classList.toggle("repeat-one", repeatVal === 2);
+      const baseIcon = "&#8635;&#xFE0E;";
+      repeatBtn.innerHTML = repeatVal === 2 ? `${baseIcon}<sub class="pvfd-cinema-btn-sub">1</sub>` : baseIcon;
+      repeatBtn.title = repeatVal === 0 ? "Repeat: off" : repeatVal === 1 ? "Repeat: all" : "Repeat: one";
+    }
+    if (heartBtn) {
+      heartBtn.classList.toggle("active", !!liked);
+      // Filled ♥ when liked, hollow ♡ otherwise.
+      heartBtn.innerHTML = liked ? "&#9829;&#xFE0E;" : "&#9825;&#xFE0E;";
+      heartBtn.title = liked ? "Remove from Liked Songs" : "Save to Liked Songs";
+    }
+
+    const vol = safeReturn(() => Spicetify.Player.getVolume(), 0.5);
+    const volSlider = cinema.querySelector("[data-pvfd-cinema='volume']");
+    const volValue  = cinema.querySelector("[data-pvfd-cinema='volume-value']");
+    if (volSlider && document.activeElement !== volSlider) {
+      volSlider.value = String(Math.round(vol * 100));
+    }
+    if (volValue) volValue.textContent = `${Math.round(vol * 100)}%`;
+  }
+
+  // Lyrics state — keyed per trackUri; entries are arrays of {time, text}.
+  // time is ms since track start, null = unsynced line.
+  const pvfdLyricsCache = new Map();
+  let pvfdCurrentLyrics = null;       // [{time, text}, ...] or null
+  let pvfdCurrentLyricsTrackUri = "";
+  let pvfdLyricsActiveIdx = -1;
+  let pvfdLyricsProgressTimer = null;
+  // After a track change + lyrics render, Spicetify's getProgress() can
+  // briefly report the previous track's position. This timestamp suppresses
+  // active-line computation until progress has had a chance to align.
+  let pvfdLyricsGuardUntil = 0;
+
+  function fetchPvfdLyrics(trackUri) {
+    if (!trackUri) return Promise.resolve(null);
+    if (pvfdLyricsCache.has(trackUri)) {
+      return Promise.resolve(pvfdLyricsCache.get(trackUri));
+    }
+    const id = trackUri.split(":").pop();
+    // Two transports. CosmosAsync is the legacy one and still goes first, so
+    // older clients behave exactly as before. On Spotify 1.3 every Cosmos
+    // resolver is gone ("Resolver not found", https included - issue #45), but
+    // the same spclient endpoint answers a plain fetch carrying the session
+    // token. That keeps the display on first-party lyrics, with no outside
+    // service ever told what is playing.
+    const cosmos = safeReturn(() => Spicetify.CosmosAsync, null);
+    const viaCosmos = (url) => {
+      if (!cosmos || typeof cosmos.get !== "function") return Promise.reject(new Error("no cosmos"));
+      try { return Promise.resolve(cosmos.get(url)); } catch (e) { return Promise.reject(e); }
+    };
+    const viaFetch = (url) => {
+      const token = safeReturn(() => Spicetify.Platform.Session.accessToken, "") ||
+        safeReturn(() => Spicetify.Platform.AuthorizationAPI.getState().token.accessToken, "");
+      if (!token || url.indexOf("https://") !== 0) return Promise.reject(new Error("no fetch transport"));
+      return fetch(url, { headers: { authorization: "Bearer " + token, "app-platform": "WebPlayer", accept: "application/json" } })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error("http " + r.status))));
+    };
+    const getJson = (url) => viaCosmos(url).catch(() => viaFetch(url));
+
+    // Try modern color-lyrics endpoint first, then legacy lyrics-views as fallback.
+    const endpoints = [
+      `https://spclient.wg.spotify.com/color-lyrics/v2/track/${id}?format=json&vocalRemoval=false&market=from_token`,
+      `wg://lyrics-views/v2/track/${id}?format=json&vocalRemoval=false&market=from_token`,
+      `https://spclient.wg.spotify.com/lyrics-views/v2/track/${id}?format=json&vocalRemoval=false&market=from_token`
+    ];
+
+    const parse = (res) => {
+      if (!res) return null;
+      // color-lyrics returns { colors, lyrics: { syncType, lines } }
+      const lyricsObj = (res.lyrics && res.lyrics.lines) ? res.lyrics
+                     : (res.colorLyrics && res.colorLyrics.lyrics) ? res.colorLyrics.lyrics
+                     : null;
+      if (!lyricsObj || !Array.isArray(lyricsObj.lines) || !lyricsObj.lines.length) return null;
+
+      const rawTimes = lyricsObj.lines.map((l) => {
+        const r = l.startTimeMs != null ? parseInt(l.startTimeMs, 10) : (l.time != null ? l.time : null);
+        return Number.isFinite(r) ? r : null;
+      });
+      // If <2 distinct positive times, the track is effectively unsynced —
+      // Spotify often returns plain text with all startTimeMs=0. Treat the
+      // whole track as unsynced (no timing → no active-line walk).
+      const distinct = new Set(rawTimes.filter((t) => Number.isFinite(t) && t > 0));
+      const treatAsUnsynced = distinct.size < 2
+                            || (lyricsObj.syncType && lyricsObj.syncType.toString().toUpperCase() === "UNSYNCED");
+
+      // Strictly-increasing monotonic walk for synced tracks (drops bogus
+      // duplicate / out-of-order placeholders).
+      let lastTime = -1;
+      const walked = lyricsObj.lines.map((l, i) => {
+        let t = null;
+        if (!treatAsUnsynced) {
+          const r = rawTimes[i];
+          if (Number.isFinite(r) && r > lastTime) { t = r; lastTime = r; }
+        }
+        return { time: t, dur: null, text: (l.words || l.text || "").trim() };
+      });
+
+      // How long each line is actually on screen. Drives the scan sweep so it
+      // spans the line instead of running on a fixed clock — on fast/rap lyrics
+      // a fixed loop gets cut off part-way down.
+      //
+      // Computed here for two reasons that both matter:
+      //   * BEFORE the filter below. Given "A@10s, ♪@12s, B@20s", measuring
+      //     after the music-note line is dropped gives A ten seconds when A
+      //     really ends at twelve.
+      //   * BACKWARD, carrying the next finite time, rather than reading
+      //     lines[i+1].time. The monotonic walk above sets time:null on any
+      //     out-of-order line, so the immediate neighbour is not reliably a
+      //     number, and a forward scan for the next good one would be O(n^2).
+      let nextTime = null;
+      for (let i = walked.length - 1; i >= 0; i--) {
+        const cur = walked[i];
+        if (cur.time != null && nextTime != null && nextTime > cur.time) {
+          cur.dur = nextTime - cur.time;
+        }
+        if (cur.time != null) nextTime = cur.time;
+      }
+
+      const parsed = walked.filter((l) => l.text && l.text !== "♪");
+      return parsed.length ? parsed : null;
+    };
+
+    const tryNext = (i) => {
+      if (i >= endpoints.length) { pvfdLyricsCache.set(trackUri, null); return null; }
+      return getJson(endpoints[i])
+        .then((res) => {
+          const parsed = parse(res);
+          if (parsed) { pvfdLyricsCache.set(trackUri, parsed); return parsed; }
+          return tryNext(i + 1);
+        })
+        .catch(() => tryNext(i + 1));
+    };
+    return tryNext(0);
+  }
+
+  // Third-party Korean/Japanese translation extensions patch Spotify's OWN
+  // lyrics view. The full screen display builds its own DOM from its own
+  // CosmosAsync fetch, so those extensions never see it and the translations
+  // disappear the moment you open it (discussion #39).
+  //
+  // Rather than reproduce what they do, read what they have already done.
+  // setPvfdCinemaOpen only overlays — it never navigates — so if the display
+  // was opened from the lyrics page, the translated nodes are still mounted
+  // underneath it and can simply be read off.
+  //
+  // Both DOM shapes are covered without knowing which extension is installed:
+  // Spotify and most extensions put the translation in a SIBLING of the text
+  // element, some append it INSIDE it. Reading the whole line and removing the
+  // original words handles either. lyricWords() already returns the original
+  // alone in both cases.
+  //
+  // Matched on normalised text, never on index — the fetch drops the music-note
+  // lines the DOM keeps, so the two lists desynchronise partway through a
+  // track. Same helper and the same accepted trade-off as stampLyricDurations:
+  // a repeated chorus line collapses to its first occurrence.
+  let pvfdLyricGraftTimer = 0;
+
+  function nativeLyricTranslations() {
+    const map = new Map();
+    const lines = safeReturn(
+      () => document.querySelectorAll(PVFD_LYRIC_LINE_SELECTOR),
+      null
+    );
+    if (!lines || !lines.length) return map;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const target = line.querySelector(PVFD_LYRIC_TEXT_SELECTOR) || line;
+      const orig = lyricWords(target);
+      if (!orig) continue;
+      const full = (line.textContent || "").trim();
+      if (!full.startsWith(orig)) continue;
+      const trans = full.slice(orig.length).trim();
+      // No extension, or one that rewrites in place rather than adding a second
+      // reading — either way there is nothing extra to carry across.
+      if (!trans || trans === orig) continue;
+      const key = pvfdLyricNorm(orig);
+      if (key && !map.has(key)) map.set(key, trans);
+    }
+    return map;
+  }
+
+  // Adds the second reading under each display line it can match. Separate from
+  // the render so it can be run again once an extension that translates
+  // asynchronously has caught up. Idempotent: a line already carrying its
+  // translation is skipped, so re-running costs one map lookup per line.
+  function graftPvfdLyricTranslations() {
+    const cinema = getPvfdCinemaEl();
+    const wrap = cinema && cinema.querySelector("[data-pvfd-cinema='lyrics']");
+    if (!wrap) return 0;
+    const map = nativeLyricTranslations();
+    if (!map.size) return 0;
+    const rows = wrap.querySelectorAll(".pvfd-cinema-lyric-line");
+    let n = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.querySelector(".pvfd-cinema-lyric-trans")) continue;
+      const span = row.querySelector(".pvfd-cinema-lyric-text");
+      if (!span) continue;
+      const trans = map.get(pvfdLyricNorm(span.textContent || ""));
+      if (!trans) continue;
+      const el = document.createElement("span");
+      el.className = "pvfd-cinema-lyric-trans";
+      el.textContent = trans;
+      row.appendChild(el);
+      // Only grafted rows are allowed to wrap. Turning wrapping on for every
+      // line would let a very long word push the text off the chevron's flex
+      // line on a narrow window, changing layout for tracks with no
+      // translation at all.
+      row.classList.add("has-trans");
+      n++;
+    }
+    return n;
+  }
+
+  function renderPvfdLyrics(lines) {
+    const cinema = getPvfdCinemaEl();
+    const wrap = cinema.querySelector("[data-pvfd-cinema='lyrics']");
+    if (!wrap) return;
+    pvfdLyricsGuardUntil = Date.now() + 1200;
+    wrap.innerHTML = "";
+
+    // Detect fully-unsynced lyrics — Spotify sometimes returns plain text
+    // with no timing data. Show a notice + render statically, no highlight.
+    const hasSynced = lines.some((l) => Number.isFinite(l.time));
+    wrap.classList.toggle("unsynced", !hasSynced);
+
+    // DSEG14 is a 14-segment font: it has glyphs for A-Z / 0-9 and nothing
+    // else, so Hangul, Kana, Kanji, Cyrillic etc. fall through to the fallback
+    // font per-character and render as broken-looking soup. Flag such tracks so
+    // the CSS can skip the DSEG14 retype for them (discussion #39).
+    //
+    // Tests for a non-Latin LETTER, not "any codepoint outside Latin": Spotify
+    // uses a lone music-note line for instrumental passages, and U+266A sits
+    // outside Latin, so a range test flags nearly every track as non-Latin and
+    // silently disables the segment font. Shares PVFD_NON_LATIN_RE with the
+    // native-lyrics guard so the two cannot drift apart.
+    //
+    // Block-level, not per-line: a per-line decision would swap the face
+    // mid-song, which reads as a bug.
+    const hasNonLatin = lines.some((l) => PVFD_NON_LATIN_RE.test(l.text));
+    wrap.classList.toggle("non-latin", hasNonLatin);
+
+    if (!hasSynced) {
+      const banner = document.createElement("div");
+      banner.className = "pvfd-cinema-lyric-unsync-banner";
+      banner.textContent = "These lyrics aren't synced to the song.";
+      wrap.appendChild(banner);
+    }
+
+    lines.forEach((line, i) => {
+      const div = document.createElement("div");
+      div.className = "pvfd-cinema-lyric-line";
+      div.dataset.idx = String(i);
+      div.dataset.time = line.time != null ? String(line.time) : "";
+      // The words go in their own span rather than straight into the line.
+      // The line is a flex row (the chevron is a flex item), so a scan overlay
+      // attached to the LINE would either become another flex item or, if
+      // absolutely positioned, span the full row and sit offset from the text
+      // by the chevron's width. Anchoring it to the span instead makes the
+      // overlay share the text's exact box. Mirrors the native-lyrics shape
+      // (.lyric > .text), which keeps the two CSS blocks symmetrical.
+      const span = document.createElement("span");
+      span.className = "pvfd-cinema-lyric-text";
+      span.textContent = line.text;
+      // content: attr() is the only way to duplicate the words into a
+      // pseudo-element; the scan clips a moving gradient inside those glyphs.
+      span.setAttribute("data-pvfd-t", line.text);
+      // Tie the sweep to how long this line is actually sung. Without it the
+      // animation runs on its own 4s clock and a short line vanishes with the
+      // band halfway down.
+      //
+      // Below ~0.9s a full traverse reads as a strobe, which is worse than a
+      // truncated sweep, so those lines get no scan at all rather than a flick.
+      // A null dur (last line, or unsynced) sets nothing and the CSS fallback
+      // applies.
+      //
+      if (Number.isFinite(line.dur) && line.dur > 0) {
+        if (line.dur < 900) {
+          span.setAttribute("data-pvfd-scan", "off");
+        } else {
+          // The sweep is a RHYTHM fitted to the line, not one stretched pass.
+          // One pass cannot start on the beat, finish with the lyric AND keep
+          // a smooth pace — pace times time is distance, and the distance is
+          // fixed. So: repeat at the proven pace, count chosen so the LAST
+          // pass lands exactly on the line's end. ceil(dur/2.8s) bounds every
+          // pass to at most 2.8s, inside the pace that never chopped; a line
+          // short enough for one pass keeps exactly one, as it always did.
+          const passes = Math.max(1, Math.ceil(line.dur / 2800));
+          span.style.setProperty("--pvfd-lyric-passes", String(passes));
+          span.style.setProperty(
+            "--pvfd-lyric-pass",
+            (line.dur / passes / 1000).toFixed(2) + "s"
+          );
+        }
+      }
+      div.appendChild(span);
+      if (line.time != null) {
+        div.classList.add("seekable");
+        div.title = "Click to jump to this line";
+        div.addEventListener("click", (e) => {
+          e.preventDefault(); e.stopPropagation();
+          const t = parseInt(div.dataset.time, 10);
+          if (Number.isFinite(t)) safe(() => Spicetify.Player.seek(t));
+        });
+      }
+      wrap.appendChild(div);
+    });
+    pvfdLyricsActiveIdx = -1;
+    // Carry across any translation a third-party extension has put on the
+    // native lyrics view. Once now, and once more shortly after for extensions
+    // that translate asynchronously and have not finished yet. Two attempts
+    // rather than a MutationObserver on Spotify's lyric list: the observer
+    // would stay live for the whole song to serve a case that is settled within
+    // a second of opening. Both calls no-op when there is nothing to graft.
+    safe(graftPvfdLyricTranslations);
+    if (pvfdLyricGraftTimer) clearTimeout(pvfdLyricGraftTimer);
+    pvfdLyricGraftTimer = setTimeout(() => {
+      pvfdLyricGraftTimer = 0;
+      safe(graftPvfdLyricTranslations);
+    }, 1200);
+    requestAnimationFrame(() => {
+      wrap.scrollTop = 0;
+      requestAnimationFrame(() => { wrap.scrollTop = 0; });
+    });
+  }
+
+  function tickPvfdLyrics() {
+    tickPvfdCinemaControls();
+    safe(tickPvfdCinemaAmbient);
+    if (!pvfdCinemaOpen || !pvfdCurrentLyrics) return;
+    // Unsynced lyrics → no active-line walk; just render statically.
+    if (!pvfdCurrentLyrics.some((l) => Number.isFinite(l.time))) return;
+    if (Date.now() < pvfdLyricsGuardUntil) return;
+    const { prog: progress, dur: duration } = pvfdPlaybackTimes();
+    if (duration > 0 && progress > duration + 1500) return;
+    let active = -1;
+    for (let i = 0; i < pvfdCurrentLyrics.length; i++) {
+      const t = pvfdCurrentLyrics[i].time;
+      if (t == null) continue;
+      if (t <= progress) active = i; else break;
+    }
+    if (active === pvfdLyricsActiveIdx) return;
+    pvfdLyricsActiveIdx = active;
+    const wrap = getPvfdCinemaEl().querySelector("[data-pvfd-cinema='lyrics']");
+    if (!wrap) return;
+    wrap.querySelectorAll(".pvfd-cinema-lyric-line.active").forEach((el) => el.classList.remove("active"));
+    if (active < 0) return;
+    const activeEl = wrap.querySelector(`.pvfd-cinema-lyric-line[data-idx='${active}']`);
+    if (activeEl) {
+      // How far the song already is INTO this line. The sweep starts from
+      // here rather than from zero, as a negative
+      // animation-delay — no per-frame JS, just one property write per line.
+      //
+      // This is not only for seeking. The active line is recomputed on a 200ms
+      // interval, so without it every line begins up to a fifth of a second
+      // late, every time — a constant lag rather than an occasional one. It
+      // also covers entering a line halfway: seeking, or opening the display
+      // mid-song, which previously restarted the animation from the beginning
+      // while the vocal was already halfway through.
+      //
+      // Written before the class lands, so the delay is in force at the moment
+      // the animation starts.
+      const span = activeEl.querySelector(".pvfd-cinema-lyric-text");
+      if (span) {
+        const into = Math.max(0, progress - (pvfdCurrentLyrics[active].time || 0));
+        setStyleIfChanged(span, "--pvfd-lyric-elapsed", (into / 1000).toFixed(2) + "s");
+      }
+      activeEl.classList.add("active");
+      activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
+  function startPvfdLyricsTicker() {
+    if (pvfdLyricsProgressTimer) return;
+    pvfdLyricsProgressTimer = setInterval(tickPvfdLyrics, 200);
+  }
+  function stopPvfdLyricsTicker() {
+    if (!pvfdLyricsProgressTimer) return;
+    clearInterval(pvfdLyricsProgressTimer);
+    pvfdLyricsProgressTimer = null;
+  }
+
+  function showPvfdLyricsOrFallback(trackUri) {
+    const cinema = getPvfdCinemaEl();
+    const lyricsEl = cinema.querySelector("[data-pvfd-cinema='lyrics']");
+    const noLyricsEl = cinema.querySelector("[data-pvfd-cinema='no-lyrics']");
+    const statusEl = cinema.querySelector("[data-pvfd-cinema='body-status']");
+    if (!lyricsEl || !noLyricsEl || !statusEl) return;
+
+    // Clear stale lyrics + active-idx immediately so the ticker can't match
+    // the new song's just-started progress against the previous song's
+    // lyric times (caused "song-end lyric flashing on song start").
+    pvfdCurrentLyrics = null;
+    pvfdLyricsActiveIdx = -1;
+
+    lyricsEl.hidden = true;
+    noLyricsEl.hidden = true;
+    statusEl.hidden = false;
+    statusEl.textContent = "LOADING LYRICS…";
+
+    fetchPvfdLyrics(trackUri).then((lines) => {
+      if (!pvfdCinemaOpen || trackUri !== pvfdCurrentLyricsTrackUri) return;
+      if (lines && lines.length) {
+        pvfdCurrentLyrics = lines;
+        renderPvfdLyrics(lines);
+        lyricsEl.hidden = false;
+        statusEl.hidden = true;
+        noLyricsEl.hidden = true;
+        startPvfdLyricsTicker();
+      } else {
+        // No lyrics — keep the ticker running anyway so progress/time/controls
+        // still update. tickPvfdLyrics short-circuits its lyrics work when
+        // pvfdCurrentLyrics is null but still calls tickPvfdCinemaControls.
+        pvfdCurrentLyrics = null;
+        lyricsEl.hidden = true;
+        statusEl.hidden = true;
+        noLyricsEl.hidden = false;
+        // Populate the big-title text with current track name.
+        const data = safeReturn(() => Spicetify.Player.data, null);
+        const item = data && data.item;
+        const bigTitle = (item && (item.name || (item.metadata && item.metadata.title))) || "—";
+        const bigEl = cinema.querySelector("[data-pvfd-cinema='big-title']");
+        if (bigEl) bigEl.textContent = bigTitle;
+      }
+    });
+  }
+
+  function updatePvfdCinemaTrackInfo() {
+    if (!pvfdCinemaOpen) return;
+    const cinema = getPvfdCinemaEl();
+    const data = safeReturn(() => Spicetify.Player.data, null);
+    const item = data && data.item;
+    if (!item) return;
+    const meta = item.metadata || {};
+    const title = item.name || meta.title || "—";
+    const artist = meta.artist_name || (item.artists && item.artists[0] && item.artists[0].name) || "—";
+    const album = meta.album_title || (item.album && item.album.name) || "—";
+    // OEL art mode draws from the MEDIUM (300px) rendition and downsamples it to
+    // PVFD_ART_PX in a canvas — see drawPvfdArtPixels. Spotify only publishes
+    // 64 / 300 / 640, and taking the 64px one directly gave ~10px blocks at a
+    // 1600px window, which read as too coarse. Downsampling ourselves lands
+    // between that and the ~2px the 300px source would give untouched.
+    const artUrl = artPixelEnabled
+      ? (meta.image_url || meta.image_large_url || meta.image_xlarge_url
+         || (item.images && item.images[0] && item.images[0].url) || "")
+      : (meta.image_xlarge_url || meta.image_large_url || meta.image_url
+         || (item.images && item.images[0] && item.images[0].url) || "");
+    const setText = (sel, text) => {
+      const el = cinema.querySelector(sel);
+      if (el && el.textContent !== text) el.textContent = text;
+    };
+    setText("[data-pvfd-cinema='title']", title);
+    setText("[data-pvfd-cinema='artist']", artist);
+    setText("[data-pvfd-cinema='album']", album);
+    const artEl = cinema.querySelector("[data-pvfd-cinema='art']");
+    if (artEl && artUrl && artEl.getAttribute("src") !== artUrl) {
+      artEl.setAttribute("src", artUrl);
+    }
+    drawPvfdArtPixels();
+    // Track switched → re-fetch lyrics for the new uri.
+    const trackUri = item.uri || "";
+    if (trackUri && trackUri !== pvfdCurrentLyricsTrackUri) {
+      pvfdCurrentLyricsTrackUri = trackUri;
+      showPvfdLyricsOrFallback(trackUri);
+    }
+  }
+
+  // EJECT-style transition timing — scanline + black curtain sweep across
+  // the screen before cinema reveals (enter) / after content hides (exit).
+  const PVFD_CINEMA_TRANSITION_MS = 700;
+  let pvfdCinemaTransitionTimer = null;
+
+  // ----- FSD rail + panels -------------------------------------------------
+  // The owner's design, replacing the failed SRC page cycle: a grip parked on
+  // the LEFT window edge (same vocabulary as the lyrics page's pull-out tab).
+  // Click slides out five keys in two families. PLAY, QUEUE and TINT are
+  // doors: each opens its panel OVER THE ALBUM ART, closed by the X. PULSE
+  // and FACE are switches: PULSE toggles live audio capture, FACE pops the
+  // display off the deck into its own window, and both stay lit as their
+  // state. Lyrics never stop; the panel covers art only and lives inside the
+  // art frame, so it tracks the art's box for free. All three panels are
+  // functional - PLAY runs the library, the queue lists what is coming, TINT
+  // sets the real tint through the same code the chassis menu uses. (An OEL
+  // clip picker sat here briefly - pointless, the takeover hides the chassis
+  // VFD that clip plays on.)
+  const PVFD_CINEMA_PANELS = ["play", "queue", "tint"];
+  let pvfdCinemaRailOpen = false;
+  let pvfdCinemaPanel = "";
+  // Last shuffle state seen by the control tick. null until the first read, so
+  // opening the display cannot look like a toggle.
+  let pvfdShuffleWas = null;
+  // Same idea for repeat-one, read on the control tick so Spotify's own
+  // button and the keyboard count as well as our key.
+  let pvfdRepeatOneWas = null;
+  // Repeat-one means the next thing that plays is THIS track again, whatever
+  // the context queue lists (owner report: UP NEXT and QUEUE went on naming
+  // the playlist's next songs while the song was on loop). Off the sampled
+  // state, so it is one cached compare.
+  function pvfdRepeatOne() {
+    return getSampledPlayerState().repeat === "ONE";
+  }
+  const PVFD_ART_SCAN_EVERY_MS = 45000;
+  let pvfdArtScanNextAt = 0;
+  let pvfdUpnextShown = false;
+
+  function setPvfdCinemaRail(open) {
+    pvfdCinemaRailOpen = !!open;
+    const cinema = getPvfdCinemaEl();
+    if (pvfdCinemaRailOpen) cinema.setAttribute("data-pvfd-rail", "open");
+    else cinema.removeAttribute("data-pvfd-rail");
+  }
+
+  function setPvfdCinemaPanel(name) {
+    if (PVFD_CINEMA_PANELS.indexOf(name) < 0) name = "";
+    pvfdCinemaPanel = name;
+    const cinema = getPvfdCinemaEl();
+    const panel = cinema.querySelector("[data-pvfd-cinema='panel']");
+    if (!name) {
+      cinema.removeAttribute("data-pvfd-panel");
+      if (panel) panel.setAttribute("aria-hidden", "true");
+      return;
+    }
+    cinema.setAttribute("data-pvfd-panel", name);
+    if (panel) panel.setAttribute("aria-hidden", "false");
+    const body = cinema.querySelector("[data-pvfd-cinema='panel-body']");
+    if (body) body.textContent = "";
+    if (name === "queue") {
+      setPvfdCinemaPanelTitle("UP NEXT");
+      if (body) {
+        const list = document.createElement("div");
+        list.className = "pvfd-cinema-queue-list";
+        list.setAttribute("data-pvfd-cinema", "queue-list");
+        body.appendChild(list);
+      }
+      safe(renderPvfdCinemaQueue);
+    } else if (name === "play") {
+      // Always opens at the top level. A panel that reopened three folders deep
+      // would be a puzzle, not a shortcut.
+      pvfdLibView = { level: "root", uri: "", name: "" };
+      setPvfdCinemaPanelTitle("LIBRARY");
+      // Warm the user id here so Liked Songs can be played the moment it is
+      // pressed; the lookup is async and a press cannot wait on it.
+      safe(resolvePvfdUserId);
+      safe(renderPvfdCinemaLibrary);
+    } else {
+      setPvfdCinemaPanelTitle("TINT");
+      safe(renderPvfdCinemaTint);
+    }
+    setPvfdCinemaRail(false);
+  }
+
+  // UP NEXT — read straight off Spicetify's queue. textContent only, so a
+  // track title can never inject markup. Rendered on panel entry, on opening
+  // the display, and on songchange while open — no per-frame work.
+  function renderPvfdCinemaQueue() {
+    const cinema = getPvfdCinemaEl();
+    const list = cinema.querySelector("[data-pvfd-cinema='queue-list']");
+    if (!list) return;
+    list.textContent = "";
+    // Shuffle-from-collection queues arrive with unhydrated metadata; the
+    // player state names at least the immediate next tracks, so borrow those
+    // titles by uri before falling back to a dash.
+    const hydrated = new Map();
+    (safeReturn(() => Spicetify.Player.data.nextItems, null) || []).forEach((t) => {
+      const uri = t.uri || (t.contextTrack && t.contextTrack.uri);
+      const nm = t.name || (t.metadata && t.metadata.title);
+      if (uri && nm) hydrated.set(uri, {
+        title: nm,
+        artist_name: (t.artists && t.artists[0] && t.artists[0].name) ||
+                     (t.metadata && t.metadata.artist_name) || "",
+      });
+    });
+    const metaOf = (t) => {
+      if (!t) return null;
+      const m = t.metadata || (t.contextTrack && t.contextTrack.metadata) || null;
+      if (m && (m.title || m.name)) return m;
+      const uri = t.uri || (t.contextTrack && t.contextTrack.uri);
+      return (uri && hydrated.get(uri)) || m;
+    };
+    const rowFor = (m, idx, current) => {
+      const row = document.createElement("div");
+      row.className = "pvfd-cinema-queue-row" + (current ? " current" : "");
+      const n = document.createElement("span");
+      n.className = "pvfd-cinema-queue-idx";
+      n.textContent = current ? "\u25B8" : String(idx).padStart(2, "0");
+      const t = document.createElement("span");
+      t.className = "pvfd-cinema-queue-text";
+      const title = (m && (m.title || m.name)) || "\u2014";
+      const artist = (m && (m.artist_name || m.artist)) || "";
+      t.textContent = artist ? title + "  \u2014  " + artist : title;
+      row.appendChild(n);
+      row.appendChild(t);
+      return row;
+    };
+    const now = safeReturn(() => Spicetify.Player.data.item, null);
+    if (now) list.appendChild(rowFor(now.metadata || { title: now.name }, 0, true));
+    if (now && pvfdRepeatOne()) {
+      // On loop the only thing coming is this track again. One row says so,
+      // marked with the repeat glyph rather than a position, and the note
+      // names the reason so the empty context list does not read as a bug.
+      const again = rowFor(now.metadata || { title: now.name }, 1, false);
+      const idx = again.querySelector(".pvfd-cinema-queue-idx");
+      if (idx) idx.textContent = "↻";
+      list.appendChild(again);
+      const note = document.createElement("div");
+      note.className = "pvfd-cinema-queue-empty";
+      note.textContent = "REPEAT ONE";
+      list.appendChild(note);
+      return;
+    }
+    const next = safeReturn(() => Spicetify.Queue.nextTracks, null) || [];
+    let shown = 0;
+    for (let i = 0; i < next.length && shown < 20; i++) {
+      const m = metaOf(next[i]);
+      if (!m) continue;
+      shown++;
+      list.appendChild(rowFor(m, shown, false));
+    }
+    if (!shown && !now) {
+      const empty = document.createElement("div");
+      empty.className = "pvfd-cinema-queue-empty";
+      empty.textContent = "QUEUE EMPTY";
+      list.appendChild(empty);
+    }
+  }
+
+  // ----- PLAY: a small library inside the display -------------------------
+  // Third key on the rail, same panel over the album art as the other two: the
+  // saved playlists and Liked Songs, one level deep, and every row plays.
+  //
+  // Two gestures per collection row, which is the whole design: the play key
+  // starts it, the rest of the row opens it so a single track can be picked.
+  // Playing closes the panel — the display behind it IS the confirmation,
+  // and the alternative is a menu sitting over the art you just chose.
+  //
+  // Nothing here polls or observes. Rows are built on open and on navigation,
+  // the rootlist is fetched once per session, and visited collections are kept
+  // in a small map so stepping back and forth costs nothing.
+  //
+  // Everything reaches Spotify through Platform APIs whose names have moved
+  // between client versions, so each call is a short chain of candidates and a
+  // miss anywhere lands on a stated UNAVAILABLE rather than an empty panel.
+  const PVFD_LIKED_URI = "spotify:collection:tracks";
+  const PVFD_LIB_MAX = 60;          // rows per level
+  const PVFD_LIB_CACHE_MAX = 12;    // visited collections kept
+  let pvfdLibView = { level: "root", uri: "", name: "" };
+  let pvfdLibToken = 0;             // generation guard for async renders
+  let pvfdLibPlaylists = null;      // rootlist, once per session
+  const pvfdLibTracks = new Map();  // collection uri -> rows
+
+  function setPvfdCinemaPanelTitle(text) {
+    const el = getPvfdCinemaEl().querySelector("[data-pvfd-cinema='panel-title']");
+    if (el) el.textContent = text;
+  }
+
+  function pvfdLibStatusRow(text) {
+    const el = document.createElement("div");
+    el.className = "pvfd-cinema-lib-status";
+    el.textContent = text;
+    return el;
+  }
+
+  function pvfdLibRow(o) {
+    const row = document.createElement("div");
+    row.className = "pvfd-cinema-lib-row" + (o.cls ? " " + o.cls : "");
+    row.setAttribute("data-pvfd-lib", o.kind);
+    row.setAttribute("role", "button");
+    row.tabIndex = 0;
+    if (o.uri) row.setAttribute("data-pvfd-uri", o.uri);
+    if (o.name) row.setAttribute("data-pvfd-name", o.name);
+    if (o.index != null) row.setAttribute("data-pvfd-index", String(o.index));
+    const idx = document.createElement("span");
+    idx.className = "pvfd-cinema-lib-idx";
+    idx.textContent = o.mark;
+    const text = document.createElement("span");
+    text.className = "pvfd-cinema-lib-text";
+    text.textContent = o.text;                 // textContent: a playlist name is user data
+    row.appendChild(idx);
+    row.appendChild(text);
+    if (o.playKey) {
+      const key = document.createElement("button");
+      key.type = "button";
+      key.className = "pvfd-cinema-lib-key";
+      key.setAttribute("data-pvfd-lib", "play");
+      key.setAttribute("data-pvfd-uri", o.uri);
+      key.title = "Play " + o.text;
+      key.setAttribute("aria-label", "Play " + o.text);
+      key.textContent = "\u25B8";
+      row.appendChild(key);
+    }
+    return row;
+  }
+
+  // The saved playlists. Folders are flattened rather than browsable: at this
+  // size a nested tree is more clicks than the list it is hiding.
+  function fetchPvfdPlaylists() {
+    const P = safeReturn(() => Spicetify.Platform, null);
+    const call =
+      (P && P.RootlistAPI && P.RootlistAPI.getContents &&
+        (() => P.RootlistAPI.getContents({ limit: PVFD_LIB_MAX }))) ||
+      (P && P.LibraryAPI && P.LibraryAPI.getContents &&
+        (() => P.LibraryAPI.getContents({ filters: ["Playlists"], limit: PVFD_LIB_MAX })));
+    if (!call) return Promise.resolve(null);
+    return Promise.resolve()
+      .then(call)
+      .then((res) => {
+        const out = [];
+        const walk = (list, depth) => {
+          (list || []).forEach((it) => {
+            if (!it) return;
+            if (Array.isArray(it.items) && depth < 4) return walk(it.items, depth + 1);
+            const uri = it.uri || (it.playlist && it.playlist.uri) || "";
+            const name = it.name || (it.playlist && it.playlist.name) || "";
+            if (uri && name && uri.indexOf(":playlist:") > 0) out.push({ uri, name });
+          });
+        };
+        walk((res && (res.items || res.rows)) || [], 0);
+        return out.slice(0, PVFD_LIB_MAX);
+      })
+      .catch(() => null);
+  }
+
+  function fetchPvfdCollection(uri) {
+    if (pvfdLibTracks.has(uri)) return Promise.resolve(pvfdLibTracks.get(uri));
+    const P = safeReturn(() => Spicetify.Platform, null);
+    const call = uri === PVFD_LIKED_URI
+      ? (P && P.LibraryAPI && P.LibraryAPI.getTracks &&
+          (() => P.LibraryAPI.getTracks({ limit: PVFD_LIB_MAX })))
+      : (P && P.PlaylistAPI && P.PlaylistAPI.getContents &&
+          (() => P.PlaylistAPI.getContents(uri, { limit: PVFD_LIB_MAX })));
+    if (!call) return Promise.resolve(null);
+    return Promise.resolve()
+      .then(call)
+      .then((res) => {
+        const items = (res && (res.items || res.tracks || res.rows)) || [];
+        const rows = [];
+        items.forEach((it) => {
+          const t = (it && (it.track || it)) || null;
+          if (!t || !t.uri) return;
+          const artists = t.artists || (t.album && t.album.artists) || [];
+          rows.push({
+            uri: t.uri,
+            name: t.name || t.title || "\u2014",
+            artist: (artists[0] && artists[0].name) || "",
+          });
+        });
+        const capped = rows.slice(0, PVFD_LIB_MAX);
+        // Oldest out first, so a long session cannot accumulate collections.
+        if (pvfdLibTracks.size >= PVFD_LIB_CACHE_MAX) {
+          pvfdLibTracks.delete(pvfdLibTracks.keys().next().value);
+        }
+        pvfdLibTracks.set(uri, capped);
+        return capped;
+      })
+      .catch(() => null);
+  }
+
+  // Liked Songs is not played by the uri that LISTS it. Spotify's own header
+  // button builds the context from the signed-in user —
+  // spotify:user:<id>:collection — and uses spotify:collection:tracks only to
+  // READ the list. Handing the player the list uri is accepted and then does
+  // nothing at all, which is exactly what it did here: playlists played, Liked
+  // Songs did not (owner report). The list uri is still tried second, in case
+  // a client version does take it.
+  // The id comes from UserAPI.getUser(), which is a PROMISE, so it is resolved
+  // when the panel opens rather than at the moment of a press - a press has to
+  // act now. Two earlier sources were wrong and are worth naming so they are
+  // not tried again: RootlistAPI.getUsername() does not exist on this client
+  // (it throws "is not a function"), and Platform.Session carries no user at
+  // all - just accessToken, market, locale and friends.
+  let pvfdUserId = "";
+  function resolvePvfdUserId() {
+    if (pvfdUserId) return Promise.resolve(pvfdUserId);
+    const api = safeReturn(() => Spicetify.Platform.UserAPI, null);
+    if (!api || !api.getUser) return Promise.resolve("");
+    return Promise.resolve()
+      .then(() => api.getUser())
+      .then((u) => {
+        pvfdUserId = (u && (u.username || String(u.uri || "").split(":")[2])) || "";
+        return pvfdUserId;
+      })
+      .catch(() => "");
+  }
+
+  function pvfdLikedContextUris() {
+    const out = [];
+    if (pvfdUserId) {
+      out.push("spotify:user:" + encodeURIComponent(pvfdUserId) + ":collection");
+      out.push("spotify:user:" + encodeURIComponent(pvfdUserId) + ":collection:tracks");
+    }
+    out.push(PVFD_LIKED_URI);
+    return out;
+  }
+
+  // Hand off to Spotify's own player. Context first, so the rest of the
+  // collection queues up behind the pick. Each later attempt gives up one more
+  // thing — the skipTo, then the context, then the Platform API itself —
+  // because a client that refuses the richer call still plays the track, which
+  // beats doing nothing. fallbackTrackUri is the last resort for a collection
+  // whose context is refused outright; it is deliberately NOT part of the first
+  // attempt, so the plain context call that works today stays first in line.
+  function playPvfdLibraryUri(contextUri, trackUri, index, fallbackTrackUri) {
+    const api = safeReturn(() => Spicetify.Platform.PlayerAPI, null);
+    const contexts = contextUri === PVFD_LIKED_URI ? pvfdLikedContextUris() : [contextUri];
+    const attempts = [];
+    if (api && api.play) {
+      contexts.forEach((ctx) => {
+        if (!ctx) return;
+        attempts.push(trackUri
+          ? () => api.play({ uri: ctx }, {}, { skipTo: { uri: trackUri, index: index || 0 } })
+          : () => api.play({ uri: ctx }, {}, {}));
+      });
+      if (trackUri) attempts.push(() => api.play({ uri: trackUri }, {}, {}));
+      if (fallbackTrackUri) attempts.push(() => api.play({ uri: fallbackTrackUri }, {}, {}));
+    }
+    attempts.push(() => Spicetify.Player.playUri(
+      trackUri || fallbackTrackUri || contexts[0] || contextUri));
+    const run = (i) => {
+      if (i >= attempts.length) return;
+      let p = null;
+      try { p = attempts[i](); } catch (e) { return run(i + 1); }
+      if (p && p.catch) p.catch(() => run(i + 1));
+    };
+    run(0);
+  }
+
+  function handlePvfdLibraryHit(el) {
+    const kind = el.getAttribute("data-pvfd-lib");
+    const uri = el.getAttribute("data-pvfd-uri") || "";
+    if (kind === "back") {
+      pvfdLibView = { level: "root", uri: "", name: "" };
+      setPvfdCinemaPanelTitle("LIBRARY");
+      renderPvfdCinemaLibrary();
+      return;
+    }
+    if (kind === "collection") {
+      pvfdLibView = { level: "list", uri, name: el.getAttribute("data-pvfd-name") || "" };
+      setPvfdCinemaPanelTitle(pvfdLibView.name || "LIBRARY");
+      renderPvfdCinemaLibrary();
+      return;
+    }
+    // Anything that plays: mark the row so the press is visible, then get out
+    // of the way. The display behind the panel is the real confirmation.
+    const row = el.closest(".pvfd-cinema-lib-row");
+    if (row) row.classList.add("playing");
+    if (kind === "play") {
+      // A collection already opened has its rows in hand; its first track rides
+      // along as the last resort, so a refused context still plays something.
+      const seen = pvfdLibTracks.get(uri);
+      playPvfdLibraryUri(uri, "", 0, (seen && seen[0] && seen[0].uri) || "");
+    }
+    else if (kind === "track") {
+      playPvfdLibraryUri(pvfdLibView.uri, uri, Number(el.getAttribute("data-pvfd-index")) || 0);
+    } else return;
+    window.setTimeout(() => safe(() => setPvfdCinemaPanel("")), 260);
+  }
+
+  function renderPvfdCinemaLibrary() {
+    const body = getPvfdCinemaEl().querySelector("[data-pvfd-cinema='panel-body']");
+    if (!body) return;
+    // Every render takes a ticket. A fetch that lands after the panel moved on
+    // finds a stale one and drops its rows instead of painting the wrong level.
+    const token = ++pvfdLibToken;
+    body.textContent = "";
+    const list = document.createElement("div");
+    list.className = "pvfd-cinema-lib-list";
+    body.appendChild(list);
+    const settle = (fn) => (data) => {
+      if (token !== pvfdLibToken) return;
+      const pending = list.querySelector(".pvfd-cinema-lib-status");
+      if (pending) pending.remove();
+      fn(data);
+    };
+
+    if (pvfdLibView.level === "root") {
+      list.appendChild(pvfdLibRow({
+        kind: "collection", uri: PVFD_LIKED_URI, name: "LIKED SONGS",
+        mark: "\u2665", text: "LIKED SONGS", playKey: true, cls: "liked",
+      }));
+      const draw = (rows) => {
+        if (!rows) return list.appendChild(pvfdLibStatusRow("LIBRARY UNAVAILABLE"));
+        if (!rows.length) return list.appendChild(pvfdLibStatusRow("NO PLAYLISTS"));
+        rows.forEach((pl, i) => list.appendChild(pvfdLibRow({
+          kind: "collection", uri: pl.uri, name: pl.name,
+          mark: String(i + 1).padStart(2, "0"), text: pl.name, playKey: true,
+        })));
+      };
+      if (pvfdLibPlaylists) return draw(pvfdLibPlaylists);
+      list.appendChild(pvfdLibStatusRow("LOADING"));
+      fetchPvfdPlaylists().then(settle((rows) => {
+        if (rows) pvfdLibPlaylists = rows;
+        draw(rows);
+      }));
+      return;
+    }
+
+    list.appendChild(pvfdLibRow({ kind: "back", mark: "\u2039", text: "BACK", cls: "back" }));
+    list.appendChild(pvfdLibStatusRow("LOADING"));
+    fetchPvfdCollection(pvfdLibView.uri).then(settle((rows) => {
+      if (!rows) return list.appendChild(pvfdLibStatusRow("UNAVAILABLE"));
+      if (!rows.length) return list.appendChild(pvfdLibStatusRow("EMPTY"));
+      rows.forEach((t, i) => list.appendChild(pvfdLibRow({
+        kind: "track", uri: t.uri, index: i,
+        mark: String(i + 1).padStart(2, "0"),
+        text: t.artist ? t.name + "  \u2014  " + t.artist : t.name,
+      })));
+    }));
+  }
+
+  // TINT — the same 15 tints plus ADAPT, through exactly the code path the
+  // chassis tint menu uses (tintIdx + applyTintMode / applyAdaptiveTint), so
+  // there is one tint machine with two doors.
+  function renderPvfdCinemaTint() {
+    const body = getPvfdCinemaEl().querySelector("[data-pvfd-cinema='panel-body']");
+    if (!body) return;
+    body.textContent = "";
+    const grid = document.createElement("div");
+    grid.className = "pvfd-cinema-tint-grid";
+    TINT_LABELS.forEach((label, idx) => {
+      const name = mapTintNameForCss(idx);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pvfd-tint-swatch pvfd-cinema-tint-cell" + (!adaptiveTintActive && idx === tintIdx ? " current" : "");
+      // The per-tint fill rules are .pvfd-tint-swatch[data-pvfd-tint-name] on
+      // the BUTTON; the colour span alone matches nothing (shipped once as
+      // translucent squares - only ADAPT worked, its swatch has its own rule).
+      btn.setAttribute("data-pvfd-tint-name", name);
+      btn.title = "Set tint: " + label;
+      const dot = document.createElement("span");
+      dot.className = "pvfd-tint-swatch-color";
+      dot.setAttribute("data-pvfd-tint-name", name);
+      const lab = document.createElement("span");
+      lab.className = "pvfd-cinema-tint-label";
+      lab.textContent = label;
+      btn.appendChild(dot);
+      btn.appendChild(lab);
+      btn.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        tintIdx = idx;
+        applyTintMode(true);
+        renderPvfdCinemaTint();
+      });
+      grid.appendChild(btn);
+    });
+    const adapt = document.createElement("button");
+    adapt.type = "button";
+    adapt.className = "pvfd-tint-swatch pvfd-cinema-tint-cell" + (adaptiveTintActive ? " current" : "");
+    adapt.title = "Adaptive: tint from the current album art";
+    const adot = document.createElement("span");
+    adot.className = "pvfd-tint-swatch-color pvfd-adaptive-swatch";
+    const alab = document.createElement("span");
+    alab.className = "pvfd-cinema-tint-label";
+    alab.textContent = "ADAPT";
+    adapt.appendChild(adot);
+    adapt.appendChild(alab);
+    adapt.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      applyAdaptiveTint({ onNull: "neutral", animate: true });
+      window.setTimeout(() => safe(renderPvfdCinemaTint), 120);
+    });
+    grid.appendChild(adapt);
+    body.appendChild(grid);
+  }
+
+  // Ambient touches, ticked alongside the controls (200ms, only while open).
+  function tickPvfdCinemaAmbient() {
+    if (!pvfdCinemaOpen) return;
+    const cinema = getPvfdCinemaEl();
+    const { prog, dur } = pvfdPlaybackTimes();
+
+    // UP NEXT — fades in over the final 10% of the song, above the right
+    // side of the lyrics. One class flip at the threshold; no per-tick writes.
+    //
+    // Shuffling from a collection often leaves Queue.nextTracks metadata
+    // UNHYDRATED — the object exists with no title in it, and the toast once
+    // showed as a bare "UP NEXT" with nothing after it. So the name resolves
+    // through every source that can actually provide one (Player.data
+    // .nextItems carries full names for the immediate next track even while
+    // the queue object is sparse), and without a name the toast does not
+    // show at all. Self-healing: metadata usually hydrates within a tick or
+    // two, and the threshold check simply catches it then.
+    const upnext = cinema.querySelector("[data-pvfd-cinema='upnext']");
+    if (upnext) {
+      const titled = (t) => {
+        if (!t) return "";
+        const m = t.metadata || (t.contextTrack && t.contextTrack.metadata) || null;
+        return String((m && (m.title || m.name)) || t.name || "");
+      };
+      // On repeat-one what is next is this track, whatever the queue lists.
+      const nextTitle = pvfdRepeatOne()
+        ? titled(safeReturn(() => Spicetify.Player.data.item, null))
+        : titled(safeReturn(() => Spicetify.Queue.nextTracks[0], null)) ||
+          titled(safeReturn(() => Spicetify.Player.data.nextItems[0], null));
+      const show = !!(nextTitle && dur > 0 && prog >= dur * 0.9 && prog <= dur);
+      // The title is kept current while the toast is up (a cached compare per
+      // tick), so flipping repeat during the last 10% corrects it in place.
+      if (show) {
+        setTextIfChanged(cinema.querySelector("[data-pvfd-cinema='upnext-title']"), nextTitle.toUpperCase());
+      }
+      if (show !== pvfdUpnextShown) {
+        pvfdUpnextShown = show;
+        upnext.classList.toggle("show", show);
+        upnext.setAttribute("aria-hidden", show ? "false" : "true");
+      }
+    }
+
+    // Art scan — a rare ambient event: once per 45 seconds of WALL CLOCK
+    // while the display is open and playing. Deliberately not tied to song
+    // time: slot arithmetic on progress meant scrubbing near a 45s mark
+    // could retrigger it (owner report). A timestamp comparison inside the
+    // tick that already runs is the entire machinery — no observers, no
+    // per-frame work. The deadline re-arms on every hit, skips silently
+    // while paused (no burst on resume), and rides through track changes
+    // untouched, which is what keeps it rare.
+    const now = performance.now();
+    if (!pvfdArtScanNextAt) {
+      pvfdArtScanNextAt = now + PVFD_ART_SCAN_EVERY_MS;
+    } else if (now >= pvfdArtScanNextAt) {
+      pvfdArtScanNextAt = now + PVFD_ART_SCAN_EVERY_MS;
+      if (!pvfdCinemaPanel && safePlayerIsPlaying(true)) {
+        const frame = cinema.querySelector(".pvfd-cinema-art-frame");
+        if (frame) {
+          frame.classList.add("pvfd-art-scan");
+          window.setTimeout(() => safe(() => frame.classList.remove("pvfd-art-scan")), 2600);
+        }
+      }
+    }
+  }
+
+  function setPvfdCinemaOpen(open) {
+    const next = !!open;
+    if (pvfdCinemaOpen === next) return;
+    const cinema = getPvfdCinemaEl();
+    if (pvfdCinemaTransitionTimer) { clearTimeout(pvfdCinemaTransitionTimer); pvfdCinemaTransitionTimer = null; }
+    cinema.classList.remove("entering", "exiting");
+
+    if (next) {
+      // Reveal cinema immediately and play the entering curtain — curtain
+      // covers content with black + downward scanline, then fades away.
+      pvfdCinemaOpen = true;
+      cinema.setAttribute("aria-hidden", "false");
+      if (document.body) document.body.classList.add("pvfd-cinema-active");
+      // Fresh scan countdown per open; a stale deadline from a previous
+      // session would otherwise fire the moment the display returns.
+      pvfdArtScanNextAt = performance.now() + PVFD_ART_SCAN_EVERY_MS;
+      if (pvfdCinemaPanel === "queue") safe(renderPvfdCinemaQueue);
+      // Force layout reflow before adding entering class so the animation
+      // restarts cleanly even if cinema was just closed.
+      void cinema.offsetWidth;
+      cinema.classList.add("entering");
+      pvfdCinemaTransitionTimer = setTimeout(() => {
+        cinema.classList.remove("entering");
+        pvfdCinemaTransitionTimer = null;
+      }, PVFD_CINEMA_TRANSITION_MS + 60);
+      updatePvfdCinemaTrackInfo();
+      refreshPvfdCinemaControlState();
+      startPvfdLyricsTicker();
+    } else {
+      // Play exit curtain first — black fades in + upward scanline — then
+      // actually hide cinema and restore the chassis.
+      cinema.classList.add("exiting");
+      pvfdCinemaTransitionTimer = setTimeout(() => {
+        cinema.classList.remove("exiting");
+        pvfdCinemaTransitionTimer = null;
+        pvfdCinemaOpen = false;
+        cinema.setAttribute("aria-hidden", "true");
+        if (document.body) document.body.classList.remove("pvfd-cinema-active");
+        stopPvfdLyricsTicker();
+        // The meters and the glow held their last frame from before the
+        // takeover; bring them back current rather than stale. The clip needs
+        // no such nudge - the render loop resumes it on its own next frame.
+        safe(() => renderLogoVisuals(performance.now(), true));
+        if (isPvfdCinemaFullscreen()) safe(() => document.exitFullscreen());
+      }, PVFD_CINEMA_TRANSITION_MS);
+    }
+  }
+
+  function isPvfdCinemaFullscreen() {
+    return !!document.fullscreenElement && document.fullscreenElement === pvfdCinemaEl;
+  }
+  function togglePvfdCinemaFullscreen() {
+    if (!pvfdCinemaEl) return;
+    if (isPvfdCinemaFullscreen()) {
+      safe(() => document.exitFullscreen());
+    } else {
+      safe(() => pvfdCinemaEl.requestFullscreen());
+    }
+  }
+  document.addEventListener("fullscreenchange", () => {
+    if (!pvfdCinemaEl) return;
+    const fs = isPvfdCinemaFullscreen();
+    const iconEl = pvfdCinemaEl.querySelector("[data-pvfd-cinema='fs-icon']");
+    const hintEl = pvfdCinemaEl.querySelector("[data-pvfd-cinema='fs-hint']");
+    pvfdCinemaEl.classList.toggle("fs-active", fs);
+    if (iconEl) iconEl.innerHTML = fs ? "&#x2922;" : "&#x26F6;";  // ⤢ vs ⛶
+    if (hintEl) hintEl.textContent = fs ? "EXIT" : "FULL";
+  });
+
+  // ESC closes cinema (and the browser auto-exits its own fullscreen first if
+  // active, so ESC-while-fullscreen exits FS first, then a second ESC closes
+  // cinema). F-key toggles true fullscreen when cinema is open.
+  document.addEventListener("keydown", (e) => {
+    if (!pvfdCinemaOpen) return;
+    if (e.key === "Escape") {
+      // Browser handles ESC for FS exit natively; only close cinema if we're
+      // not in FS (or no FS element at all).
+      if (!document.fullscreenElement) {
+        e.preventDefault();
+        // Innermost first, head-unit style: inside a playlist, then panel,
+        // then rail, then display.
+        if (pvfdCinemaPanel === "play" && pvfdLibView.level !== "root") {
+          pvfdLibView = { level: "root", uri: "", name: "" };
+          setPvfdCinemaPanelTitle("LIBRARY");
+          safe(renderPvfdCinemaLibrary);
+        } else if (pvfdCinemaPanel) setPvfdCinemaPanel("");
+        else if (pvfdCinemaRailOpen) setPvfdCinemaRail(false);
+        else setPvfdCinemaOpen(false);
+      }
+    } else if ((e.key === "f" || e.key === "F") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Ignore F key inside text inputs.
+      const t = e.target;
+      const isInput = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+      if (isInput) return;
+      e.preventDefault();
+      togglePvfdCinemaFullscreen();
+    }
+  });
+  // Hook Spotify player events to refresh track info + controls while cinema is open.
+  safe(() => {
+    if (!Spicetify.Player || !Spicetify.Player.addEventListener) return;
+    // songchange: aggressive cleanup THEN re-derive new state. Without the
+    // hard clear, stale .active classes and scroll position survived the
+    // track transition (Spicetify.Player.data sometimes lags the event).
+    Spicetify.Player.addEventListener("songchange", () => {
+      pvfdCurrentLyrics = null;
+      pvfdLyricsActiveIdx = -1;
+      pvfdLyricsGuardUntil = Date.now() + 1500;
+      // The queue object itself settles a beat AFTER songchange fires -
+      // rendering synchronously here showed the OLD queue (same reason the
+      // track info below waits). Guards re-checked at fire time.
+      window.setTimeout(() => {
+        if (pvfdCinemaOpen && pvfdCinemaPanel === "queue") safe(renderPvfdCinemaQueue);
+      }, 400);
+      const c = pvfdCinemaEl;
+      if (c) {
+        const wrap = c.querySelector("[data-pvfd-cinema='lyrics']");
+        if (wrap) {
+          wrap.querySelectorAll(".pvfd-cinema-lyric-line.active").forEach((el) => el.classList.remove("active"));
+          wrap.scrollTop = 0;
+        }
+      }
+      // updatePvfdCinemaTrackInfo reads Spicetify.Player.data — delay a beat
+      // to let Spicetify settle on the new track's data, then refresh.
+      setTimeout(() => { updatePvfdCinemaTrackInfo(); refreshPvfdCinemaControlState(); }, 80);
+      // Re-decide the DSEG14 script guard for the new track. The mutation
+      // observer alone is not enough: if Spotify paints the new lyrics without
+      // touching a container we watch, the guard would keep the PREVIOUS
+      // track's verdict and put a Korean song in a 14-segment face. Native
+      // lyrics land well after songchange, hence the longer delay.
+      setTimeout(markLyricsScript, 700);
+      setTimeout(markLyricsScript, 1800);
+      // The NPV cover art swaps to the new track asynchronously, so re-read its
+      // src once it has settled.
+      setTimeout(paintNpvArt, 400);
+      setTimeout(paintNpvArt, 1500);
+    });
+    Spicetify.Player.addEventListener("onplaypause", () => {
+      updatePvfdCinemaTrackInfo();
+      refreshPvfdCinemaControlState();
+    });
+  });
+  function setDispPromptOpen(open) {
+    const next = !!open;
+    if (dispPromptOpen === next) return;
+    dispPromptOpen = next;
+    const logoEl = chassis && chassis.querySelector(".pvfd-silk-pioneer");
+    if (logoEl) logoEl.classList.toggle("disp-active", dispPromptOpen);
+    const prompt = getDispPromptEl();
+    prompt.setAttribute("aria-hidden", dispPromptOpen ? "false" : "true");
+    if (dispPromptOpen && logoEl) {
+      const rect = logoEl.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const bottomFromViewportBottom = window.innerHeight - rect.top + 10;
+      prompt.style.setProperty("--pvfd-disp-x", `${Math.round(cx)}px`);
+      prompt.style.setProperty("--pvfd-disp-bottom", `${Math.round(bottomFromViewportBottom)}px`);
+    }
+  }
+
+  function updateMcMenuRows() {
+    // Scope to document, not chassis — when M.C. menu is open, it's
+    // re-parented to <body> to escape the chassis's overflow:hidden, so
+    // chassis.querySelector won't find the rows.
+    const attRow = document.querySelector("[data-pvfd-mc-row='att']");
+    const glowRow = document.querySelector("[data-pvfd-mc-row='glow']");
+    if (attRow) {
+      const span = attRow.querySelector("span");
+      if (span) span.textContent = attMode === "soft" ? "10%VOL" : "MUTE";
+    }
+    if (glowRow) {
+      const span = glowRow.querySelector("span");
+      if (span) span.textContent = knobGlowEnabled ? "ON" : "OFF";
+    }
+  }
+
+  function applyBrowseFontPreset(persist = false) {
+    fontPresetIdx = ((fontPresetIdx % FONT_PRESETS.length) + FONT_PRESETS.length) % FONT_PRESETS.length;
+    const preset = FONT_PRESETS[fontPresetIdx];
+    const key = `${preset.label}:${preset.stack}`;
+    let applied = false;
+    // <html> alone is enough: the theme declares these two vars only on :root
+    // and on the chassis (which keeps its own face on purpose), so an inline
+    // value on <html> reaches every Spotify node by inheritance. Writing them
+    // onto <body> and the main-view containers as well was redundant, and the
+    // container writes re-dirtied the whole main view on every route remount.
+    const fontTargets = [document.documentElement];
+    fontTargets.forEach((el) => {
+      const pixelCurrent = el.style.getPropertyValue("--pvfd-font-pixel");
+      const vfdCurrent = el.style.getPropertyValue("--pvfd-font-vfd");
+      if (pixelCurrent !== preset.stack) {
+        el.style.setProperty("--pvfd-font-pixel", preset.stack);
+        applied = true;
+      }
+      if (vfdCurrent !== preset.stack) {
+        el.style.setProperty("--pvfd-font-vfd", preset.stack);
+        applied = true;
+      }
+    });
+    // Expose the active TYPE on <body> so CSS can key off it. Nothing in the
+    // theme does today: the DSEG14 lyric sizes used to be derived from this and
+    // are now fixed per surface (see --pvfd-dseg-ratio-fsd in user.css). Kept
+    // because it is one write per TYPE change, it states real state, and users
+    // write their own CSS against these attributes.
+    if (document.body) document.body.setAttribute("data-pvfd-type", preset.label.toLowerCase());
+    if (!applied && browseFontPresetKey === key && !persist) return;
+    browseFontPresetKey = key;
+    if (persist) safe(() => window.localStorage.setItem(FONT_STORAGE_KEY, preset.label));
+    updateMenuPanel();
+  }
+
+  function cycleFontPreset() {
+    fontPresetIdx = (fontPresetIdx + 1) % FONT_PRESETS.length;
+    applyBrowseFontPreset(true);
+  }
+
+  function applyLcdFontPreset(persist = false) {
+    lcdFontPresetIdx = ((lcdFontPresetIdx % LCD_FONT_PRESETS.length) + LCD_FONT_PRESETS.length) % LCD_FONT_PRESETS.length;
+    const preset = LCD_FONT_PRESETS[lcdFontPresetIdx];
+    if (document.body) {
+      if (preset.bodyAttr) document.body.setAttribute("data-pvfd-lcd", preset.bodyAttr);
+      else document.body.removeAttribute("data-pvfd-lcd");
+    }
+    if (persist) safe(() => window.localStorage.setItem(LCD_FONT_STORAGE_KEY, preset.label));
+    updateMenuPanel();
+    /* LCD font change shifts meta-track text width — re-measure overflow so
+       the scroll animation picks up the new glyph metrics. Invalidate the
+       cached separator width since it's font-dependent. */
+    pvfdCachedSepWidth = -1;
+    repaintMetaTrackForMode();
+  }
+
+  function cycleLcdFontPreset() {
+    lcdFontPresetIdx = (lcdFontPresetIdx + 1) % LCD_FONT_PRESETS.length;
+    applyLcdFontPreset(true);
+  }
+
+  // Resolution the artwork is knocked down to before being blown back up. The
+  // dither is the SOURCE resolution, not a filter, so this number is the whole
+  // look. Spotify only publishes 64 / 300 / 640: taking its 64px rendition
+  // directly gave ~10px blocks on a 1600px-wide window, too coarse, while the
+  // 300px one untouched gives ~2px, too subtle to read as an OEL panel. 128
+  // lands between them at roughly 5px blocks.
+  //
+  // The canvas is only ever drawn to and displayed, never read back, so the
+  // cross-origin taint that i.scdn.co images carry is irrelevant — it blocks
+  // getImageData and toDataURL, neither of which is used here.
+  const PVFD_ART_PX = 128;
+
+  function drawPvfdArtPixels() {
+    if (!artPixelEnabled || !pvfdCinemaEl) return;
+    const img = pvfdCinemaEl.querySelector("[data-pvfd-cinema='art']");
+    const cv = pvfdCinemaEl.querySelector("[data-pvfd-cinema='art-px']");
+    if (!img || !cv) return;
+    // Nothing to sample yet; the load handler below will call back.
+    if (!img.complete || !img.naturalWidth) return;
+    safe(() => {
+      const ctx = cv.getContext("2d");
+      if (!ctx) return;
+      // Smooth on the way DOWN so the small image is a faithful average of the
+      // artwork; the hard edges come from CSS blowing it back up with
+      // image-rendering: pixelated. Doing it the other way round gives mush.
+      ctx.imageSmoothingEnabled = true;
+      ctx.clearRect(0, 0, PVFD_ART_PX, PVFD_ART_PX);
+      ctx.drawImage(img, 0, 0, PVFD_ART_PX, PVFD_ART_PX);
+    });
+  }
+
+  // Pull-out tab that opens the full screen display from the native lyrics page.
+  //
+  // It lives in PVFD's own DOM, appended to <body>, rather than being injected
+  // into the lyrics view: that view is Spotify's and React would reconcile an
+  // added node away. Same approach as the cinema overlay and the menu panel.
+  //
+  // It anchors to the MAIN VIEW's right edge, not the viewport's — the Now
+  // Playing View sits to the right of the lyrics, so a viewport-anchored tab
+  // would sit on top of that panel. A ResizeObserver covers every way that edge
+  // can move (window resize, the NPV opening or closing, the sidebar being
+  // dragged) and fires only when it actually changes.
+  //
+  // Deliberately not placed next to Spotify's Sync button: that button is
+  // conditional — it only appears when the scroll position has drifted out of
+  // sync — so anchoring to it would mean an entry point that comes and goes.
+  let fsdTabEl = null;
+  let fsdTabObserver = null;
+
+  function getFsdTabEl() {
+    if (fsdTabEl) return fsdTabEl;
+    fsdTabEl = document.createElement("button");
+    fsdTabEl.type = "button";
+    fsdTabEl.className = "pvfd-fsd-tab";
+    fsdTabEl.setAttribute("data-pvfd", "fsd-tab");
+    fsdTabEl.setAttribute("title", "Full screen display");
+    fsdTabEl.setAttribute("aria-label", "Open the full screen display");
+    // Grip last, not first: the parked state clips to the tab's right-hand
+    // 11px (4px padding + the 3px grip + 4px padding), so the grip has to be
+    // the rightmost child or that sliver would show the tail of the label.
+    fsdTabEl.innerHTML =
+      '<span class="pvfd-fsd-tab-label">FULL SCREEN</span>' +
+      '<span class="pvfd-fsd-tab-grip" aria-hidden="true"></span>';
+    fsdTabEl.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      // Straight in, no confirm. The wordmark asks first because it is easy to
+      // hit by accident; a tab you had to reach for IS the confirmation.
+      playStateFlash("cinema");
+      setTimeout(() => setPvfdCinemaOpen(true), 1500);
+    });
+    document.body.appendChild(fsdTabEl);
+    return fsdTabEl;
+  }
+
+  // The tab is anchored to the main view's right edge, so it cannot be placed
+  // until that view has laid out. Until it has, body carries no
+  // data-pvfd-fsdtab and the CSS keeps the tab out entirely: an unmeasured tab
+  // must be absent, never parked against the WINDOW edge, where its grip would
+  // land on top of the Now Playing View as an invisible hover strip.
+  function syncFsdTabEdge() {
+    const main = safeReturn(() => document.querySelector(".Root__main-view"), null);
+    if (!main || !document.body) return false;
+    const rect = main.getBoundingClientRect();
+    if (!rect.width) return false;
+    const fromRight = Math.max(0, Math.round(window.innerWidth - rect.right));
+    setStyleIfChanged(document.body, "--pvfd-fsdtab-right", fromRight + "px");
+    // The no-lyrics panel covers the same box, so it rides the one rect we
+    // already have rather than measuring again.
+    setStyleIfChanged(document.body, "--pvfd-mv-left", Math.round(rect.left) + "px");
+    setStyleIfChanged(document.body, "--pvfd-mv-top", Math.round(rect.top) + "px");
+    setStyleIfChanged(document.body, "--pvfd-mv-height", Math.round(rect.height) + "px");
+    if (document.body.getAttribute("data-pvfd-fsdtab") !== "on") {
+      document.body.setAttribute("data-pvfd-fsdtab", "on");
+    }
+    return true;
+  }
+
+  // Safe to call repeatedly: it re-measures, and re-attempts the observer if
+  // the main view was not mounted the first time round. Route entry calls it,
+  // so a cold start that misses here is corrected on the way into lyrics.
+  function ensureFsdTab() {
+    if (!document.body) return;
+    getFsdTabEl();
+    syncFsdTabEdge();
+    if (fsdTabObserver) return;
+    const main = safeReturn(() => document.querySelector(".Root__main-view"), null);
+    if (!main || typeof ResizeObserver !== "function") return;
+    fsdTabObserver = new ResizeObserver(() => safe(syncFsdTabEdge));
+    fsdTabObserver.observe(main);
+  }
+
+  // Spotify's own answer for a track with no lyrics is a randomised apology
+  // ("You caught us, we're still working on getting lyrics for this one.") in
+  // whatever voice its copywriters chose that day. A head unit does not
+  // apologise, and it certainly does not say something different each time. So
+  // PVFD covers that page with the SAME no-lyrics state the full screen display
+  // already shows (discussion #39).
+  //
+  // The inner markup deliberately reuses the .pvfd-cinema-no-lyrics classes
+  // rather than getting a parallel set: those rules are not scoped to a cinema
+  // ancestor, so all of the styling — tag, giant title, bar animation — applies
+  // as-is, and the two surfaces cannot drift apart. Only the outer positioning
+  // box is new.
+  let noLyricsEl = null;
+  let noLyricsEmptySince = 0;
+  let noLyricsUri = "";
+
+  function getNoLyricsEl() {
+    if (noLyricsEl) return noLyricsEl;
+    noLyricsEl = document.createElement("div");
+    noLyricsEl.className = "pvfd-nolyrics";
+    noLyricsEl.setAttribute("aria-hidden", "true");
+    noLyricsEl.innerHTML =
+      '<div class="pvfd-nolyrics-curtain">' +
+        '<div class="pvfd-cinema-curtain-scanline pvfd-nolyrics-scan"></div>' +
+      "</div>" +
+      '<div class="pvfd-cinema-no-lyrics">' +
+        '<div class="pvfd-cinema-no-lyrics-tag">NO LYRICS AVAILABLE</div>' +
+        '<div class="pvfd-cinema-no-lyrics-title" data-pvfd="nolyrics-title">—</div>' +
+        '<div class="pvfd-cinema-no-lyrics-bars" aria-hidden="true">' +
+          "<span></span>".repeat(15) +
+        "</div>" +
+      "</div>";
+    document.body.appendChild(noLyricsEl);
+    return noLyricsEl;
+  }
+
+  // Drop the curtain the instant the lyrics route is entered, BEFORE Spotify has
+  // rendered anything into it. Waiting for the verdict and then covering meant
+  // Spotify's apology was on screen for the whole settle — a visible flash of
+  // someone else's copy before the panel arrived.
+  //
+  // Arming on the route transition rather than on the sampled tick matters: the
+  // tick can be a whole sample late, which is exactly long enough to see.
+  function armNoLyricsCover() {
+    if (!document.body) return;
+    if (document.body.classList.contains("pvfd-cinema-active")) return;
+    if (pvfdRouteState.route !== "lyrics") return;
+    getNoLyricsEl();
+    // Attribute BEFORE the measurement. syncFsdTabEdge reads a bounding rect,
+    // which flushes style, and anything resolved in that flush is resolved
+    // against the state we have not set yet.
+    noLyricsEmptySince = 0;
+    document.body.setAttribute("data-pvfd-nolyrics", "wait");
+    syncFsdTabEdge();                 // the box is positioned from those vars
+  }
+
+  function syncNoLyricsPanel() {
+    if (!document.body) return;
+    const onLyrics = pvfdRouteState.route === "lyrics";
+    let state = null;
+
+    if (onLyrics && !document.body.classList.contains("pvfd-cinema-active")) {
+      // Spicy owns its own page and renders its own empty state; do not cover it.
+      const spicy = safeReturn(
+        () => !!document.querySelector("#SpicyLyricsPage"), false);
+      // A Spotify 1.3 page has lines but no names on them; stamp them first so
+      // the check below, and the stylesheet, can see them.
+      safe(tagStructuralLyrics);
+      const hasLines = safeReturn(
+        () => !!document.querySelector(PVFD_LYRIC_LINE_SELECTOR), false);
+      // A new track re-arms the cover: its lyrics have to resolve all over
+      // again, and if it has none, Spotify's apology would flash exactly as it
+      // did on the way in.
+      const uri = safeReturn(() => Spicetify.Player.data.item.uri, "");
+      if (uri !== noLyricsUri) {
+        noLyricsUri = uri;
+        noLyricsEmptySince = 0;
+        if (!hasLines && !spicy) document.body.setAttribute("data-pvfd-nolyrics", "wait");
+      }
+      if (spicy || hasLines) {
+        noLyricsEmptySince = 0;
+      } else {
+        // "No lines yet" is also what a track WITH lyrics looks like for the
+        // first moment after the route changes, so an instant verdict would
+        // show NO LYRICS on every song. Require the emptiness to persist.
+        //
+        // 1400ms rather than something tighter precisely BECAUSE the curtain is
+        // already down: the wait costs nothing to look at, so it buys a wider
+        // margin against calling a slow-loading track lyric-less.
+        const now = performance.now();
+        if (!noLyricsEmptySince) noLyricsEmptySince = now;
+        state = now - noLyricsEmptySince > 1400 ? "on" : "wait";
+      }
+    } else {
+      noLyricsEmptySince = 0;
+      noLyricsUri = "";
+    }
+
+    const current = document.body.getAttribute("data-pvfd-nolyrics");
+    if (state === current) return;
+    if (state === "on") {
+      const el = getNoLyricsEl();
+      const title = el.querySelector("[data-pvfd='nolyrics-title']");
+      if (title) {
+        const item = safeReturn(() => Spicetify.Player.data.item, null);
+        title.textContent =
+          (item && (item.name || (item.metadata && item.metadata.title))) || "—";
+      }
+      syncFsdTabEdge();
+      document.body.setAttribute("data-pvfd-nolyrics", "on");
+    } else if (state === "wait") {
+      document.body.setAttribute("data-pvfd-nolyrics", "wait");
+    } else {
+      document.body.removeAttribute("data-pvfd-nolyrics");
+    }
+  }
+
+  // The same dithering on the Now Playing View's cover art. That art belongs to
+  // Spotify's DOM, so nothing here modifies it: the treatment is painted by a
+  // ::after on the cover-art element and all this does is hand the CSS a URL in
+  // a custom property. Touching React-owned attributes would just get reverted
+  // on the next render.
+  //
+  // Pixellation again comes from the SOURCE resolution rather than a filter.
+  // Spotify encodes the rendition in the image path, and ...00004851 is the
+  // 64px one. If that convention ever changes the replace simply no-ops and the
+  // full-size URL is used — the art still gets tinted, it just stops being
+  // chunky, which is a far better failure than a blank panel.
+  const PVFD_NPV_ART_HOST = ".Root__right-sidebar .main-nowPlayingView-coverArt";
+
+  function paintNpvArt() {
+    const host = safeReturn(() => document.querySelector(PVFD_NPV_ART_HOST), null);
+    if (!host) return;
+    if (!artPixelEnabled) {
+      if (host.style.getPropertyValue("--pvfd-npv-art")) {
+        host.style.removeProperty("--pvfd-npv-art");
+      }
+      return;
+    }
+    const img = host.querySelector("img.main-image-image, img");
+    const src = img && img.getAttribute("src");
+    if (!src) return;
+    const small = src.replace(/(i\.scdn\.co\/image\/ab67616d)[0-9a-f]{8}/i, "$100004851");
+    setStyleIfChanged(host, "--pvfd-npv-art", 'url("' + small + '")');
+  }
+
+  // OEL album art in the full screen display, toggled by clicking the art.
+  // The attribute lives on <body> rather than <html>: writing it on the root
+  // would restyle the whole Spotify tree for a change that only ever reaches
+  // the cinema overlay.
+  function applyArtPixel(persist = false) {
+    if (document.body) {
+      if (artPixelEnabled) document.body.setAttribute("data-pvfd-art-px", "on");
+      else document.body.removeAttribute("data-pvfd-art-px");
+    }
+    if (persist) safe(() => window.localStorage.setItem(ART_PIXEL_STORAGE_KEY, artPixelEnabled ? "on" : "off"));
+    // The art URL itself differs between the two modes (the medium rendition is
+    // the downsample source), so refresh the open display rather than waiting
+    // for the next track change to pick the right one.
+    if (pvfdCinemaOpen) safe(() => updatePvfdCinemaTrackInfo());
+    drawPvfdArtPixels();
+    paintNpvArt();
+    updateMenuPanel();
+  }
+
+  // ART and ADAPTIVE used to be mutually exclusive, on the theory that ADAPTIVE
+  // would end up sampling its own output. That was wrong, and worth recording
+  // so it is not "fixed" back:
+  //
+  //   applyAdaptiveTint reads currentCoverArtUrl(), which comes from
+  //   Spicetify.Player.data.item.metadata, and loads it into a FRESH Image().
+  //   It never touches the rendered DOM. ART rewrites no src anywhere — it is a
+  //   CSS ::after painted over the artwork. So the extraction source is the
+  //   original CDN file either way and there is no loop to break.
+  //
+  // The exclusion also cost more than it saved: the display shows a DITHER
+  // affordance on the artwork, and with ADAPTIVE on, clicking it did nothing at
+  // all. A dead control is worse than the state it was protecting.
+  //
+  // Together they are the most coherent pair in the theme, not a conflict. The
+  // dither paints with var(--pvfd-cyan), which under ADAPTIVE is the hue pulled
+  // out of that same artwork — so the art is rendered in its own dominant
+  // colour, and the whole interface agrees with it.
+  function cycleArtPixel() {
+    artPixelEnabled = !artPixelEnabled;
+    applyArtPixel(true);
+  }
+
+  function applyPerformanceMode(persist = false) {
+    performanceModeIdx = ((performanceModeIdx % PERFORMANCE_MODES.length) + PERFORMANCE_MODES.length) % PERFORMANCE_MODES.length;
+    const perf = activePerformanceConfig();
+    const perfName = perf.label.toLowerCase();
+    if (chassis) chassis.setAttribute("data-pvfd-performance", perfName);
+    document.documentElement.setAttribute("data-pvfd-performance", perfName);
+    if (document.body) document.body.setAttribute("data-pvfd-performance", perfName);
+    if (persist) safe(() => window.localStorage.setItem(PERF_STORAGE_KEY, perf.label));
+    clearAllClipRenderCaches(!perf.keepPreviousClipCache);
+    if (perf.releaseInactiveClipBytes) releaseInactiveClipBytes(CLIPS[clipIdx] || null);
+    scheduleSizeCanvas();
+    applyLcdFilter();
+    markStaticReadoutsDirty();
+    knobLedDirty = true;
+    updateMenuPanel();
+  }
+
+  function applyLogoGlowMode(persist = false) {
+    if (document.body) {
+      // The full screen display lives in <body>, not in the chassis, so it
+      // cannot read the chassis copy. Same mirroring as led-glow / knob-glow.
+      document.body.setAttribute("data-pvfd-logo-glow", logoGlowEnabled ? "on" : "off");
+    }
+    if (chassis) {
+      chassis.setAttribute("data-pvfd-logo-glow", logoGlowEnabled ? "on" : "off");
+      chassis.classList.remove("pvfd-logo-burst", "pvfd-logo-burst-a", "pvfd-logo-burst-b");
+    }
+    if (!logoGlowEnabled) {
+      pulseLiveFailureReason = "";
+      stopDesktopAudioCapture();
+      stopLogoLiveAudioCapture();
+    }
+    if (persist) safe(() => window.localStorage.setItem(LOGO_GLOW_STORAGE_KEY, logoGlowEnabled ? "ON" : "OFF"));
+    // PULSE also gates time-synced OEL clips (pulse:true): refresh their
+    // locked/unlocked state now so the gauges freeze/play together with PULSE.
+    syncOelColorModeAttributes();
+    safe(() => syncOelVideoPlayback(true));
+    updateMenuPanel();
+  }
+
+  async function toggleLogoGlowMode() {
+    if (desktopCapturePending) return;
+    if (logoGlowEnabled) {
+      logoGlowEnabled = false;
+      applyLogoGlowMode(true);
+      return;
+    }
+
+    logoGlowEnabled = true;
+    applyLogoGlowMode(true);
+
+    const pulseStartPromise = startLogoLiveAudioCapture();
+    const liveCaptureStarted = await startDesktopAudioCapture();
+    const pulseStarted = await pulseStartPromise;
+
+    if (!pulseStarted || !liveCaptureStarted) {
+      logoGlowEnabled = false;
+      stopDesktopAudioCapture();
+      stopLogoLiveAudioCapture();
+      applyLogoGlowMode(true);
+      return;
+    }
+
+    pulseLiveFailureReason = "";
+    updateMenuPanel();
+  }
+
+  function activatePulseFromLock(ev) {
+    if (!isClipPulseLocked(getActiveOelClip())) return;
+    if (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+    activateMenuAction("logoGlow");
+  }
+
+  function handlePulseLockKeydown(ev) {
+    if (!ev || (ev.key !== "Enter" && ev.key !== " ")) return;
+    activatePulseFromLock(ev);
+  }
+
+  function applyRacingColorMode(persist = false) {
+    syncOelColorModeAttributes();
+    applyLcdFilter();
+    if (persist) safe(() => window.localStorage.setItem(RACING_COLOR_STORAGE_KEY, racingColorEnabled ? "COLOR" : "TINT"));
+    markStaticReadoutsDirty();
+    updateMenuPanel();
+  }
+
+  function toggleRacingColorMode() {
+    racingColorEnabled = !racingColorEnabled;
+    applyRacingColorMode(true);
+  }
+
+  function toggleRacingColorFromOel() {
+    if (!canToggleOelColor(getActiveOelClip())) return;
+    toggleRacingColorMode();
+  }
+
+  function applyOelDisplayMode(persist = false) {
+    if (chassis) chassis.setAttribute("data-pvfd-oel-display", oelDisplayEnabled ? "on" : "off");
+    logOelCanvasRendererDisabled();
+    if (canvas) canvas.style.display = "";
+    const dom = getPvfdDom();
+    syncOelColorModeAttributes();
+    if (dom.lcdVideo) dom.lcdVideo.style.display = oelDisplayEnabled ? "block" : "none";
+    if (!oelDisplayEnabled && ctx && canvasCssW && canvasCssH) {
+      ctx.clearRect(0, 0, canvasCssW, canvasCssH);
+    }
+    if (oelDisplayEnabled) {
+      console.log("[PVFD] VFD ON: showing/playing WebM");
+      syncOelVideoPlayback(true);
+    } else {
+      console.log("[PVFD] VFD OFF: hiding/pausing WebM");
+      pauseOelVideoPlayback("off");
+    }
+    if (persist) safe(() => window.localStorage.setItem(OEL_DISPLAY_STORAGE_KEY, oelDisplayEnabled ? "ON" : "OFF"));
+    updateMenuPanel();
+  }
+
+  function toggleOelDisplay() {
+    oelDisplayEnabled = !oelDisplayEnabled;
+    applyOelDisplayMode(true);
+  }
+
+  function cyclePerformanceMode() {
+    performanceModeIdx = (performanceModeIdx + 1) % PERFORMANCE_MODES.length;
+    applyPerformanceMode(true);
+  }
+
+  function cycleClipMode() {
+    logOelCanvasRendererDisabled();
+    if (!getOelClips().length) return;
+    setActiveClip(clipIdx + 1, true);
+    const clipBtn = chassis && chassis.querySelector("[data-pvfd='clip']");
+    if (clipBtn) {
+      clipBtn.classList.add("active");
+      setTimeout(() => clipBtn.classList.remove("active"), 900);
+    }
+  }
+
+  // ----- ADAPTIVE TINT — album art → tint engine ------------------------
+  // Colorful covers extract a dominant saturated hue and rotate the CYAN
+  // envelope onto it, holding every color's saturation and lightness fixed so
+  // contrast is identical to CYAN. Predominantly white/black covers render
+  // through the existing mono palettes instead of inventing an accidental hue.
+  // A cover with no confident hue keeps the mode but shows neutral CYAN rather
+  // than ejecting the user. Persisted across reload.
+  let adaptiveTintActive = false;   // adaptive is currently applied
+  let adaptiveDesired = false;      // user wants adaptive (survives colorless covers + reload)
+  let adaptiveHueDeg = 0;           // hue-rotate degree for color-mode clips (see adaptiveDegForHue)
+  let adaptiveMonoMode = "";        // "bow"|"wob" while ADAPTIVE temporarily renders mono
+
+  // One entry per CSS var written inline on <html>. rgb = the CYAN value whose
+  // S/L we keep; only H is replaced. "hex" vars want #rrggbb, "triplet" want
+  // "r, g, b". Chrome text is intentionally left to CSS so dark chrome can keep
+  // its light/tint ink on pills, M.C., and transport controls.
+  const ADAPTIVE_VARS = [
+    { name: "--pvfd-lcd-void",        rgb: [2, 6, 12],      form: "hex" },
+    { name: "--pvfd-lcd-void-rgb",    rgb: [2, 6, 12],      form: "triplet" },
+    { name: "--pvfd-lcd-deep",        rgb: [6, 18, 30],     form: "hex" },
+    { name: "--pvfd-lcd-deep-rgb",    rgb: [6, 18, 30],     form: "triplet" },
+    { name: "--pvfd-lcd-rim",         rgb: [26, 44, 60],    form: "hex" },
+    { name: "--pvfd-lcd-rim-rgb",     rgb: [26, 44, 60],    form: "triplet" },
+    { name: "--pvfd-cyan",            rgb: [5, 199, 220],   form: "hex" },
+    { name: "--pvfd-cyan-mid",        rgb: [6, 178, 197],   form: "hex" },
+    { name: "--pvfd-cyan-deep",       rgb: [7, 158, 175],   form: "hex" },
+    { name: "--pvfd-cyan-glow",       rgb: [0, 255, 255],   form: "hex" },
+    { name: "--pvfd-light-rgb",       rgb: [5, 199, 220],   form: "triplet" },
+    { name: "--pvfd-light-mid-rgb",   rgb: [6, 178, 197],   form: "triplet" },
+    { name: "--pvfd-light-deep-rgb",  rgb: [7, 158, 175],   form: "triplet" },
+    { name: "--pvfd-accent-dim-rgb",  rgb: [26, 58, 92],    form: "triplet" },
+    { name: "--pvfd-text-bright",     rgb: [239, 252, 255], form: "hex" },
+    { name: "--pvfd-text-bright-rgb", rgb: [239, 252, 255], form: "triplet" }
+  ];
+  const ADAPTIVE_VAR_NAMES = ADAPTIVE_VARS.map((v) => v.name);
+  const ADAPTIVE_LEGACY_INLINE_VAR_NAMES = ["--pvfd-chrome-text", "--pvfd-chrome-text-rgb"];
+
+  function clearAdaptiveInlineVars() {
+    ADAPTIVE_VAR_NAMES.concat(ADAPTIVE_LEGACY_INLINE_VAR_NAMES).forEach((name) => {
+      document.documentElement.style.removeProperty(name);
+      if (chassis) chassis.style.removeProperty(name);
+    });
+  }
+
+  function currentTintLabel() { return adaptiveTintActive ? "ADAPTIVE" : TINT_LABELS[tintIdx]; }
+  function currentTintShort() { return adaptiveTintActive ? "ADAPT" : TINT_LABELS_SHORT[tintIdx]; }
+
+  function pvfdRgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    const d = max - min;
+    let h = 0, s = 0;
+    if (d !== 0) {
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+    }
+    return [h, s, l];
+  }
+
+  function pvfdHslToRgb(h, s, l) {
+    h = ((h % 360) + 360) % 360;
+    if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+  }
+
+  function pvfdRelativeLuminance(r, g, b) {
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  }
+
+  // Hue applied when a cover has no confident hue — CYAN's own hue, so the
+  // envelope reproduces plain CYAN while adaptive stays engaged.
+  const ADAPTIVE_NEUTRAL_HUE = pvfdRgbToHsl(5, 199, 220)[0];
+
+  // Saturation-adaptive envelope: the extractor reports the dominant color's
+  // saturation; we scale every envelope var's saturation toward it so a pastel
+  // cover softens the tint instead of forcing it to cyan's full punch. Clamped
+  // to [FLOOR, 1] — never boosts past cyan (avoids garish) and never washes below
+  // the floor (avoids grey). Desaturating only lowers chroma, not luminance, so
+  // it stays readable on the dark LCD. sat == null → 1 (plain cyan envelope).
+  const CYAN_REF_SAT = pvfdRgbToHsl(5, 199, 220)[1];
+  const ADAPTIVE_SAT_FLOOR = 0.5;
+  function adaptiveSatScale(sat) {
+    const s = (sat == null) ? CYAN_REF_SAT : sat;
+    return Math.max(ADAPTIVE_SAT_FLOOR, Math.min(1, s / CYAN_REF_SAT));
+  }
+
+  // Lightness-adaptive envelope: a light/pastel cover lifts the FOREGROUND vars
+  // (accent/text) toward lighter so the tint feels airy — never touching the dark
+  // background vars (the LCD must stay a dark screen) and NEVER darkening (a dark
+  // album clamps the bias to 0, because too-dark tint kills readability on the
+  // near-black LCD; lighter only ever raises contrast there). light == null → no
+  // lift. REF is the lightness above which a cover counts as "light"; MAX caps the
+  // lift so it can't blow out.
+  const ADAPTIVE_LIGHT_REF = 0.5;
+  const ADAPTIVE_LIGHT_MAX = 0.30;
+  function adaptiveLightBias(light) {
+    if (light == null) return 0;
+    return Math.max(0, Math.min(ADAPTIVE_LIGHT_MAX, light - ADAPTIVE_LIGHT_REF));
+  }
+  // Per-var foreground weight: 0 for dark background vars (l ≤ 0.2), ramping to 1
+  // by l = 0.5, so the lift lands on accent/text and leaves the LCD backdrop dark.
+  function adaptiveForegroundWeight(varLight) {
+    return Math.max(0, Math.min(1, (varLight - 0.2) / 0.3));
+  }
+  // Shared envelope math: cyan var rgb + album hue/sat/light → adapted [r,g,b].
+  function adaptiveEnvelopeRgb(cyanRgb, hue, satScale, lightBias) {
+    const hsl = pvfdRgbToHsl(cyanRgb[0], cyanRgb[1], cyanRgb[2]);
+    const L = Math.min(1, hsl[2] + lightBias * adaptiveForegroundWeight(hsl[2]));
+    return pvfdHslToRgb(hue, hsl[1] * satScale, L);
+  }
+
+  // Map an album hue -> LCD hue-rotate degree by interpolating the 13 fixed color
+  // tints' (foreground-hue -> TINT_HUE_DEG) anchors. deg is unwrapped to be
+  // monotonic in hue so a plain piecewise-linear interpolation (with wraparound)
+  // reproduces each tint's hand-tuned degree exactly at its own hue.
+  let adaptiveDegAnchors = null;
+  function buildAdaptiveDegAnchors() {
+    const pts = TINT_LIGHT_RGB.map((rgb, i) => ({ h: pvfdRgbToHsl(rgb[0], rgb[1], rgb[2])[0], deg: TINT_HUE_DEG[i] }));
+    pts.sort((a, b) => a.h - b.h);
+    // Unwrap deg into a monotonically increasing sequence.
+    for (let i = 1; i < pts.length; i++) {
+      while (pts[i].deg < pts[i - 1].deg) pts[i].deg += 360;
+    }
+    return pts;
+  }
+  function adaptiveDegForHue(hue) {
+    if (!adaptiveDegAnchors) adaptiveDegAnchors = buildAdaptiveDegAnchors();
+    const pts = adaptiveDegAnchors;
+    const n = pts.length;
+    hue = ((hue % 360) + 360) % 360;
+    let deg;
+    if (hue <= pts[0].h || hue >= pts[n - 1].h) {
+      // Wrap segment across the seam between the last and first anchor.
+      const lo = pts[n - 1], hi = pts[0];
+      const span = (hi.h + 360) - lo.h;
+      const x = hue >= pts[n - 1].h ? (hue - lo.h) : (hue + 360 - lo.h);
+      deg = lo.deg + (hi.deg + 360 - lo.deg) * (x / span);
+    } else {
+      let i = 1;
+      while (i < n && pts[i].h < hue) i++;
+      const lo = pts[i - 1], hi = pts[i];
+      deg = lo.deg + (hi.deg - lo.deg) * ((hue - lo.h) / (hi.h - lo.h));
+    }
+    return ((deg % 360) + 360) % 360;
+  }
+
+  // Decide whether a cover should render through a monochrome palette rather than
+  // an extracted hue. "bow" = black-on-white (white-dominant art), "wob" =
+  // white-on-black (black-dominant OR overall grayscale art). Returns "" when the
+  // cover has real color, so the hue extractor takes over. Runs BEFORE the
+  // extractor so a grey/duotone photo never reaches the hue math (which would
+  // latch a faint cast — e.g. Puddle Of Mudd's accidental violet).
+  function pvfdDetectCoverMonoMode(img) {
+    const size = 32;
+    const canvas = document.createElement("canvas");
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return "";
+
+    let data;
+    try {
+      ctx.drawImage(img, 0, 0, size, size);
+      data = ctx.getImageData(0, 0, size, size).data;
+    } catch (e) {
+      return "";
+    }
+
+    let white = 0, black = 0, colored = 0, chromaColored = 0, total = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 200) continue;
+      total++;
+
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const s = pvfdRgbToHsl(r, g, b)[1];
+      const lum = pvfdRelativeLuminance(r, g, b);
+
+      if (lum >= 0.82 && s <= 0.22) white++;
+      if (lum <= 0.18 && s <= 0.28) black++;
+      if (s > 0.22) colored++;
+      // Absolute chroma (max-min)/255 — the honest "is this pixel colored?"
+      // measure. HSL saturation runs high for near-black/near-white, so it can't
+      // tell a grey midtone photo from a real color; this can. Same 0.12 gate the
+      // hue extractor uses, so the grayscale→WOB / colorful→extractor split is exact.
+      if ((Math.max(r, g, b) - Math.min(r, g, b)) / 255 >= 0.12) chromaColored++;
+    }
+
+    if (!total) return "";
+
+    const whiteDominant = white >= total * 0.45 && white >= colored * 2;
+    const blackDominant = black >= total * 0.45 && black >= colored * 2;
+    if (whiteDominant && blackDominant) return white >= black ? "bow" : "wob";
+    if (whiteDominant) return "bow";
+    if (blackDominant) return "wob";
+
+    // Midtone-grey cover (a moody B&W-ish photo like Puddle Of Mudd): not white-
+    // or black-dominant, but almost no real chroma. Treat it as monochrome so the
+    // extractor never invents a hue from a faint cast. WOB (dark) by preference.
+    if (chromaColored < total * 0.08) return "wob";
+
+    return "";
+  }
+
+  // Dominant *visible* hue via a chroma-weighted hue histogram (not a circular
+  // mean — a mean of two real colors lands in the gap between them, e.g. gold +
+  // pink → a red that's on neither). Buckets colored pixels into 24 hue bins,
+  // picks the peak family by colorfulness×area, and returns its smooth center.
+  // Returns null when the cover has no confident color identity (a grey/duotone
+  // photo, a faint cast, or a wash of competing hues) so the caller falls back.
+  function pvfdExtractCoverHue(img) {
+    const size = 28;
+    const canvas = document.createElement("canvas");
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, size, size);
+    let data;
+    try { data = ctx.getImageData(0, 0, size, size).data; }
+    catch (e) { return null; } // CORS-tainted canvas → fall back
+
+    const BINS = 24;               // 15° per bin
+    const seg = 360 / BINS;
+    const binW = new Array(BINS).fill(0);
+    const binSin = new Array(BINS).fill(0);
+    const binCos = new Array(BINS).fill(0);
+    const binS = new Array(BINS).fill(0);   // HSL-saturation × weight, for the returned sat
+    const binL = new Array(BINS).fill(0);   // HSL-lightness × weight, for the returned light
+    const CHROMA_GATE = 0.12;      // absolute (max-min)/255; below this = grey or a faint cast
+
+    let opaque = 0, colored = 0, totalW = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 200) continue;
+      opaque++;
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const chroma = (max - min) / 255;
+      if (chroma < CHROMA_GATE) continue;          // grey / faint cast — no real hue
+      const light = (max + min) / 510;             // 0..1
+      if (light < 0.10 || light > 0.94) continue;  // near-black / near-white edges
+      const hsl = pvfdRgbToHsl(r, g, b);
+      const h = hsl[0];
+      colored++;
+      const w = chroma;                            // colorfulness weight — area beats tiny vivid accents
+      totalW += w;
+      const bin = Math.min(BINS - 1, Math.floor(h / seg));
+      binW[bin] += w;
+      binS[bin] += hsl[1] * w;                     // HSL saturation, weighted like the hue
+      binL[bin] += hsl[2] * w;                     // HSL lightness, weighted like the hue
+      const rad = h * Math.PI / 180;
+      binSin[bin] += Math.sin(rad) * w;
+      binCos[bin] += Math.cos(rad) * w;
+    }
+
+    // Low-color guard: a mostly-grey cover (monotone/duotone photo, faint cast)
+    // has too few colored pixels to trust — don't invent a hue.
+    if (!opaque || colored < opaque * 0.08 || totalW <= 0) return null;
+
+    // Smoothed peak so a hue straddling a bin boundary isn't split; wraps the wheel.
+    let best = -1, bestScore = -1;
+    for (let b = 0; b < BINS; b++) {
+      const score = binW[b] + 0.5 * (binW[(b + 1) % BINS] + binW[(b + BINS - 1) % BINS]);
+      if (score > bestScore) { bestScore = score; best = b; }
+    }
+    if (best < 0) return null;
+
+    // Dominance guard: the winning family must own a real slice of the total
+    // colorfulness, else the cover is a muddle of competing hues with no identity.
+    const n1 = (best + 1) % BINS, n2 = (best + BINS - 1) % BINS;
+    const familyW = binW[best] + binW[n1] + binW[n2];
+    if (familyW < totalW * 0.22) return null;
+
+    const sumSin = binSin[best] + binSin[n1] + binSin[n2];
+    const sumCos = binCos[best] + binCos[n1] + binCos[n2];
+    if (sumSin === 0 && sumCos === 0) return null;
+    let hue = Math.atan2(sumSin, sumCos) * 180 / Math.PI;
+    if (hue < 0) hue += 360;
+    // Dominant family's weighted-average HSL saturation + lightness → drive the
+    // saturation-adaptive (pastel → softer) and lightness-adaptive (light → airier)
+    // envelope.
+    const sat = (binS[best] + binS[n1] + binS[n2]) / familyW;
+    const light = (binL[best] + binL[n1] + binL[n2]) / familyW;
+    return { hue, sat, light };
+  }
+
+  // Spicetify hands cover art as a `spotify:image:<hash>` URI, which <img> can't
+  // load (unsupported scheme). The hash maps 1:1 to the i.scdn.co CDN, which
+  // serves CORS-clean images the canvas can sample.
+  function pvfdArtUrlToHttps(u) {
+    if (!u) return "";
+    if (u.indexOf("spotify:image:") === 0) return "https://i.scdn.co/image/" + u.slice(14);
+    return u;
+  }
+
+  function currentCoverArtUrl() {
+    const item = safeReturn(() => Spicetify.Player.data && Spicetify.Player.data.item, null);
+    if (!item) return "";
+    const meta = item.metadata || {};
+    const raw = meta.image_xlarge_url || meta.image_large_url || meta.image_url
+        || (item.images && item.images[0] && item.images[0].url) || "";
+    return pvfdArtUrlToHttps(raw);
+  }
+
+  let adaptiveCurrentHue = ADAPTIVE_NEUTRAL_HUE;  // hue currently painted (drives the lerp)
+  let adaptiveCurrentSat = CYAN_REF_SAT;          // dominant-color saturation currently painted
+  let adaptiveCurrentLight = ADAPTIVE_LIGHT_REF;  // dominant-color lightness currently painted
+  let adaptiveHueRaf = 0;
+  const ADAPTIVE_TRANSITION_MS = 900;  // album→album hue sweep; matches the tint crossfade length
+
+  // Paint one hue onto the envelope: rewrite the inline vars, recompute the
+  // clip hue-rotate degree, and refresh the LCD filter/palette. Cheap enough to
+  // call every animation frame.
+  function paintAdaptiveHue(hue, sat, light) {
+    if (sat == null) sat = adaptiveCurrentSat;
+    if (light == null) light = adaptiveCurrentLight;
+    const scale = adaptiveSatScale(sat);
+    const lbias = adaptiveLightBias(light);
+    const root = document.documentElement;
+    ADAPTIVE_LEGACY_INLINE_VAR_NAMES.forEach((name) => {
+      root.style.removeProperty(name);
+      if (chassis) chassis.style.removeProperty(name);
+    });
+    ADAPTIVE_VARS.forEach((v) => {
+      const rgb = adaptiveEnvelopeRgb(v.rgb, hue, scale, lbias);
+      const value = v.form === "hex"
+        ? "#" + rgb.map((n) => n.toString(16).padStart(2, "0")).join("")
+        : rgb[0] + ", " + rgb[1] + ", " + rgb[2];
+      root.style.setProperty(v.name, value);
+      if (chassis) chassis.style.setProperty(v.name, value);
+    });
+    adaptiveHueDeg = adaptiveDegForHue(hue);  // color-mode clips follow the album hue
+    adaptiveCurrentHue = hue;
+    adaptiveCurrentSat = sat;
+    adaptiveCurrentLight = light;
+    applyLcdFilter();          // sets data-pvfd-tint="adaptive" + refreshes canvas palette
+  }
+
+  // Per-frame paint for the adaptive hue sweep: the same envelope rotated onto
+  // `hue`, but written to the DECK ONLY (no <html> write, no applyLcdFilter) so
+  // the sweep stays cheap and smooth — the same discipline that made the fixed
+  // glide work. The full paintAdaptiveHue runs once at the sweep's end to flip
+  // the app + canvas. Uses writeTintPrimitives/adaptiveHuePrimitives (hoisted
+  // from the unified-crossfade section below).
+  function paintAdaptiveHueDeck(hue, sat, light) {
+    if (sat == null) sat = adaptiveCurrentSat;
+    if (light == null) light = adaptiveCurrentLight;
+    writeTintPrimitives(adaptiveHuePrimitives(hue, sat, light), true);
+    adaptiveHueDeg = adaptiveDegForHue(hue);
+    adaptiveCurrentHue = hue;
+    adaptiveCurrentSat = sat;
+    adaptiveCurrentLight = light;
+  }
+
+  function stopAdaptiveHueAnim() {
+    if (adaptiveHueRaf) { cancelAnimationFrame(adaptiveHueRaf); adaptiveHueRaf = 0; }
+    tintTransitionActive = false;   // the sweep borrows the deck-scoped glide flag
+  }
+
+  function refreshAdaptiveTintUi() {
+    markStaticReadoutsDirty();
+    const tintBtn = chassis && chassis.querySelector("[data-pvfd='tint']");
+    if (tintBtn) {
+      tintBtn.textContent = currentTintLabel();
+      tintBtn.dataset.pvfdTintShort = currentTintShort();
+      tintBtn.classList.add("active");
+    }
+    updateMenuPanel();
+    refreshTintMenuSelection();
+  }
+
+  // Smoothly rotate the tint from one album's hue to the next along the shortest
+  // way around the wheel (easeInOutQuad), painting the DECK ONLY each frame so it
+  // stays smooth; the app + canvas flip once when the sweep lands. Snaps if
+  // reduced-motion is requested.
+  function animateAdaptiveHue(toHue, toSat, toLight) {
+    stopAdaptiveHueAnim();
+    stopTintTransition();      // never let a fixed glide and the hue sweep run at once
+    const fromHue = adaptiveCurrentHue, fromSat = adaptiveCurrentSat, fromLight = adaptiveCurrentLight;
+    if (toSat == null) toSat = fromSat;
+    if (toLight == null) toLight = fromLight;
+    const reduce = safeReturn(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches, false);
+    const delta = ((toHue - fromHue + 540) % 360) - 180;   // signed shortest delta
+    if (reduce || (Math.abs(delta) < 0.5 && Math.abs(toSat - fromSat) < 0.02 && Math.abs(toLight - fromLight) < 0.02)) {
+      paintAdaptiveHue(toHue, toSat, toLight); return;
+    }
+    tintTransitionActive = true;   // deck-scoped: applyLcdFilter skips the <html> attr write
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / ADAPTIVE_TRANSITION_MS);
+      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      if (t < 1) {
+        paintAdaptiveHueDeck(
+          ((fromHue + delta * e) % 360 + 360) % 360,
+          fromSat + (toSat - fromSat) * e,
+          fromLight + (toLight - fromLight) * e
+        );
+        adaptiveHueRaf = requestAnimationFrame(step);
+      } else {
+        adaptiveHueRaf = 0;
+        tintTransitionActive = false;
+        paintAdaptiveHue(toHue, toSat, toLight);   // commit: writes <html> + applyLcdFilter, app flips once
+      }
+    };
+    adaptiveHueRaf = requestAnimationFrame(step);
+  }
+
+  // ----- UNIFIED TINT CROSSFADE ------------------------------------------
+  // Any tint change (fixed→fixed, fixed→adaptive, adaptive→fixed) glides its
+  // primitives through one rAF loop so hex + triplet vars move in lockstep and
+  // the canvas palette / video hue-rotate follow uniformly — no per-element
+  // tearing. Mono (B-ON-W / W-ON-B) swaps snap: a grayscale filter can't be
+  // interpolated, so easing it just looks washed.
+  let tintXfadeRaf = 0;
+  let tintTransitionDeg = null;   // overrides the rendered hue-rotate deg mid-glide
+  let tintTransitionActive = false;  // true while a deck-scoped glide is painting
+  const TINT_TRANSITION_MS = 900;    // deck crossfade length; long enough to read as a fade
+
+  function pvfdParseCssRgb(str) {
+    str = String(str || "").trim();
+    if (str.charAt(0) === "#") {
+      if (str.length === 4) {
+        return [parseInt(str[1] + str[1], 16), parseInt(str[2] + str[2], 16), parseInt(str[3] + str[3], 16)];
+      }
+      return [parseInt(str.slice(1, 3), 16), parseInt(str.slice(3, 5), 16), parseInt(str.slice(5, 7), 16)];
+    }
+    const m = str.match(/(\d+)\D+(\d+)\D+(\d+)/);
+    return m ? [+m[1], +m[2], +m[3]] : null;
+  }
+
+  // Read the primitives as they currently render off `el` (inline vars if a glide
+  // or adaptive is live, otherwise the active CSS tint block). Defaults to <html>.
+  function readTintPrimitives(el) {
+    const cs = getComputedStyle(el || document.documentElement);
+    return ADAPTIVE_VARS.map((v) => pvfdParseCssRgb(cs.getPropertyValue(v.name)) || v.rgb.slice());
+  }
+
+  // chassisOnly keeps the write inside the deck subtree. Writing these on <html>
+  // cascades through the --spice-* aliases into all of Spotify, forcing a ~300ms
+  // app-wide restyle per frame that collapses any glide to a snap; the chassis
+  // subtree stays cheap. Channels are clamped so an out-of-range lerp can't emit
+  // a malformed >6-digit hex.
+  function writeTintPrimitives(rgbs, chassisOnly) {
+    const clamp = (n) => Math.max(0, Math.min(255, Math.round(n)));
+    const targets = chassisOnly
+      ? (chassis ? [chassis] : [])
+      : [document.documentElement].concat(chassis ? [chassis] : []);
+    ADAPTIVE_VARS.forEach((v, i) => {
+      const rgb = rgbs[i];
+      const value = v.form === "hex"
+        ? "#" + rgb.map((n) => clamp(n).toString(16).padStart(2, "0")).join("")
+        : clamp(rgb[0]) + ", " + clamp(rgb[1]) + ", " + clamp(rgb[2]);
+      for (const el of targets) el.style.setProperty(v.name, value);
+    });
+  }
+
+  // The primitive set an album hue+saturation+lightness produces (CYAN envelope
+  // rotated onto `hue`, saturation scaled and foreground lightness lifted toward
+  // the album), matching paintAdaptiveHue's per-var math — used as a crossfade target.
+  function adaptiveHuePrimitives(hue, sat, light) {
+    const scale = adaptiveSatScale(sat);
+    const lbias = adaptiveLightBias(light);
+    return ADAPTIVE_VARS.map((v) => adaptiveEnvelopeRgb(v.rgb, hue, scale, lbias));
+  }
+
+  // Read a fixed tint's primitives out of its CSS block by briefly pointing the
+  // live attribute at it. getComputedStyle forces a synchronous style recalc but
+  // no paint, and we restore the old attribute before yielding, so nothing flashes.
+  function readFixedTintPrimitives(cssTintName) {
+    const root = document.documentElement;
+    const prevAttr = root.getAttribute("data-pvfd-tint");
+    ADAPTIVE_VAR_NAMES.forEach((n) => { root.style.removeProperty(n); if (chassis) chassis.style.removeProperty(n); });
+    root.setAttribute("data-pvfd-tint", cssTintName);
+    const target = readTintPrimitives();
+    if (prevAttr) root.setAttribute("data-pvfd-tint", prevAttr);
+    else root.removeAttribute("data-pvfd-tint");
+    return target;
+  }
+
+  function currentRenderedTintDeg() {
+    if (tintTransitionDeg != null) return tintTransitionDeg;
+    if (adaptiveTintActive) return adaptiveMonoMode ? 0 : adaptiveHueDeg;
+    return TINT_HUE_DEG[tintIdx] || 0;
+  }
+
+  function stopTintTransition() {
+    if (tintXfadeRaf) { cancelAnimationFrame(tintXfadeRaf); tintXfadeRaf = 0; }
+    tintTransitionDeg = null;
+    tintTransitionActive = false;
+  }
+
+  // Glide primitives start→target and the hue-rotate deg along the shortest arc,
+  // then run commit() to install the final resting state. snap / reduced-motion /
+  // a negligible delta all skip straight to commit.
+  function runTintTransition(opts) {
+    const commit = opts.commit;
+    stopAdaptiveHueAnim();
+    stopTintTransition();
+    const reduce = safeReturn(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches, false);
+    const startPrimitives = opts.startPrimitives;
+    const targetPrimitives = opts.targetPrimitives;
+    const startDeg = opts.startDeg;
+    const dDeg = ((opts.targetDeg - startDeg + 540) % 360) - 180;
+    let maxDelta = 0;
+    for (let i = 0; i < startPrimitives.length; i++) {
+      for (let c = 0; c < 3; c++) maxDelta = Math.max(maxDelta, Math.abs(targetPrimitives[i][c] - startPrimitives[i][c]));
+    }
+    if (opts.snap || reduce || (maxDelta < 1.5 && Math.abs(dDeg) < 0.5)) { commit(); applyLcdFilter(); return; }
+
+    // Glide the DECK only (chassis subtree). <html> stays on the old tint the
+    // whole time — the rest of Spotify keeps its colors until commit, where the
+    // app flips once. tintTransitionActive tells applyLcdFilter to skip the
+    // attribute write (its app-wide restyle trigger) and read the deck's live
+    // gliding vars for the canvas palette.
+    tintTransitionActive = true;
+    writeTintPrimitives(startPrimitives, true);   // frame 0 = current look, before any paint
+    tintTransitionDeg = startDeg;
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / TINT_TRANSITION_MS);
+      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      const cur = startPrimitives.map((s, i) => {
+        const d = targetPrimitives[i];
+        return [s[0] + (d[0] - s[0]) * e, s[1] + (d[1] - s[1]) * e, s[2] + (d[2] - s[2]) * e];
+      });
+      // ONLY write the deck vars per frame — nothing else. This is exactly the
+      // op that tested smooth. applyLcdFilter (40 getComputedStyle + a canvas
+      // repaint) is far too heavy to run per frame; it drags each frame past
+      // ~200ms and collapses the glide to a snap. The canvas/video hue-rotate
+      // catch up once, at commit.
+      writeTintPrimitives(cur, true);
+      tintTransitionDeg = ((startDeg + dDeg * e) % 360 + 360) % 360;
+      if (t < 1) {
+        tintXfadeRaf = requestAnimationFrame(step);
+      } else {
+        tintXfadeRaf = 0;
+        tintTransitionDeg = null;
+        tintTransitionActive = false;
+        commit();                 // installs the resting state on <html>: the app + canvas flip once here
+        applyLcdFilter();
+      }
+    };
+    tintXfadeRaf = requestAnimationFrame(step);
+  }
+
+  function applyAdaptiveTintFromHue(hue, sat, light, animate) {
+    const wasActive = adaptiveTintActive;
+    const wasMono = !!adaptiveMonoMode;
+    // Capture the outgoing look before we flip any state (currentRenderedTintDeg
+    // reads adaptiveTintActive), so a colored fixed tint can glide into adaptive.
+    const startWasMono = !!document.documentElement.getAttribute("data-pvfd-mono");
+    const startPrimitives = readTintPrimitives(chassis || document.documentElement);
+    const startDeg = currentRenderedTintDeg();
+    stopTintTransition();    // cancel any in-flight glide before starting a new one
+    adaptiveDesired = true;
+    adaptiveTintActive = true;
+    adaptiveMonoMode = "";
+    if (sat == null) sat = CYAN_REF_SAT;       // no saturation info → plain cyan envelope
+    if (light == null) light = ADAPTIVE_LIGHT_REF;  // no lightness info → no lift
+    safe(() => window.localStorage.setItem(TINT_STORAGE_KEY, "ADAPTIVE"));
+    if (wasActive && !wasMono) {
+      animateAdaptiveHue(hue, sat, light);              // adaptive→adaptive: hue + sat + lightness lerp
+    } else if (animate && !startWasMono) {
+      runTintTransition({                                   // user picks adaptive over a colored tint: glide onto the album hue
+        startPrimitives, startDeg,
+        targetPrimitives: adaptiveHuePrimitives(hue, sat, light),
+        targetDeg: adaptiveDegForHue(hue),
+        commit: () => paintAdaptiveHue(hue, sat, light)
+      });
+    } else {
+      stopAdaptiveHueAnim(); paintAdaptiveHue(hue, sat, light);   // boot restore / from mono: snap
+    }
+    refreshAdaptiveTintUi();
+  }
+
+  function applyAdaptiveTintFromMono(monoMode) {
+    adaptiveDesired = true;
+    adaptiveTintActive = true;
+    adaptiveMonoMode = monoMode;
+    adaptiveHueDeg = 0;
+    safe(() => window.localStorage.setItem(TINT_STORAGE_KEY, "ADAPTIVE"));
+    stopAdaptiveHueAnim();
+    stopTintTransition();    // mono snaps — kill any in-flight color glide
+    clearAdaptiveInlineVars();
+    applyLcdFilter();
+    refreshAdaptiveTintUi();
+  }
+
+  function clearAdaptiveTint() {
+    adaptiveDesired = false;
+    adaptiveMonoMode = "";
+    stopAdaptiveHueAnim();
+    stopTintTransition();
+    clearAdaptiveInlineVars();
+    if (!adaptiveTintActive) return;
+    adaptiveTintActive = false;
+  }
+
+  // Engage / refresh adaptive from the current album art.
+  //   opts.onNull   "neutral" -> a colorless cover shows neutral CYAN but stays
+  //                              adaptive (menu/cycle/boot);
+  //                 "keep"    -> a colorless cover leaves the current hue untouched
+  //                              (track changes — don't flinch on a mono cover).
+  //   opts.closeMenu           close the tint menu once applied.
+  function applyAdaptiveTint(opts) {
+    opts = opts || {};
+    adaptiveDesired = true;
+    const finish = (res) => {
+      let hue, sat, light;
+      if (res == null) {
+        if (opts.onNull === "keep") return;
+        hue = ADAPTIVE_NEUTRAL_HUE; sat = CYAN_REF_SAT; light = ADAPTIVE_LIGHT_REF;   // neutral = plain cyan envelope
+      } else {
+        hue = res.hue; sat = res.sat; light = res.light;
+      }
+      applyAdaptiveTintFromHue(hue, sat, light, !!opts.animate);
+      if (opts.closeMenu) setTintMenuOpen(false);
+    };
+    const url = currentCoverArtUrl();
+    if (!url) { finish(null); return; }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      let monoMode = "";
+      try { monoMode = pvfdDetectCoverMonoMode(img); } catch (e) { monoMode = ""; }
+      if (monoMode) {
+        applyAdaptiveTintFromMono(monoMode);
+        if (opts.closeMenu) setTintMenuOpen(false);
+        return;
+      }
+      let res = null;
+      try { res = pvfdExtractCoverHue(img); } catch (e) { res = null; }
+      finish(res);
+    };
+    img.onerror = () => { finish(null); };
+    img.src = url;
+  }
+
+  function applyTintMode(persist = false) {
+    // Snapshot the outgoing look off the deck (mid-glide inline vars if one is
+    // running) before mutating any state, so the swap can glide from what's shown.
+    const startWasMono = !!document.documentElement.getAttribute("data-pvfd-mono");
+    const startPrimitives = readTintPrimitives(chassis || document.documentElement);
+    const startDeg = currentRenderedTintDeg();
+    stopTintTransition();    // cancel any in-flight glide before starting a new one
+    clearAdaptiveTint();     // picking any fixed tint leaves adaptive mode
+    tintIdx = ((tintIdx % TINT_HUE_DEG.length) + TINT_HUE_DEG.length) % TINT_HUE_DEG.length;
+    const targetMono = !!(TINT_MONO_MODE[tintIdx] || "");
+    // commit hands the primitives back to the CSS tint block once the glide lands.
+    const commit = () => { clearAdaptiveInlineVars(); applyLcdFilter(); };
+    // Only deliberate user tint changes (persist) glide; boot / preview restores
+    // and mono swaps snap.
+    if (!persist || startWasMono || targetMono) {
+      commit();
+    } else {
+      runTintTransition({
+        startPrimitives, startDeg,
+        targetPrimitives: readFixedTintPrimitives(mapTintNameForCss(tintIdx)),
+        targetDeg: TINT_HUE_DEG[tintIdx],
+        commit
+      });
+    }
+    markStaticReadoutsDirty();
+    const tintBtn = chassis && chassis.querySelector("[data-pvfd='tint']");
+    if (tintBtn) {
+      tintBtn.textContent = currentTintLabel();
+      tintBtn.dataset.pvfdTintShort = currentTintShort();
+      tintBtn.classList.toggle("active", tintIdx !== 0);
+    }
+    if (persist) safe(() => window.localStorage.setItem(TINT_STORAGE_KEY, TINT_LABELS[tintIdx]));
+    updateMenuPanel();
+  }
+
+  // Cycle order: CYAN … INDIGO → B ON W → W ON B → ADAPT → (wrap) CYAN.
+  function cycleTintMode() {
+    if (adaptiveTintActive) {                    // ADAPT → CYAN
+      tintIdx = 0;
+      applyTintMode(true);                       // clears adaptive + persists CYAN
+      return;
+    }
+    if (tintIdx >= TINT_HUE_DEG.length - 1) {     // last fixed tint (W ON B) → ADAPT
+      applyAdaptiveTint({ onNull: "neutral", animate: true });
+      return;
+    }
+    tintIdx = tintIdx + 1;
+    applyTintMode(true);
+  }
+
+  function toggleDemoMode() {
+    demoAutoMode = !demoAutoMode;
+    if (demoAutoMode) {
+      // Remember whichever clip the user had set so we can restore it when
+      // DEMO is turned off. Cycle advances are non-persisted (setActiveClip
+      // false) so the user's saved clip in localStorage is never touched.
+      demoSavedClipIdx = clipIdx;
+      demoLastClipSwitchMs = performance.now();
+      // Never open the showroom on a PULSE-locked clip: if the user's current
+      // clip is locked, jump straight to an unlocked one (demoSavedClipIdx still
+      // restores their real choice when DEMO turns off).
+      const demoClips = getOelClips();
+      if (demoClips[clipIdx] && isClipPulseLocked(demoClips[clipIdx])) {
+        setActiveClip(nextDemoClipIdx(clipIdx), false);
+      }
+    } else if (demoSavedClipIdx !== null) {
+      setActiveClip(demoSavedClipIdx, false);
+      demoSavedClipIdx = null;
+    }
+    if (chassis) chassis.setAttribute("data-pvfd-demo", demoAutoMode ? "on" : "off");
+    markStaticReadoutsDirty();
+    updateRoleButtonStates();
+    updateMenuPanel();
+  }
+
+  function activateMenuAction(action) {
+    if (action === "clip") cycleClipMode();
+    else if (action === "demo") toggleDemoMode();
+    else if (action === "tint") openTintMenu();
+    else if (action === "type") cycleFontPreset();
+    else if (action === "lcdFont") cycleLcdFontPreset();
+    else if (action === "artPixel") cycleArtPixel();
+    else if (action === "perf") cyclePerformanceMode();
+    else if (action === "logoGlow") toggleLogoGlowMode();
+    else if (action === "oelDisplay") toggleOelDisplay();
+    else if (action === "racingColor") toggleRacingColorMode();
+    else if (action === "customOel") openCustomOelImport();
+    else if (action === "customFont") openCustomFontImport();
+    else if (action === "chromeMode") toggleChromeMode();
+    else if (action === "logoStyle") cycleLogoStyle();
+    else if (action === "everScroll") toggleEverScrollMode();
+    else if (action === "ledGlow") toggleLedGlow();
+    else if (action === "openCustomize") setCustomizeMenuView(true);
+    else if (action === "backToMain") setCustomizeMenuView(false);
+    else if (action === "close") setMenuOpen(false);
+    else if (action === "tintAdaptive") applyAdaptiveTint({ onNull: "neutral", closeMenu: true, animate: true });
+    else if (action === "tintBack") { setTintMenuOpen(false); setMenuOpen(true); setCustomizeMenuView(true); }
+    else if (action === "tintClose") setTintMenuOpen(false);
+  }
+
+  function clampVolume01(value) {
+    const n = Number(value);
+    return clamp(Number.isFinite(n) ? n : 0, 0, 1);
+  }
+
+  function isBandAudioActive() {
+    return bandPresetIdx >= 0 && !!getFmAudio();
+  }
+
+  function getSpotifyVolumeSafe(now = performance.now(), force = false) {
+    if (force || now - volumeStateCache.at > VOLUME_SAMPLE_MS) {
+      const raw = safeReturn(() => Spicetify.Player.getVolume(), volumeStateCache.value);
+      volumeStateCache.value = clampVolume01(raw);
+      volumeStateCache.at = now;
+    }
+    return volumeStateCache.value;
+  }
+
+  function getFmVolumeSafe() {
+    const audio = getFmAudio();
+    if (!audio) return getSpotifyVolumeSafe();
+    return clampVolume01(audio.volume);
+  }
+
+  function getActiveHardwareVolume(now = performance.now(), force = false) {
+    if (pendingVolume !== null) return pendingVolume;
+    return isBandAudioActive() ? getFmVolumeSafe() : getSpotifyVolumeSafe(now, force);
+  }
+
+  function getPlayerVolume(now = performance.now(), force = false) {
+    return getActiveHardwareVolume(now, force);
+  }
+
+  function applyFmVolume(volume01) {
+    const audio = getFmAudio();
+    if (!audio) return;
+    audio.volume = clampVolume01(volume01);
+  }
+
+  function mirrorSpotifyVolume(volume01) {
+    const volume = clampVolume01(volume01);
+    volumeStateCache.value = volume;
+    volumeStateCache.at = performance.now();
+    safe(() => Spicetify.Player.setVolume(volume));
+  }
+
+  function refreshVolumeUiFromActiveSource() {
+    markVolumeReadoutsDirty();
+    updateLknobLED();
+  }
+
+  function setHardwareVolume(volume01) {
+    const volume = clampVolume01(volume01);
+    if (isBandAudioActive()) {
+      applyFmVolume(volume);
+      mirrorSpotifyVolume(volume);
+    } else {
+      mirrorSpotifyVolume(volume);
+    }
+    refreshVolumeUiFromActiveSource();
+  }
+
+  function setVolumeSmooth(v) {
+    pendingVolume = clampVolume01(v);
+    if (!isBandAudioActive()) {
+      volumeStateCache.value = pendingVolume;
+      volumeStateCache.at = performance.now();
+    }
+    markStaticReadoutsDirty();
+    updateLknobLED();
+    if (volumeCommitTimer) return;
+    volumeCommitTimer = setTimeout(() => {
+      const next = pendingVolume;
+      volumeCommitTimer = null;
+      pendingVolume = null;
+      if (next === null) return;
+      setHardwareVolume(next);
+    }, 35);
+  }
+
+  // Called from the volume knob's user-input paths (scroll wheel, drag).
+  // If the user touches the volume while ATT is active, we cancel ATT
+  // without restoring the snapshot — their fresh adjustment becomes the
+  // new volume. Matches period radios where any volume input dismissed ATT.
+  function exitAttOnUserVolumeInput() {
+    if (!attActive) return;
+    attActive = false;
+    const attPill = chassis && chassis.querySelector("[data-pvfd='att']");
+    if (attPill) attPill.classList.remove("active");
+    if (chassis) chassis.removeAttribute("data-pvfd-att");
+    markStaticReadoutsDirty();
+  }
+
+  // ATT toggle. Snapshots current volume and applies the attenuator per
+  // attMode ("mute" → 0; "soft" → currentVolume * ATT_SOFT_MULTIPLIER).
+  // A second press restores the snapshot. Mirrors the real Pioneer ATT
+  // button: instant on, instant off. Mode is controlled by the M.C. menu.
+  function toggleAttMode() {
+    if (attActive) {
+      attActive = false;
+      setVolumeSmooth(attPriorVolume);
+    } else {
+      attPriorVolume = getPlayerVolume();
+      attActive = true;
+      const next = attMode === "soft" ? attPriorVolume * ATT_SOFT_MULTIPLIER : 0;
+      setVolumeSmooth(next);
+    }
+    const attPill = chassis && chassis.querySelector("[data-pvfd='att']");
+    if (attPill) attPill.classList.toggle("active", attActive);
+    // Mirror onto the chassis so CSS can re-skin the left LCD VOL readout.
+    if (chassis) {
+      if (attActive) chassis.setAttribute("data-pvfd-att", "on");
+      else chassis.removeAttribute("data-pvfd-att");
+    }
+    // Force the side-readout pass to redraw immediately so the VOL row
+    // swaps to ATTENUATOR without waiting for the next sample tick.
+    markStaticReadoutsDirty();
+  }
+
+  function activePlayerTimingSampleMs() {
+    return PLAYER_TIMING_SAMPLE_MS;
+  }
+
+  function projectedPlayerProgressMs(ts = performance.now()) {
+    if (!Number.isFinite(playerTimingCache.at)) return playerTimingCache.progressMs || 0;
+    const elapsed = playerTimingCache.playing ? Math.max(0, ts - playerTimingCache.at) : 0;
+    const duration = playerTimingCache.durationMs;
+    const projected = playerTimingCache.progressMs + elapsed;
+    return duration > 0 ? clamp(projected, 0, duration) : projected;
+  }
+
+  function getSampledPlaybackTiming(ts = performance.now(), force = false) {
+    if (force || ts - playerTimingCache.at >= activePlayerTimingSampleMs()) {
+      const projectedProgressMs = projectedPlayerProgressMs(ts);
+      const sampledProgressMs = safeReturn(() => Spicetify.Player.getProgress(), projectedProgressMs) || 0;
+      const durationMs = getCurrentDurationMs();
+      const playing = safePlayerIsPlaying(playerTimingCache.playing);
+      let progressMs = sampledProgressMs;
+
+      if (logoGlowEnabled && !force && playing && playerTimingCache.playing && Number.isFinite(playerTimingCache.at)) {
+        const correctionMs = sampledProgressMs - projectedProgressMs;
+        progressMs = Math.abs(correctionMs) <= 450
+          ? projectedProgressMs + correctionMs * LOGO_GLOW_TIMING_SMOOTHING
+          : sampledProgressMs;
+      }
+
+      playerTimingCache.at = ts;
+      playerTimingCache.progressMs = durationMs > 0 ? clamp(progressMs, 0, durationMs) : progressMs;
+      playerTimingCache.durationMs = durationMs;
+      playerTimingCache.playing = playing;
+    }
+
+    return {
+      progressMs: projectedPlayerProgressMs(ts),
+      durationMs: playerTimingCache.durationMs,
+      playing: playerTimingCache.playing,
+    };
+  }
+
+  function getDisplayProgressMs(ts = performance.now(), timing = getSampledPlaybackTiming(ts)) {
+    if (scrubPreviewMs !== null && ts < scrubPreviewUntil) return scrubPreviewMs;
+    scrubPreviewMs = null;
+    return timing.progressMs;
+  }
+
+  function seekToMs(ms) {
+    const duration = getCurrentDurationMs();
+    const target = clamp(ms || 0, 0, duration > 0 ? duration : Number.MAX_SAFE_INTEGER);
+    // Instant visual: show the target immediately, refreshed on each call so
+    // stacked ±10s jogs track the presses instead of the old position.
+    scrubPreviewMs = target;
+    scrubPreviewUntil = performance.now() + 700;
+    playerTimingCache.at = -Infinity;
+    // Debounce the real seek — same reasoning as the drag scrubber: firing a
+    // Spicetify.Player.seek() on every rapid press queues overlapping async
+    // seeks that race in Spotify's audio engine and make the reported position
+    // (progress bar + elapsed/total readout) jitter until they settle. Coalesce
+    // to the latest target on an 80ms window.
+    seekPendingTarget = target;
+    if (!seekCommitTimer) {
+      seekCommitTimer = window.setTimeout(() => {
+        seekCommitTimer = 0;
+        if (seekPendingTarget === null) return;
+        const commitTarget = seekPendingTarget;
+        seekPendingTarget = null;
+        safe(() => Spicetify.Player.seek(commitTarget));
+        // Bridge Spotify's post-seek stale-position window: hold the preview
+        // past the commit so the bar/readout don't invalidate to the OLD
+        // reported position before the engine catches up (the "bounce"). In-
+        // track jogs settle fast; 1200ms covers it without a visible freeze.
+        scrubPreviewMs = commitTarget;
+        scrubPreviewUntil = performance.now() + 1200;
+        playerTimingCache.at = -Infinity;
+      }, 80);
+    }
+  }
+
+  function seekByMs(deltaMs) {
+    seekToMs(getDisplayProgressMs() + deltaMs);
+  }
+
+  function bindProgressScrubber(el) {
+    if (!el) return;
+    let scrubRect = null;
+    let pendingTarget = null;
+    let commitTimer = 0;
+
+    // Visual preview updates on every pointermove (instant feedback through
+    // scrubPreviewMs). The actual Spicetify.Player.seek() commits are
+    // debounced — without this, fast back-and-forth scrubbing fires 120+
+    // overlapping async seeks that race in Spotify's audio engine and make
+    // the displayed position jump erratically until the in-flight seeks
+    // settle. 80ms commit window matches roughly what Spotify can chew
+    // through cleanly without queuing.
+    const commit = () => {
+      commitTimer = 0;
+      if (pendingTarget === null) return;
+      const target = pendingTarget;
+      pendingTarget = null;
+      safe(() => Spicetify.Player.seek(target));
+    };
+
+    const apply = (e) => {
+      const rect = scrubRect || el.getBoundingClientRect();
+      if (!rect.width) return;
+      const duration = getCurrentDurationMs();
+      if (!duration) return;
+      const frac = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+      const target = frac * duration;
+      // Visual: write the CSS variable directly on every pointermove so the
+      // bar/thumb tracks the cursor at native pointer rate (60-240Hz) instead
+      // of waiting for the next render-loop tick (30-60fps). Without this,
+      // each move incurred up to ~33ms of perceived lag because --pvfd-progress
+      // only updated when the main render loop next ran. scrubPreviewMs still
+      // gets set so the render loop reads the right value when it does run.
+      el.style.setProperty("--pvfd-progress", (frac * 100).toFixed(2) + "%");
+      scrubPreviewMs = target;
+      scrubPreviewUntil = performance.now() + 700;
+      playerTimingCache.at = -Infinity;
+      // Engine: debounce so we don't queue overlapping seeks.
+      pendingTarget = target;
+      if (!commitTimer) commitTimer = window.setTimeout(commit, 80);
+    };
+
+    let activePointer = null;
+    el.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      activePointer = e.pointerId;
+      scrubRect = el.getBoundingClientRect();
+      if (el.setPointerCapture) el.setPointerCapture(e.pointerId);
+      apply(e);
+      el.classList.add("scrubbing");
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (activePointer !== e.pointerId) return;
+      e.preventDefault();
+      apply(e);
+    });
+    const end = () => {
+      activePointer = null;
+      scrubRect = null;
+      el.classList.remove("scrubbing");
+      // On release, flush any pending seek immediately so the final landing
+      // position is committed without waiting out the 80ms debounce.
+      if (commitTimer) {
+        clearTimeout(commitTimer);
+        commit();
+      }
+      // Extend the visual preview lock past Spotify's typical seek+buffer
+      // window. Without this, scrubPreviewMs invalidates after 700ms while
+      // the player is still mid-seek and reporting the OLD position; the
+      // bar visibly bounces back to old, then snaps to new once Spotify
+      // catches up. 2000ms covers the worst-case buffer reload on slower
+      // connections; under normal conditions Spotify lands well inside
+      // this window and the transition to player-reported state is
+      // imperceptible because the values match.
+      scrubPreviewUntil = performance.now() + 2000;
+      // Also force the player timing cache to re-sample on the next read
+      // after the preview window expires, so we read Spotify's settled
+      // position rather than a stale cached value from before the seek.
+      playerTimingCache.at = -Infinity;
+    };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+  }
+
+  function wireControls() {
+    pvfdDiag.wireControlsCalls++;
+    const $ = (sel) => chassis.querySelector(sel);
+
+    // Wrap addEventListener on the drag elements so the diagnostic can count
+    // registrations per element. If wireControls is ever called twice on the
+    // same DOM node, listenersAdded.<label> will be 2x the per-run count and
+    // every drag event will dispatch through duplicated handlers.
+    const instrumentDragEl = (el, label) => {
+      if (!el || el.__pvfdInstrumented) return el;
+      el.__pvfdInstrumented = true;
+      const orig = el.addEventListener.bind(el);
+      el.addEventListener = function (type, fn, opts) {
+        pvfdDiag.listenersAdded[label] = (pvfdDiag.listenersAdded[label] || 0) + 1;
+        return orig(type, fn, opts);
+      };
+      return el;
+    };
+
+    populateTintMenu();
+
+    const lknob = instrumentDragEl($("[data-pvfd='lknob']"), "lknob");
+    if (lknob) {
+      const knobCenter = () => {
+        const rect = lknob.getBoundingClientRect();
+        return { cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2 };
+      };
+      const pointerAngleDeg = (e, center = knobCenter()) => {
+        const { cx, cy } = center;
+        const dx = e.clientX - cx;
+        const dy = e.clientY - cy;
+        // 0deg is straight up / 12 o'clock. Positive is clockwise.
+        return (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+      };
+      lknob.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        exitAttOnUserVolumeInput();
+        const step = clamp(-e.deltaY / 1200, -0.04, 0.04);
+        setVolumeSmooth(getPlayerVolume() + step);
+      }, { passive: false });
+      let volumeDrag = null;
+      let mcHoldTimer = null;
+      let mcHoldStart = null;
+      const cancelMcHold = () => {
+        if (mcHoldTimer) { clearTimeout(mcHoldTimer); mcHoldTimer = null; }
+        mcHoldStart = null;
+      };
+      lknob.addEventListener("pointerdown", (e) => {
+        // While M.C. menu is open, pointerdown on the knob just closes it
+        // and suppresses the drag — prevents accidental volume changes when
+        // the user is trying to dismiss the menu.
+        if (mcMenuOpen) {
+          setMcMenuOpen(false);
+          e.preventDefault();
+          return;
+        }
+        const center = knobCenter();
+        volumeDrag = {
+          ...center,
+          lastAngle: pointerAngleDeg(e, center),
+          startVolume: getPlayerVolume(),
+          accumDeg: 0
+        };
+        if (lknob.setPointerCapture) lknob.setPointerCapture(e.pointerId);
+        lknob.classList.add("dragging");
+
+        // M.C. hold detection: only arm if pointerdown lands inside the
+        // center hot zone (cap area). Outer ring presses are pure drag.
+        const rect = lknob.getBoundingClientRect();
+        const radius = Math.min(rect.width, rect.height) / 2;
+        const dist = Math.hypot(e.clientX - center.cx, e.clientY - center.cy);
+        if (radius > 0 && dist / radius <= MC_CENTER_HIT_FRACTION) {
+          mcHoldStart = { x: e.clientX, y: e.clientY };
+          mcHoldTimer = setTimeout(() => {
+            mcHoldTimer = null;
+            // Tear down the drag we started on pointerdown so the menu open
+            // doesn't leave a stale drag accumulating rotation.
+            volumeDrag = null;
+            lknob.classList.remove("dragging");
+            setMcMenuOpen(true);
+          }, MC_HOLD_MS);
+        }
+
+        e.preventDefault();
+      });
+      lknob.addEventListener("pointermove", (e) => {
+        if (mcHoldStart && (Math.abs(e.clientX - mcHoldStart.x) > MC_HOLD_MOVE_THRESHOLD_PX
+                          || Math.abs(e.clientY - mcHoldStart.y) > MC_HOLD_MOVE_THRESHOLD_PX)) {
+          cancelMcHold();
+        }
+        if (!volumeDrag) return;
+        const a = pointerAngleDeg(e, volumeDrag);
+        let d = a - volumeDrag.lastAngle;
+        if (d > 180) d -= 360;
+        if (d < -180) d += 360;
+        volumeDrag.accumDeg += d;
+        volumeDrag.lastAngle = a;
+        // Only exit ATT once the user has actually MOVED the knob, not on
+        // pointerdown — a stray click on the knob shouldn't clear ATT.
+        if (Math.abs(volumeDrag.accumDeg) > 2) exitAttOnUserVolumeInput();
+        setVolumeSmooth(volumeDrag.startVolume + volumeDrag.accumDeg / 360);
+        e.preventDefault();
+      });
+      const endVolumeDrag = () => {
+        cancelMcHold();
+        volumeDrag = null;
+        lknob.classList.remove("dragging");
+      };
+      lknob.addEventListener("pointerup", endVolumeDrag);
+      lknob.addEventListener("pointercancel", endVolumeDrag);
+      lknob.addEventListener("lostpointercapture", endVolumeDrag);
+    }
+
+    // M.C. menu open/close + row click wiring. Outside-click closes; clicking
+    // a row mutates the corresponding state and refreshes the row labels.
+    const mcMenuEl = $("[data-pvfd='mc-menu']");
+    if (mcMenuEl) {
+      mcMenuEl.querySelectorAll("[data-pvfd-mc-row]").forEach((row) => {
+        row.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const which = row.dataset.pvfdMcRow;
+          if (which === "att")       cycleAttMode();
+          else if (which === "glow") toggleKnobGlow();
+        });
+      });
+    }
+    // Outside-click handler is attached once and gates on mcMenuOpen.
+    document.addEventListener("pointerdown", (e) => {
+      if (!mcMenuOpen) return;
+      if (!mcMenuEl) return;
+      if (mcMenuEl.contains(e.target)) return;
+      // The knob's own pointerdown handler already closes the menu and
+      // suppresses drag; don't double-close from here.
+      const knobEl = $("[data-pvfd='lknob']");
+      if (knobEl && knobEl.contains(e.target)) return;
+      setMcMenuOpen(false);
+    }, true);
+
+    const navring = instrumentDragEl($("[data-pvfd='navring']"), "navring");
+    if (navring) {
+      // Issue #32: the ring tunes BAND stations instead of scrubbing time (the
+      // arrows now own seek, the progress bar owns fine scrub). Up = next
+      // station, down = prior; wheel and vertical drag both detent one station
+      // per threshold. Inert unless a station is on — BAND stays the on/off
+      // toggle. stepBandPreset() is a no-op when off, but we also gate here so
+      // the ring doesn't swallow the wheel/drag when it isn't tuning.
+      const RING_WHEEL_STEP_PX = 80;   // wheel delta per station detent
+      const RING_DRAG_STEP_PX = 46;    // vertical drag px per station detent
+      let ringWheelAccum = 0;
+      navring.addEventListener("wheel", (e) => {
+        if (bandPresetIdx < 0) return;
+        e.preventDefault();
+        ringWheelAccum += -e.deltaY;   // wheel up = toward next station
+        while (ringWheelAccum >= RING_WHEEL_STEP_PX)  { ringWheelAccum -= RING_WHEEL_STEP_PX; stepBandPreset(+1); }
+        while (ringWheelAccum <= -RING_WHEEL_STEP_PX) { ringWheelAccum += RING_WHEEL_STEP_PX; stepBandPreset(-1); }
+      }, { passive: false });
+      navring.addEventListener("pointerdown", (e) => {
+        if (bandPresetIdx < 0) return;
+        navDrag = { y: e.clientY, accum: 0 };
+        if (navring.setPointerCapture) navring.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      navring.addEventListener("pointermove", (e) => {
+        if (!navDrag) return;
+        const dy = navDrag.y - e.clientY;   // up = positive = toward next station
+        navDrag.y = e.clientY;
+        navDrag.accum += dy;
+        while (navDrag.accum >= RING_DRAG_STEP_PX)  { navDrag.accum -= RING_DRAG_STEP_PX; stepBandPreset(+1); }
+        while (navDrag.accum <= -RING_DRAG_STEP_PX) { navDrag.accum += RING_DRAG_STEP_PX; stepBandPreset(-1); }
+        e.preventDefault();
+      });
+      const endNavDrag = () => { navDrag = null; };
+      navring.addEventListener("pointerup", endNavDrag);
+      navring.addEventListener("pointercancel", endNavDrag);
+    }
+
+    bindProgressScrubber(instrumentDragEl($("[data-pvfd='trackbar']"), "trackbar"));
+    bindMetaPlaybackGlyph($("[data-pvfd='meta-play-toggle']"));
+    bindNowPlayingShortcut($(".pvfd-meta-title-window"));
+
+    bind($("[data-pvfd='navcenter']"), () => invokePlayerAction(() => Spicetify.Player.togglePlay()));
+    // DAB d-pad — seek hybrid (issue #32). Arrows no longer mirror the transport
+    // bar: ◄►=jog ∓10s, ▲=go to artist, ▼=native track context menu.
+    bind($("[data-pvfd='navup']"),    () => safe(() => openCurrentArtist()));
+    // ▼ opens the same native menu as right-clicking the meta LCD. Anchor it to
+    // the top-left of the track-title readout: Spotify grows the menu down-right
+    // from the point and flips upward near the screen bottom (where the LCD
+    // lives), so it lands left-aligned and above the artist–song line — looks
+    // intentional instead of at Spotify's off-screen cover-art button.
+    bind($("[data-pvfd='navdn']"),    () => safe(() => {
+      const anchor = $(".pvfd-meta-title-window") || $(".pvfd-meta-lcd");
+      const rect = anchor && anchor.getBoundingClientRect();
+      const at = rect ? { clientX: rect.left, clientY: rect.top } : null;
+      openSpotifyNowPlayingContextMenu(at);
+    }));
+    bind($("[data-pvfd='navleft']"),  () => seekByMs(-SEEK_STEP_MS));
+    bind($("[data-pvfd='navright']"), () => seekByMs(+SEEK_STEP_MS));
+
+    bind($("[data-pvfd='att']"), toggleAttMode);
+    bind($("[data-pvfd='band']"), cycleBandPreset);
+
+    // Pioneer logo click → DISP prompt (full-screen now-playing confirm).
+    const logoEl = chassis.querySelector(".pvfd-silk-pioneer");
+    if (logoEl) {
+      logoEl.style.cursor = "pointer";
+      // The full-screen display was previously undiscoverable — the wordmark
+      // gave no hint that it did anything at all (discussion #39). A native
+      // title is deliberate over a themed tooltip: it costs no DOM, no CSS and
+      // no listeners, it cannot collide with the click handler below, and it is
+      // read out by screen readers. aria-label carries the same text for
+      // assistive tech, which does not announce title reliably on a <span>.
+      logoEl.setAttribute("title", "Full screen display");
+      logoEl.setAttribute("aria-label", "Open the full screen display");
+      logoEl.addEventListener("click", (e) => {
+        e.preventDefault(); e.stopPropagation();
+        setDispPromptOpen(!dispPromptOpen);
+      });
+    }
+    // Outside-click closes the DISP prompt (matches M.C. menu pattern).
+    document.addEventListener("pointerdown", (e) => {
+      if (!dispPromptOpen) return;
+      const prompt = dispPromptEl;
+      if (prompt && prompt.contains(e.target)) return;
+      if (logoEl && logoEl.contains(e.target)) return;
+      setDispPromptOpen(false);
+    }, true);
+
+    // Spotify play resumes → exit BAND back to song LCD (option B). Prevents
+    // Spotify music playing on top of the BAND broadcast.
+    safe(() => Spicetify.Player.addEventListener("onplaypause", () => {
+      if (bandPresetIdx < 0) return;
+      if (!safeReturn(() => Spicetify.Player.isPlaying(), false)) return;
+      spotifyWasPlayingBeforeBand = false;  // don't re-pause what user just resumed
+      bandPresetIdx = -1;
+      applyBandPreset(true, false);
+    }));
+    bind($("[data-pvfd='eeq']"), toggleEeqTint);
+    bind($("[data-pvfd='lyrics']"), openLyrics);
+    bind($("[data-pvfd='npv']"), openNowPlayingView);
+    bind($("[data-pvfd='dim']"), toggleDimMode);
+    bind($("[data-pvfd='clip']"), cycleClipMode);
+    bind($("[data-pvfd='tint']"), cycleTintMode);
+    bind($("[data-pvfd='demo']"), toggleDemoMode);
+    bind($("[data-pvfd='pulse-lock']"), activatePulseFromLock);
+    const pulseLock = $("[data-pvfd='pulse-lock']");
+    if (pulseLock) pulseLock.addEventListener("keydown", handlePulseLockKeydown);
+    bind($(".pvfd-lcd"), toggleRacingColorFromOel);
+    bind($("[data-pvfd='menu']"), () => {
+      setMenuOpen(!menuOpen);
+    });
+
+    // ESC: back out of nested menus first (tint > customize > main); when no
+    // menu is open, navigate to the previous Spotify route. Matches real
+    // Pioneer ESC button which exits the current menu context.
+    function handleEscBack() {
+      // BAND escape — short way out of the cycle, no goBack fall-through.
+      if (bandPresetIdx >= 0) {
+        bandPresetIdx = -1;
+        applyBandPreset(true, false);
+        return;
+      }
+      if (tintMenuOpen) { setTintMenuOpen(false); return; }
+      if (menuOpen) {
+        if (customizeMenuOpen) setCustomizeMenuView(false);
+        else setMenuOpen(false);
+        return;
+      }
+      const history = safeReturn(() => Spicetify.Platform && Spicetify.Platform.History, null);
+      if (history && typeof history.goBack === "function") safe(() => history.goBack());
+    }
+    bind($("[data-pvfd='esc']"), handleEscBack);
+
+  chassis.querySelectorAll("[data-pvfd-menu-action]").forEach((row) => {
+    row.setAttribute("role", "menuitem");
+    row.setAttribute("tabindex", "0");
+
+    row.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      activateMenuAction(row.dataset.pvfdMenuAction);
+    });
+
+    row.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      e.stopPropagation();
+      activateMenuAction(row.dataset.pvfdMenuAction);
+    });
+  });
+
+    // ESC key: same behavior as the ESC pill — close nested menus, otherwise
+    // no-op (keyboard Escape should NOT navigate Spotify history; that's
+    // intentionally the pill-only behavior to avoid hijacking the key globally).
+    window.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if (tintMenuOpen) { setTintMenuOpen(false); return; }
+      if (!menuOpen) return;
+      if (customizeMenuOpen) setCustomizeMenuView(false);
+      else setMenuOpen(false);
+    });
+
+    bind($("[data-pvfd='shuffle']"), () => invokePlayerAction(() => Spicetify.Player.toggleShuffle()));
+    bind($("[data-pvfd='prev']"),    () => invokePlayerAction(() => Spicetify.Player.back(), 300));
+    bind($("[data-pvfd='play']"),    () => invokePlayerAction(() => Spicetify.Player.togglePlay()));
+    bind($("[data-pvfd='next']"),    () => invokePlayerAction(() => Spicetify.Player.next(), 300));
+    bind($("[data-pvfd='repeat']"),  () => invokePlayerAction(() => Spicetify.Player.toggleRepeat()));
+    bind($("[data-pvfd='love']"),    () => {
+      safe(() => Spicetify.Player.toggleHeart());
+      // Reflect the new liked state immediately instead of waiting for the next
+      // static-readout cadence tick.
+      window.setTimeout(() => updateButtonStates(), 150);
+    });
+    bind($("[data-pvfd='queue']"),   () => {
+      const q = document.querySelector("[data-testid='control-button-queue']");
+      if (q) q.click();
+    });
+    bind($("[data-pvfd='devices']"), () => {
+      openDevicePicker();
+    });
+    bind($("[data-pvfd='eject']"), startEjectSequence);
+  }
+
+  async function startLogoLiveAudioCapture() {
+    if (logoLiveAudioActive || logoLiveAudioPending) return logoLiveAudioActive;
+    logoLiveAudioPending = true;
+    updateMenuPanel();
+    try {
+      // Chromium desktop capture only. If this fails, PULSE turns back off cleanly.
+      stopLogoLiveAudioCapture();
+      resetLogoLiveAudioState();
+      setLogoAudioGlowVars(0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0);
+      logoLiveAudioActive = true;
+      startLogoLiveAudioScheduler();
+      console.log("[PVFD] pulse visualizer active");
+      return true;
+    } catch (err) {
+      console.warn("[PVFD] pulse visualizer start failed:", err);
+      logoLiveAudioActive = false;
+      return false;
+    } finally {
+      logoLiveAudioPending = false;
+      updateMenuPanel();
+    }
+  }
+
+  // Stops the per-pause envelope scheduler. Does NOT touch the desktop
+  // capture stream — that lifecycle is owned by start/stopDesktopAudioCapture so
+  // the user keeps their granted screen-share across pause/play.
+  function stopLogoLiveAudioCapture() {
+    stopLogoLiveAudioScheduler();
+    logoLiveAudioActive = false;
+    logoLiveAudioPending = false;
+    resetLogoLiveAudioState();
+    setLogoAudioGlowVars(0, 0, 0, 0, 0, 0, 0);
+    updateMenuPanel();
+  }
+
+  function pulseDisplayMediaOptions() {
+    return {
+      video: { displaySurface: "browser" },
+      audio: { suppressLocalAudioPlayback: false },
+      selfBrowserSurface: "exclude",
+      systemAudio: "include",
+      surfaceSwitching: "exclude",
+      monitorTypeSurfaces: "include",
+    };
+  }
+
+  function requestPulseDisplayMediaStream() {
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function") {
+      throw new Error("getDisplayMedia not available in this Spotify build");
+    }
+    return navigator.mediaDevices.getDisplayMedia(pulseDisplayMediaOptions());
+  }
+
+  function selectPulseAudioTrack(stream) {
+    const audioTracks = stream.getAudioTracks();
+    if (!audioTracks.length) {
+      throw new Error("no system audio in stream — enable 'Also share system audio' in the picker");
+    }
+    const audioTrack = audioTracks[0];
+    // Tab audio comes back silent because Spotify's playback goes to the OS
+    // audio stack, not the renderer media element. Reject it cleanly.
+    if (audioTrack.label && audioTrack.label.toLowerCase().includes("tab")) {
+      throw new Error("tab audio selected; pick a screen/window with system audio enabled");
+    }
+    return audioTrack;
+  }
+
+  function showPulseLiveFailureNotification(message) {
+    const msg = String(message || "live capture failed");
+    const text = isLinuxLikePlatform()
+      ? [
+          "PULSE on Linux: Spotify may be hidden by xdg-desktop-portal.",
+          "Try selecting your monitor and enabling \"Share system audio\".",
+          "See GitHub issue #16.",
+          msg
+        ].join("\n")
+      : "PULSE LIVE: " + msg;
+    safe(() => Spicetify.showNotification && Spicetify.showNotification(text));
+  }
+
+  // -------- HLPR (Linux audio helper) bridge --------
+  //
+  // Consent modal — asks whether the user wants to launch the HLPR helper
+  // instead of going through getDisplayMedia. Returns "yes" | "no" |
+  // "remember-yes" | "remember-no". The remember-* variants persist the
+  // user's choice so we don't ask again on this Spotify profile (clear with
+  // localStorage.removeItem to re-prompt).
+  // Falls back to a confirm() if Spicetify.PopupModal isn't available.
+  function showHlprConsentModal() {
+    return new Promise((resolve) => {
+      const fallback = () => {
+        const ok = safeReturn(() => window.confirm(
+          "PioneerVFD: PULSE on Linux needs the HLPR helper.\n\n" +
+          "Install pvfd-hlpr (one line):\n" +
+          "  pipx install git+" + HLPR_PROJECT_URL + ".git\n\n" +
+          "Then run once to hook it to Spotify launches:\n" +
+          "  pvfd-hlpr --with-spotify\n\n" +
+          "Click OK once it's installed and PULSE will connect.\n" +
+          "Click Cancel to skip PULSE for this session."
+        ), false);
+        resolve(ok ? "yes" : "no");
+      };
+      if (!window.Spicetify || !Spicetify.PopupModal || typeof Spicetify.PopupModal.display !== "function") {
+        fallback();
+        return;
+      }
+      const container = document.createElement("div");
+      container.className = "pvfd-hlpr-modal";
+      container.innerHTML =
+        '<p style="margin:0 0 12px 0;line-height:1.45">' +
+        "Chromium audio capture on Linux is unreliable — most setups don't list " +
+        "Spotify in the picker, and even when they do, the resulting audio track " +
+        "is silent (Spotify outputs to PipeWire, not the renderer). " +
+        '(<a href="https://github.com/adainstarks/PioneerVFD/issues/16" target="_blank" rel="noopener">issue #16</a>)' +
+        "</p>" +
+        '<p style="margin:0 0 12px 0;line-height:1.45">' +
+        "PVFD ships a small helper, <b>pvfd-hlpr</b>, that taps PipeWire directly. " +
+        "Install it once, hook it to Spotify launches, and PULSE will connect automatically " +
+        "from then on — no terminal needed." +
+        "</p>" +
+        '<pre style="background:#111;color:#7CFC7C;padding:10px;margin:0 0 12px 0;border-radius:4px;font-family:Consolas,monospace;font-size:12.5px;white-space:pre-wrap" data-pvfd-hlpr-cmd>' +
+        "pipx install git+" + HLPR_PROJECT_URL + ".git\n" +
+        "pvfd-hlpr --with-spotify" +
+        "</pre>" +
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px 0">' +
+        '<button type="button" data-pvfd-hlpr-action="repo" style="padding:8px 14px;background:#0a84ff;color:#fff;border:0;border-radius:4px;cursor:pointer;font-weight:600">Open pvfd-hlpr on GitHub ↗</button>' +
+        '<button type="button" data-pvfd-hlpr-action="yes" style="padding:8px 14px;background:#1db954;color:#000;border:0;border-radius:4px;cursor:pointer;font-weight:600">I\'m running it — connect</button>' +
+        '<button type="button" data-pvfd-hlpr-action="no" style="padding:8px 14px;background:#444;color:#fff;border:0;border-radius:4px;cursor:pointer">Skip PULSE</button>' +
+        "</div>" +
+        '<label style="display:flex;align-items:center;gap:6px;font-size:12px;opacity:0.8">' +
+        '<input type="checkbox" data-pvfd-hlpr-remember> Don\'t ask again on this profile' +
+        "</label>";
+
+      let settled = false;
+      const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        safe(() => Spicetify.PopupModal.hide && Spicetify.PopupModal.hide());
+        resolve(result);
+      };
+
+      container.addEventListener("click", (ev) => {
+        const target = ev.target;
+        if (!(target instanceof HTMLElement)) return;
+        const action = target.getAttribute("data-pvfd-hlpr-action");
+        if (!action) return;
+        const remember = container.querySelector('[data-pvfd-hlpr-remember]');
+        const wantRemember = !!(remember && remember.checked);
+        if (action === "repo") {
+          safe(() => window.open(HLPR_PROJECT_URL, "_blank", "noopener,noreferrer"));
+          target.textContent = "Opened ↗";
+          setTimeout(() => { if (target) target.textContent = "Open pvfd-hlpr on GitHub ↗"; }, 1600);
+          return;
+        }
+        if (action === "yes") return finish(wantRemember ? "remember-yes" : "yes");
+        if (action === "no") return finish(wantRemember ? "remember-no" : "no");
+      });
+
+      safe(() => Spicetify.PopupModal.display({
+        title: "PioneerVFD — Linux PULSE helper",
+        content: container,
+        isLarge: false,
+      }));
+
+      // Spicetify's modal close button fires no callback we can hook, so we
+      // observe DOM removal and treat dismissal as "no".
+      const observer = new MutationObserver(() => {
+        if (!document.body.contains(container)) {
+          observer.disconnect();
+          finish("no");
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    });
+  }
+
+  // Stub analyser/ctx so readLogoLiveAudioMetrics() consumes HLPR bytes
+  // through its existing pipeline. The "analyser" copies the latest received
+  // bin buffer into the caller's output array, mimicking
+  // AnalyserNode.getByteFrequencyData on a real getDisplayMedia stream.
+  function installHlprFakeAnalyser() {
+    const binCount = DESKTOP_CAPTURE_FFT_SIZE / 2;
+    logoLiveAudioBins = new Uint8Array(binCount);
+    logoLivePrevBins = new Uint8Array(binCount);
+    hlprLatestBins = new Uint8Array(binCount);
+    logoLiveAudioCtx = {
+      sampleRate: HLPR_VIRTUAL_SAMPLE_RATE,
+      close: () => {},
+    };
+    logoLiveAudioAnalyser = {
+      fftSize: DESKTOP_CAPTURE_FFT_SIZE,
+      frequencyBinCount: binCount,
+      smoothingTimeConstant: 0.32,
+      getByteFrequencyData: (out) => {
+        if (!out || !hlprLatestBins) return;
+        const n = Math.min(out.length, hlprLatestBins.length);
+        for (let i = 0; i < n; i++) out[i] = hlprLatestBins[i];
+      },
+    };
+  }
+
+  function clearHlprFakeAnalyser() {
+    logoLiveAudioBins = null;
+    logoLivePrevBins = null;
+    logoLiveAudioCtx = null;
+    logoLiveAudioAnalyser = null;
+    hlprLatestBins = null;
+  }
+
+  function applyHlprFrame(data) {
+    if (!hlprLatestBins) return;
+    let view;
+    if (data instanceof ArrayBuffer) view = new Uint8Array(data);
+    else if (ArrayBuffer.isView(data)) view = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    else return;
+    const n = Math.min(view.length, hlprLatestBins.length);
+    for (let i = 0; i < n; i++) hlprLatestBins[i] = view[i];
+    for (let i = n; i < hlprLatestBins.length; i++) hlprLatestBins[i] = 0;
+  }
+
+  function handleHlprHello(text) {
+    let info = null;
+    try { info = JSON.parse(text); } catch (_) { return false; }
+    if (!info || info.type !== "hello") return false;
+    hlprHelloInfo = info;
+    const remoteProto = Number(info.protocol);
+    if (!Number.isFinite(remoteProto) || remoteProto !== HLPR_PROTOCOL_VERSION) {
+      hlprProtocolMismatched = true;
+      const reason =
+        "HLPR protocol mismatch (PVFD expects v" + HLPR_PROTOCOL_VERSION +
+        ", HLPR sent v" + (Number.isFinite(remoteProto) ? remoteProto : "?") +
+        "). Update pvfd-hlpr: pipx install --force git+" + HLPR_PROJECT_URL + ".git";
+      pulseLiveFailureReason = reason;
+      safe(() => Spicetify.showNotification && Spicetify.showNotification(reason));
+      console.warn("[PVFD] " + reason);
+      return false;
+    }
+    hlprProtocolMismatched = false;
+    return true;
+  }
+
+  function connectHlprSocket() {
+    if (hlprSocket) {
+      safe(() => hlprSocket.close());
+      hlprSocket = null;
+    }
+    let ws;
+    try {
+      ws = new WebSocket(HLPR_WS_URL);
+      ws.binaryType = "arraybuffer";
+    } catch (err) {
+      console.warn("[PVFD] HLPR socket construct failed:", err);
+      scheduleHlprReconnect();
+      return;
+    }
+    hlprSocket = ws;
+    ws.addEventListener("message", (ev) => {
+      if (typeof ev.data === "string") {
+        // First text frame is the protocol-v1 hello. If mismatched, the close
+        // handler will run via ws.close() and we won't reconnect this cycle.
+        const ok = handleHlprHello(ev.data);
+        if (!ok) {
+          safe(() => ws.close());
+          return;
+        }
+        if (!hlprLatestBins) installHlprFakeAnalyser();
+        hlprReconnectDelayMs = HLPR_RECONNECT_MIN_MS;
+        if (hlprFirstConnectNotifyTimer) {
+          clearTimeout(hlprFirstConnectNotifyTimer);
+          hlprFirstConnectNotifyTimer = 0;
+        }
+        desktopCaptureActive = true;
+        desktopCapturePending = false;
+        hlprBridgeActive = true;
+        hlprBridgePending = false;
+        pulseLiveFailureReason = "";
+        console.log("[PVFD] HLPR bridge connected (helper v" + (hlprHelloInfo && hlprHelloInfo.version || "?") + ")");
+        updateMenuPanel();
+        return;
+      }
+      applyHlprFrame(ev.data);
+    });
+    ws.addEventListener("close", () => {
+      if (ws === hlprSocket) hlprSocket = null;
+      const wasActive = hlprBridgeActive;
+      hlprBridgeActive = false;
+      if (wasActive) {
+        desktopCaptureActive = false;
+        if (hlprLatestBins) hlprLatestBins.fill(0);
+        if (logoLiveAudioBins) logoLiveAudioBins.fill(0);
+        if (logoLivePrevBins) logoLivePrevBins.fill(0);
+        console.warn("[PVFD] HLPR bridge socket closed");
+        updateMenuPanel();
+      }
+      // Don't auto-reconnect into a known protocol mismatch — that would
+      // spam the notification banner every backoff cycle.
+      if (hlprProtocolMismatched) return;
+      if (hlprBridgePending || logoGlowEnabled) {
+        scheduleHlprReconnect();
+      }
+    });
+    ws.addEventListener("error", () => {
+      // 'close' fires right after; let that drive reconnect.
+    });
+  }
+
+  function scheduleHlprReconnect() {
+    if (hlprReconnectTimer) return;
+    if (hlprProtocolMismatched) return;
+    const delay = hlprReconnectDelayMs;
+    hlprReconnectDelayMs = Math.min(HLPR_RECONNECT_MAX_MS, Math.round(hlprReconnectDelayMs * 1.6));
+    hlprReconnectTimer = setTimeout(() => {
+      hlprReconnectTimer = 0;
+      if (!logoGlowEnabled && !hlprBridgePending) return;
+      connectHlprSocket();
+    }, delay);
+  }
+
+  function armHlprFirstConnectNotify() {
+    if (hlprFirstConnectNotifyTimer) clearTimeout(hlprFirstConnectNotifyTimer);
+    hlprFirstConnectNotifyTimer = setTimeout(() => {
+      hlprFirstConnectNotifyTimer = 0;
+      if (hlprBridgeActive || hlprProtocolMismatched) return;
+      pulseLiveFailureReason = "HLPR not detected on :" + HLPR_DEFAULT_PORT;
+      desktopCapturePending = false;
+      safe(() => Spicetify.showNotification && Spicetify.showNotification(
+        "PULSE: HLPR not detected on :" + HLPR_DEFAULT_PORT + ". Run pvfd-hlpr in a terminal."
+      ));
+      updateMenuPanel();
+    }, HLPR_FIRST_CONNECT_NOTIFY_MS);
+  }
+
+  function stopHlprBridge() {
+    if (hlprReconnectTimer) {
+      clearTimeout(hlprReconnectTimer);
+      hlprReconnectTimer = 0;
+    }
+    if (hlprFirstConnectNotifyTimer) {
+      clearTimeout(hlprFirstConnectNotifyTimer);
+      hlprFirstConnectNotifyTimer = 0;
+    }
+    if (hlprSocket) {
+      safe(() => hlprSocket.close());
+      hlprSocket = null;
+    }
+    hlprBridgeActive = false;
+    hlprBridgePending = false;
+    hlprProtocolMismatched = false;
+    hlprHelloInfo = null;
+    hlprReconnectDelayMs = HLPR_RECONNECT_MIN_MS;
+    clearHlprFakeAnalyser();
+  }
+
+  // Linux PULSE entry point. Asks consent (unless previously opted out),
+  // then kicks the WS reconnect loop. Resolves true if the bridge is
+  // reachable OR pending — false only on outright user-decline.
+  async function startHlprBridge() {
+    if (hlprBridgeActive) return true;
+    if (hlprBridgePending) return true;
+    if (hlprConsentInFlight) return false;
+    desktopCapturePending = false;
+    const persistedOptInValue = safeReturn(
+      () => window.localStorage.getItem(HLPR_OPT_IN_STORAGE_KEY),
+      null
+    );
+    const persistedOptIn = persistedOptInValue === "ON";
+    const persistedOptOutValue = safeReturn(
+      () => window.localStorage.getItem(HLPR_OPT_OUT_STORAGE_KEY),
+      null
+    );
+    const persistedOptOut = persistedOptOutValue === "ON" || persistedOptOutValue === "yes";
+    if (persistedOptIn) {
+      hlprBridgePending = true;
+      pulseLiveFailureReason = "";
+      armHlprFirstConnectNotify();
+      connectHlprSocket();
+      updateMenuPanel();
+      return true;
+    }
+    if (persistedOptOut) {
+      pulseLiveFailureReason =
+        "HLPR opt-out remembered — clear localStorage keys " + HLPR_OPT_OUT_STORAGE_KEY + " / " + HLPR_OPT_IN_STORAGE_KEY + " to re-prompt";
+      return false;
+    }
+    hlprConsentInFlight = true;
+    desktopCapturePending = true;
+    updateMenuPanel();
+    let consent;
+    try {
+      consent = await showHlprConsentModal();
+    } finally {
+      hlprConsentInFlight = false;
+    }
+    if (consent === "no" || consent === "remember-no") {
+      if (consent === "remember-no") {
+        safe(() => window.localStorage.setItem(HLPR_OPT_OUT_STORAGE_KEY, "ON"));
+      }
+      desktopCapturePending = false;
+      pulseLiveFailureReason = "HLPR declined";
+      updateMenuPanel();
+      return false;
+    }
+    if (consent === "remember-yes") {
+      safe(() => window.localStorage.setItem(HLPR_OPT_IN_STORAGE_KEY, "ON"));
+    }
+    hlprBridgePending = true;
+    desktopCapturePending = false;
+    pulseLiveFailureReason = "";
+    armHlprFirstConnectNotify();
+    connectHlprSocket();
+    updateMenuPanel();
+    return true;
+  }
+
+  async function startDesktopAudioCapture() {
+    if (desktopCaptureActive || desktopCapturePending) return desktopCaptureActive;
+    // Linux: skip getDisplayMedia — the portal route doesn't work reliably,
+    // and picking Spotify in the picker yields silence anyway because its
+    // playback goes to PipeWire, not the renderer. Route through HLPR.
+    if (isLinuxLikePlatform()) {
+      return await startHlprBridge();
+    }
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function") {
+      pulseLiveFailureReason = "getDisplayMedia not available in this Spotify build";
+      showPulseLiveFailureNotification(pulseLiveFailureReason);
+      return false;
+    }
+    desktopCapturePending = true;
+    pulseLiveFailureReason = "";
+    updateMenuPanel();
+    let stream = null;
+    try {
+      // selfBrowserSurface:"exclude" is the critical option: it stops the user
+      // from picking Spotify's own window, which both avoids the historical
+      // compositor feedback loop that froze the clock/scrubber/LCD AND keeps
+      // the picker honest — picking Spotify yields a silent track anyway
+      // (playback goes to the OS audio stack, not through the renderer).
+      stream = await requestPulseDisplayMediaStream();
+      // We only want audio. Drop video tracks immediately.
+      stream.getVideoTracks().forEach((track) => safe(() => track.stop()));
+      const audioTrack = selectPulseAudioTrack(stream);
+      audioTrack.addEventListener("ended", () => {
+        // Fires when user clicks "Stop sharing" in Chrome's banner.
+        stopDesktopAudioCapture();
+      });
+
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = new AudioCtor();
+      const sourceNode = audioCtx.createMediaStreamSource(new MediaStream([audioTrack]));
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = DESKTOP_CAPTURE_FFT_SIZE;
+      // Lower smoothingTimeConstant exposes short transients (pick attacks,
+      // hi-hat hits, vocal sibilance) instead of being smeared away before
+      // the band-energy and flux measurements even see them. Sustained bass
+      // is still smooth because band-level RMS averages across multiple bins.
+      analyser.smoothingTimeConstant = 0.32;
+      sourceNode.connect(analyser);
+
+      logoLiveAudioStream = stream;
+      logoLiveAudioCtx = audioCtx;
+      logoLiveAudioAnalyser = analyser;
+      logoLiveAudioBins = new Uint8Array(analyser.frequencyBinCount);
+      logoLivePrevBins = new Uint8Array(analyser.frequencyBinCount);
+      desktopCaptureActive = true;
+      pulseLiveFailureReason = "";
+      console.log(`[PVFD] desktop audio capture active: ${audioTrack.label || "system audio"}`);
+      return true;
+    } catch (err) {
+      // Cleanup any partial stream on failure.
+      if (stream && stream.getTracks) stream.getTracks().forEach((track) => safe(() => track.stop()));
+      const msg = safeErrorSummary(err);
+      pulseLiveFailureReason = String(msg || "live capture failed");
+      console.warn("[PVFD] pulse live capture failed:", msg);
+      showPulseLiveFailureNotification(pulseLiveFailureReason);
+      return false;
+    } finally {
+      desktopCapturePending = false;
+      updateMenuPanel();
+    }
+  }
+
+  function stopDesktopAudioCapture() {
+    // Tear down HLPR (Linux helper bridge) if active. Safe to call when inactive.
+    stopHlprBridge();
+    if (logoLiveAudioStream && logoLiveAudioStream.getTracks) {
+      logoLiveAudioStream.getTracks().forEach((track) => safe(() => track.stop()));
+    }
+    if (logoLiveAudioCtx && typeof logoLiveAudioCtx.close === "function") {
+      safe(() => logoLiveAudioCtx.close());
+    }
+    logoLiveAudioStream = null;
+    logoLiveAudioCtx = null;
+    logoLiveAudioAnalyser = null;
+    logoLiveAudioBins = null;
+    logoLivePrevBins = null;
+    desktopCaptureActive = false;
+    desktopCapturePending = false;
+    updateMenuPanel();
+  }
+
+  function startLogoLiveAudioScheduler() {
+    lastLogoLiveAudioUpdateAt = -Infinity;
+  }
+
+  function stopLogoLiveAudioScheduler() {
+    lastLogoLiveAudioUpdateAt = -Infinity;
+    if (!logoLiveAudioSchedulerRaf) return;
+    cancelAnimationFrame(logoLiveAudioSchedulerRaf);
+    logoLiveAudioSchedulerRaf = 0;
+  }
+
+  // Resets the smoothed envelopes used by the pulse loop. Does NOT
+  // touch logoLivePrevBins — that buffer's lifecycle belongs to startDesktopAudioCapture.
+  function resetLogoLiveAudioState() {
+    logoLiveGuitarCentroidPrev = 0;
+    logoLiveGuitarMotionEnv = 0;
+    logoLiveDebugLastMs = 0;
+    logoLiveSubEnv = 0;
+    logoLiveBassEnv = 0;
+    logoLiveLowMidEnv = 0;
+    logoLiveMidEnv = 0;
+    logoLiveUpperMidEnv = 0;
+    logoLivePresenceEnv = 0;
+    logoLiveAirEnv = 0;
+    logoLiveLowEnv = 0;
+    logoLiveHighEnv = 0;
+    logoLivePunchEnv = 0;
+    logoLiveLogoEnv = 0;
+    lastLogoLiveAudioUpdateAt = -Infinity;
+    resetLogoRenderState();
+  }
+
+  // ----- MOSAIC — a pixel LCD matrix under the album art -------------
+  // The spectrum meters answer "how loud is each band". This answers
+  // something else, three ways: press the matrix to cycle the mode.
+  //
+  //   FIELD   frequency mapped to PLACE, on its own finer 112x10 mosaic.
+  //           Bands own a diagonal home line, transients throw rings and
+  //           flash the panel.
+  //   LIQUID  a surface with tension: 56 springs, coupled sideways, splashed
+  //           by hits - now drawn as a continuous waterline with a bright
+  //           crest and foam where the surface moves fast.
+  //   SPECTRUM  the classic analyzer, free of the cell grid: 28 thin bars,
+  //           continuous heights, bright caps, neighbours a tint shade
+  //           apart, and a fine peak-hold line that floats down.
+  //
+  // Four earlier modes are gone rather than parked. SCROLL, RAIN and SWEEP all
+  // stepped on timers instead of every frame, which measured at 3% to 4% of
+  // cells moving per frame against FIELD's 42%, and no tuning fixes that: a
+  // history display cannot be frame reactive and still be a history display.
+  // BLOOM was a vertical idea on a panel five cells tall and read as a lens.
+  //
+  // The grid mask overlay supplies the LCD look and is purely cosmetic
+  // (owner's call), which lets each mode pick its own relationship to it:
+  // FIELD computes 112x10 quantised cells, paints them to an offscreen and
+  // blits up with hard edges; LIQUID and SPECTRUM draw continuously on the
+  // full 448x40 store and let the mask imprint the cells optically. The
+  // mask's 56x5 count is FIXED rather than derived from the gap:
+  // measured across eight window shapes the gap runs 46px to 181px, and sizing
+  // cells to it gave anywhere from 21 to 100 columns, which is a different
+  // instrument on every window. Constant cells, scaled by CSS, keeps one
+  // composition and lets the maths be resolution independent. The 56:5 ratio is
+  // what lets the matrix span the artwork's full width and still clear the
+  // tightest gap measured, 46px at 1280x720.
+  //
+  // Every mode shares the palette, the auto gain and the grid mask, so they
+  // read as one instrument showing different things rather than three widgets.
+  const MOSAIC_W = 56;
+  const MOSAIC_H = 5;
+  // The canvas is EIGHT TIMES the cell grid. The 56x5 grid mask on top is
+  // cosmetic - the owner's phrase - so the LCD look never depended on the
+  // backing store being 56x5. Cell modes still compute 56x5 and blit up with
+  // hard edges, which is pixel-identical to before; modes that want sub-cell
+  // detail draw straight onto the full store.
+  const MOSAIC_PXW = 448;
+  const MOSAIC_PXH = 40;
+  // FIELD's own grid: four cells per mask cell. Its identity is the mosaic,
+  // so unlike LIQUID it does not go continuous - it goes FINER, which the
+  // maths permits for free because every term already works in normalised
+  // coordinates. Ripples stay stored in 56x5 mask units and are converted,
+  // so their travel and width are unchanged.
+  const FIELD_W = 112;
+  const FIELD_H = 10;
+  const FIELD_N = FIELD_W * FIELD_H;
+  const MOSAIC_FRAME_MS = 33;
+  const MOSAIC_LEVELS = 7;          // discrete LCD steps, not a smooth heatmap
+  const MOSAIC_RIPPLE_MAX = 5;
+  const MOSAIC_MODES = ["FIELD", "LIQUID", "SPECTRUM"];
+  const MOSAIC_MODE_KEY = "pvfd-mosaic-mode";
+  const mosaicState = {
+    mode: 0,
+    lastAt: -Infinity,
+    img: null,
+    ctx: null,
+    field: new Float32Array(FIELD_N),    // FIELD's frame, 0..1 per cell
+    height: new Float32Array(MOSAIC_W),  // LIQUID: surface, one per column
+    vel: new Float32Array(MOSAIC_W),     // LIQUID: and its velocity
+    peaks: new Float32Array(MOSAIC_W),   // SPECTRUM: falling peak-hold, 0..1
+    cell: null, cellCtx: null,           // 56x5 offscreen the cell modes fill
+    ripples: [],                    // {x, y, born, life}
+    peak: 0.35,                     // running loudest band, for the auto gain
+    lastPunch: 0,
+    flash: 0,                       // whole panel lift on a transient
+    palette: null,
+    paletteAt: -Infinity,
+  };
+
+  function mosaicPalette(ts) {
+    // The tint can change under the display, but not per frame. Re-read a
+    // second at a time rather than every render.
+    if (mosaicState.palette && ts - mosaicState.paletteAt < 1000) return mosaicState.palette;
+    const root = document.documentElement;
+    const raw = safeReturn(() => getComputedStyle(root).getPropertyValue("--pvfd-light-rgb").trim(), "");
+    const parts = raw.split(",").map((n) => parseInt(n, 10));
+    mosaicState.palette = parts.length === 3 && parts.every((n) => Number.isFinite(n))
+      ? parts : [5, 199, 220];
+    mosaicState.paletteAt = ts;
+    return mosaicState.palette;
+  }
+
+  // Frequency runs low to high, left to right, the way every spectrum display
+  // reads. The lanes array is stored the other way round (air first, sub last),
+  // hence the flip. Sampled BETWEEN lanes rather than blocked into seven, which
+  // is what stops every mode reading as bars standing next to each other.
+  function mosaicBandAt(u, lanes, gain) {
+    const bp = (1 - u) * (LOGO_METER_BAND_COUNT - 1);
+    const bi = Math.min(LOGO_METER_BAND_COUNT - 2, Math.floor(bp));
+    const bf = bp - bi;
+    return clamp((lanes[bi] * (1 - bf) + lanes[bi + 1] * bf) * gain, 0, 1);
+  }
+
+  function mosaicField(f, lanes, gain, master, ts) {
+    const ripples = mosaicState.ripples;
+    const flash = mosaicState.flash;
+    let p = 0;
+    for (let y = 0; y < FIELD_H; y++) {
+      const v = y / (FIELD_H - 1);
+      const my = v * (MOSAIC_H - 1);              // mask-cell units for ripples
+      for (let x = 0; x < FIELD_W; x++, p++) {
+        const u = x / (FIELD_W - 1);
+        const band = mosaicBandAt(u, lanes, gain);
+        // Each band owns a diagonal home line and falls away sharply from it,
+        // with a base response underneath so a moving band lights its whole
+        // column a little and its home row a lot.
+        const home = 1 - u;                       // lows low, highs high
+        let val = band * (0.34 + 0.66 * (1 - Math.abs(v - home) * 1.75)) + flash;
+        // Ripples measure distance in mask-cell units, so the finer grid
+        // changes their sharpness, not their size or speed.
+        const mx = u * (MOSAIC_W - 1);
+        for (let i = 0; i < ripples.length; i++) {
+          const r = ripples[i];
+          const age = (ts - r.born) / 900;
+          const dx = mx - r.x;
+          const dy = (my - r.y) * 1.8;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          const w = d - age * 26;
+          val += r.life * (1 - age) * Math.exp(-(w * w) / 5.5);
+        }
+        f[p] = val * master;
+      }
+    }
+  }
+
+  // LIQUID — the meter's honesty with a surface that behaves like one. The
+  // PHYSICS is untouched: 56 springs chasing their bands, coupled to their
+  // neighbours, splashed by transients. What changed is the rendering: the
+  // surface is drawn FREE of the cell grid as a continuous waterline - a
+  // bright crest over a translucent body, with foam where the surface is
+  // moving fast - because a surface is exactly the thing row-snapping hurt
+  // most. Five rows made every swell a staircase.
+  function mosaicLiquid(lanes, gain, master, punch) {
+    const h = mosaicState.height;
+    const v = mosaicState.vel;
+    for (let x = 0; x < MOSAIC_W; x++) {
+      const target = mosaicBandAt(x / (MOSAIC_W - 1), lanes, gain) * master;
+      v[x] = (v[x] + (target - h[x]) * 0.26) * 0.86;
+    }
+    for (let x = 0; x < MOSAIC_W; x++) {
+      const l = h[x > 0 ? x - 1 : 1];
+      const r = h[x < MOSAIC_W - 1 ? x + 1 : MOSAIC_W - 2];
+      v[x] += (l + r - 2 * h[x]) * 0.22;
+    }
+    if (punch > 0.34) {
+      const seed = Math.round(clamp(0.5 + (lanes[0] - lanes[6]) * 0.45, 0.05, 0.95) * (MOSAIC_W - 1));
+      for (let d = -2; d <= 2; d++) {
+        const x = seed + d;
+        if (x >= 0 && x < MOSAIC_W) v[x] += punch * 0.10 * (1 - Math.abs(d) * 0.3);
+      }
+    }
+    for (let x = 0; x < MOSAIC_W; x++) h[x] = clamp(h[x] + v[x], 0, 1.25);
+  }
+
+  function mosaicLiquidDraw(ctx, pal) {
+    const s = mosaicState;
+    const h = s.height;
+    const v = s.vel;
+    ctx.clearRect(0, 0, MOSAIC_PXW, MOSAIC_PXH);
+    const [pr, pg, pb] = pal;
+    const col = (k, a) => "rgba(" + Math.min(255, Math.round(pr * k)) + "," +
+      Math.min(255, Math.round(pg * k)) + "," + Math.min(255, Math.round(pb * k)) + "," + a + ")";
+    const yAt = (i) => MOSAIC_PXH - 1 - clamp(h[i], 0, 1.2) / 1.2 * (MOSAIC_PXH - 2);
+    // the body: one filled path under the interpolated surface
+    ctx.beginPath();
+    ctx.moveTo(0, MOSAIC_PXH);
+    for (let x = 0; x <= MOSAIC_PXW; x += 4) {
+      const t = (x / MOSAIC_PXW) * (MOSAIC_W - 1);
+      const i = Math.min(MOSAIC_W - 2, Math.floor(t));
+      const fr = t - i;
+      ctx.lineTo(x, yAt(i) * (1 - fr) + yAt(i + 1) * fr);
+    }
+    ctx.lineTo(MOSAIC_PXW, MOSAIC_PXH);
+    ctx.closePath();
+    ctx.fillStyle = col(0.55, 0.5);
+    ctx.fill();
+    // the crest: the same line, stroked bright
+    ctx.beginPath();
+    for (let x = 0; x <= MOSAIC_PXW; x += 4) {
+      const t = (x / MOSAIC_PXW) * (MOSAIC_W - 1);
+      const i = Math.min(MOSAIC_W - 2, Math.floor(t));
+      const fr = t - i;
+      const y = yAt(i) * (1 - fr) + yAt(i + 1) * fr;
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = col(1.15, 0.95);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // foam: where the surface is moving hard, the crest spits light
+    for (let i = 0; i < MOSAIC_W; i++) {
+      const speed = Math.abs(v[i]);
+      if (speed > 0.045) {
+        const x = (i / (MOSAIC_W - 1)) * MOSAIC_PXW;
+        ctx.fillStyle = col(1.5, clamp(speed * 7, 0, 0.85));
+        ctx.fillRect(x - 1.5, yAt(i) - 3, 3, 3);
+      }
+    }
+  }
+
+  // SPECTRUM — the classic analyzer, drawn FREE of the cell grid. Two owner
+  // passes taught the same lesson twice: at full column width the bars fused
+  // into a horizontal wall, and snapped to five rows the falling peak-hold
+  // dot hopped between five positions and "didn't read". The grid mask is
+  // cosmetic, so this mode uses the full 448x40 store: 28 thin bars with
+  // real gaps, continuous heights, a bright cap, neighbours a tint shade
+  // apart, and the peak as a fine line that genuinely FLOATS down.
+  function mosaicAnalyzer(ctx, lanes, gain, master, pal) {
+    const s = mosaicState;
+    ctx.clearRect(0, 0, MOSAIC_PXW, MOSAIC_PXH);
+    const [pr, pg, pb] = pal;
+    const col = (k, a) => "rgba(" + Math.min(255, Math.round(pr * k)) + "," +
+      Math.min(255, Math.round(pg * k)) + "," + Math.min(255, Math.round(pb * k)) + "," + a + ")";
+    const SLOT = MOSAIC_PXW / 28;              // 16px per bar slot
+    const BAR = 7;                             // thin bar, wide dark gap
+    for (let b = 0; b < 28; b++) {
+      const band = mosaicBandAt((b * 2) / (MOSAIC_W - 1), lanes, gain) * master;
+      const h = band * (MOSAIC_PXH - 2);
+      const x = b * SLOT + (SLOT - BAR) / 2;
+      const shade = b % 2 ? 0.72 : 1;          // neighbours a tint shade apart
+      if (h > 0.8) {
+        ctx.fillStyle = col(shade * 0.78, 0.6);
+        ctx.fillRect(x, MOSAIC_PXH - h, BAR, h);
+        // the cap: a bright top edge is the vertical cue
+        ctx.fillStyle = col(shade * 1.15, 0.95);
+        ctx.fillRect(x, MOSAIC_PXH - h, BAR, Math.min(2.5, h));
+      }
+      // Peak hold in continuous units: caught by the bar, then falling on its
+      // own, drawn as a 2px line whiter than the tint.
+      if (band > s.peaks[b]) s.peaks[b] = band;
+      else s.peaks[b] = Math.max(0, s.peaks[b] - 0.012);
+      if (s.peaks[b] > band + 0.03 && s.peaks[b] > 0.03) {
+        ctx.fillStyle = col(1.55, 0.9);
+        ctx.fillRect(x, MOSAIC_PXH - 2 - s.peaks[b] * (MOSAIC_PXH - 2), BAR, 2);
+      }
+    }
+  }
+
+  function renderPvfdMosaic(ts) {
+    if (!pvfdCinemaOpen || !logoGlowEnabled) return;
+    if (ts - mosaicState.lastAt < MOSAIC_FRAME_MS) return;
+    mosaicState.lastAt = ts;
+
+    const cv = getPvfdCinemaEl().querySelector("[data-pvfd-cinema='mosaic-canvas']");
+    if (!cv) return;
+    if (!mosaicState.ctx) {
+      mosaicState.ctx = safeReturn(() => cv.getContext("2d"), null);
+      if (!mosaicState.ctx) return;
+      mosaicState.cell = document.createElement("canvas");
+      mosaicState.cell.width = FIELD_W;
+      mosaicState.cell.height = FIELD_H;
+      mosaicState.cellCtx = mosaicState.cell.getContext("2d");
+      mosaicState.img = mosaicState.cellCtx.createImageData(FIELD_W, FIELD_H);
+    }
+
+    const lanes = logoRenderState.lanes;          // air -> sub, already smoothed
+    const energy = clamp(logoRenderState.energy, 0, 1);
+    const punch = clamp(logoRenderState.punch, 0, 1);
+
+    // AUTO GAIN. Measured across genre-shaped band data, absolute levels against
+    // a fixed floor gave a coverage swing of 2 lit cells to 172: metal filled
+    // the panel and ambient was a black rectangle with 2 cells alight, because
+    // its loudest band never reaches 0.4. What matters here is which band leads,
+    // not how many dB it is, so the curve is normalised against the loudest band
+    // seen recently. Shape survives, absolute loudness stops deciding whether
+    // the display is alive at all.
+    //
+    // The peak decays slowly rather than tracking instantly: a fast follower
+    // pumps, riding the gain up and down inside a bar. Half life is about two
+    // seconds at this frame rate, so a quiet passage opens up gradually.
+    let loudest = 0;
+    for (let i = 0; i < LOGO_METER_BAND_COUNT; i++) {
+      if (lanes[i] > loudest) loudest = lanes[i];
+    }
+    mosaicState.peak = Math.max(loudest, mosaicState.peak * 0.994);
+    // Below the floor there is nothing to normalise and amplifying it would
+    // turn the noise between tracks into a light show, so gain collapses.
+    // PARTIAL, not full. Normalising all the way flattened the thing this is
+    // for: the panel no longer brightened when the music got louder, it only
+    // ever showed which band was leading. Measured against the 7 bar chassis
+    // meter on the same input, that cost more than half the reactivity. This
+    // lifts quiet music without erasing loud, so ambient still fills and a
+    // chorus still hits.
+    const gain = mosaicState.peak > 0.06 ? 1 / (mosaicState.peak * 0.6 + 0.4) : 0;
+    // Genuine silence still has to read as silence, whatever the gain says.
+    // A hard knee just above zero rather than a slope: at a gentle 3.2x this
+    // was still attenuating quiet music, and with the standing interference
+    // gone that put ambient back to 2 lit cells. Silence is silence; quiet is
+    // not silence.
+    const master = clamp((energy - 0.015) * 9, 0, 1);
+
+    // A transient seeds a ripple, on the RISING edge only - a sustained loud
+    // passage would otherwise spawn one every frame and wash the panel out.
+    // Ripples and the flash below are FIELD's transient language; the other
+    // modes answer hits through their own physics (LIQUID's splash, SPECTRUM's
+    // peaks), so this state simply goes unread there. Positions are stored in
+    // 56x5 mask units - FIELD converts, so its finer grid sharpens ripples
+    // without resizing them.
+    if (punch > 0.34 && punch > mosaicState.lastPunch + 0.10) {
+      if (mosaicState.ripples.length >= MOSAIC_RIPPLE_MAX) mosaicState.ripples.shift();
+      const lowHit = lanes[5] + lanes[6];
+      const highHit = lanes[0] + lanes[1];
+      // Seeded from the balance of the strike rather than snapped to two fixed
+      // spots, so repeated hits do not keep blooming from the same cell.
+      mosaicState.ripples.push({
+        x: clamp(0.5 + (highHit - lowHit) * 0.45, 0.08, 0.92) * (MOSAIC_W - 1),
+        y: clamp(0.5 - (highHit - lowHit) * 0.4, 0.1, 0.9) * (MOSAIC_H - 1),
+        born: ts,
+        life: clamp(0.55 + punch * 0.45, 0, 1),
+      });
+    }
+    // A transient lifts the whole panel for a moment. Rings alone read as
+    // decoration travelling across a still surface; this is the surface itself
+    // answering the hit, and it is most of what makes a kick feel like a kick.
+    mosaicState.flash = Math.max(mosaicState.flash * 0.82,
+      punch > mosaicState.lastPunch + 0.06 ? punch * 0.34 : 0);
+    mosaicState.lastPunch = punch;
+    mosaicState.ripples = mosaicState.ripples.filter((r) => ts - r.born < 900);
+
+    const pal = mosaicPalette(ts);
+    // SPECTRUM and LIQUID paint the full-resolution store directly.
+    if (MOSAIC_MODES[mosaicState.mode] === "SPECTRUM") {
+      mosaicAnalyzer(mosaicState.ctx, lanes, gain, master, pal);
+      return;
+    }
+    if (MOSAIC_MODES[mosaicState.mode] === "LIQUID") {
+      mosaicLiquid(lanes, gain, master, punch);
+      mosaicLiquidDraw(mosaicState.ctx, pal);
+      return;
+    }
+    const f = mosaicState.field;
+    mosaicField(f, lanes, gain, master, ts);
+
+    // FIELD's tail: quantised, coloured, computed on its own 112x10 grid -
+    // four cells per mask cell - and blitted up with hard edges. Still a
+    // mosaic, just a finer one.
+    const [pr, pg, pb] = pal;
+    const data = mosaicState.img.data;
+    for (let i = 0, q = 0; i < FIELD_N; i++, q += 4) {
+      // A floor, so a quiet cell is genuinely OFF rather than sitting on the
+      // lowest step. This is what leaves dark between the lit cells.
+      const lit = clamp((f[i] - 0.26) / 0.74, 0, 1);
+      // Quantised: an LCD cell is switched, not painted.
+      data[q] = pr;
+      data[q + 1] = pg;
+      data[q + 2] = pb;
+      data[q + 3] = Math.round((Math.round(lit * MOSAIC_LEVELS) / MOSAIC_LEVELS) * 255);
+    }
+    mosaicState.cellCtx.putImageData(mosaicState.img, 0, 0);
+    const c2 = mosaicState.ctx;
+    c2.imageSmoothingEnabled = false;
+    c2.clearRect(0, 0, MOSAIC_PXW, MOSAIC_PXH);
+    c2.drawImage(mosaicState.cell, 0, 0, MOSAIC_PXW, MOSAIC_PXH);
+  }
+
+  function applyPvfdMosaicMode(persist) {
+    const name = MOSAIC_MODES[mosaicState.mode] || MOSAIC_MODES[0];
+    // LIQUID's surface and SPECTRUM's peaks carry state between frames;
+    // left behind, the next mode would inherit the previous one's picture.
+    mosaicState.field.fill(0);
+    mosaicState.height.fill(0);
+    mosaicState.vel.fill(0);
+    mosaicState.peaks.fill(0);
+    const tag = getPvfdCinemaEl().querySelector("[data-pvfd-cinema='mosaic-tag']");
+    if (tag) {
+      tag.textContent = name;
+      // Restart the fade even when the same class is already on.
+      tag.classList.remove("show");
+      void tag.offsetWidth;
+      tag.classList.add("show");
+    }
+    if (persist) safe(() => window.localStorage.setItem(MOSAIC_MODE_KEY, String(mosaicState.mode)));
+  }
+
+  function cyclePvfdMosaicMode() {
+    mosaicState.mode = (mosaicState.mode + 1) % MOSAIC_MODES.length;
+    applyPvfdMosaicMode(true);
+  }
+
+  // ----- FACE — the deck's display, detached (DFS) ------------------------
+  // Named for what 2000s Pioneer decks actually had: the Detachable Face
+  // Security faceplate you popped off and took with you. The owner's bar for
+  // the name was exact - a faceplate CARRIES THE CONTROLS, otherwise this is
+  // just picture-in-picture wearing a costume - so the window has a real
+  // transport, the track readout and the times, driven by the same player
+  // calls the display's own transport uses. Internal identifiers stay scope*.
+  // Document Picture-in-Picture: a real OS window, always on top, draggable
+  // anywhere on the desktop, and sharing this script's JS context - which is
+  // the whole trick, because the scenes read logoRenderState directly with no
+  // messaging layer. It is the same API Spotify's own miniplayer uses (six
+  // call sites in their bundle), so its presence in the client is proven.
+  // One PiP window exists per browser: opening SCOPE evicts their miniplayer
+  // and vice versa. That is the API's rule, not ours.
+  //
+  // Everything drawn is procedural. A shipped theme cannot depend on fetched
+  // artwork, and generated art has a property no asset has: it is painted in
+  // the tint palette, so ADAPT recolors the entire scene with every album.
+  //
+  // One scene: HELIX, a double helix crossing the window, rungs lit by the
+  // spectrum - low bands at the left rungs, high at the right - with a twist
+  // wave sent down the strand by every transient. An ORBIT space scene lived
+  // here briefly and was scrapped by the owner; its lesson (live particles
+  // over baked sprites) survives in how the helix and the matrix are drawn.
+  // With PULSE off the scene idles slowly rather than freezing.
+  const PVFD_SCOPE_SCENES = ["HELIX"];
+  const scopeState = {
+    win: null, canvas: null, ctx: null, tagEl: null, hintEl: null,
+    lastTs: 0, phase: 0,             // phase drives the helix rotation
+    face: null, uiTick: 0,          // the faceplate's readout and keys
+    peak: 0.35, gain: 1, lastPunch: 0,
+    waves: [],                  // twist fronts from transients
+    dust: null,
+    sprites: null, spritesKey: "",
+  };
+
+  function scopePalette() {
+    // B-ON-W's palette is ink for paper surfaces. SCOPE's window is not paper
+    // - it is a black always-on-top display, and ink-coloured light on black
+    // is invisible. So in BOW the scope simply wears W-ON-B's whites, per the
+    // owner: good ole BOW.
+    if (safeReturn(() => document.documentElement.getAttribute("data-pvfd-tint"), "") === "bow") {
+      return [244, 244, 244];
+    }
+    const raw = safeReturn(() =>
+      getComputedStyle(document.documentElement).getPropertyValue("--pvfd-light-rgb").trim(), "");
+    const p = raw.split(",").map((n) => parseInt(n, 10));
+    return p.length === 3 && p.every((n) => Number.isFinite(n)) ? p : [5, 199, 220];
+  }
+
+  function scopeCol(pal, k, a) {
+    return "rgba(" + Math.min(255, Math.round(pal[0] * k)) + "," +
+      Math.min(255, Math.round(pal[1] * k)) + "," +
+      Math.min(255, Math.round(pal[2] * k)) + "," + a + ")";
+  }
+
+  // Soft round glow - the brush every scene paints with.
+  function paintScopeGlow(pal) {
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = 64;
+    const x = cv.getContext("2d");
+    const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, "rgba(255,255,255,0.9)");
+    g.addColorStop(0.3, scopeCol(pal, 1, 0.55));
+    g.addColorStop(1, scopeCol(pal, 1, 0));
+    x.fillStyle = g;
+    x.fillRect(0, 0, 64, 64);
+    return cv;
+  }
+
+  function makeScopeSprites(pal) {
+    return { glow: paintScopeGlow(pal) };
+  }
+
+  function scopeSprite(ctx, img, x, y, scale, alpha) {
+    ctx.globalAlpha = clamp(alpha, 0, 1);
+    ctx.drawImage(img, x - img.width * scale / 2, y - img.height * scale / 2,
+      img.width * scale, img.height * scale);
+    ctx.globalAlpha = 1;
+  }
+
+  // Low frequencies on the left, high on the right, partially normalised with
+  // the same slow peak follower the matrix uses, for the same reason.
+  function scopeBandAt(u) {
+    const lanes = logoRenderState.lanes;
+    const bp = (1 - u) * (LOGO_METER_BAND_COUNT - 1);
+    const bi = Math.min(LOGO_METER_BAND_COUNT - 2, Math.floor(bp));
+    const bf = bp - bi;
+    return clamp((lanes[bi] * (1 - bf) + lanes[bi + 1] * bf) * scopeState.gain, 0, 1);
+  }
+
+  function drawScopeHelix(ctx, W, H, dt, ts, pal, sp) {
+    // Full clear every frame, then the trail drawn ON PURPOSE. The first cut
+    // faded the last frame under a 25% veil, which looks like motion trails
+    // but mathematically never finishes: an 8-bit channel stalls the moment
+    // v * 0.75 rounds back to v, so every bright pass parked a permanent
+    // ghost a few steps above black and the background slowly filled with
+    // residue - strands and dust both (owner report). Computing the trail
+    // instead - each strand drawn again at two earlier phases with falling
+    // alpha - reads the same in motion and leaves nothing behind, because
+    // every frame starts from black.
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#000205";
+    ctx.fillRect(0, 0, W, H);
+    const s = scopeState;
+    const energy = clamp(logoRenderState.energy, 0, 1);
+    s.phase += dt * (0.5 + energy * 2.6);
+    s.waves = s.waves.filter((w) => ts - w.born < 1600);
+    const cy = H * 0.5;
+    const R0 = H * 0.28;
+    const SEG = 110;
+    // Coil pitch follows the window's shape: a fixed turn count read as a
+    // contained squiggle on wide windows. Tying turns to the aspect ratio
+    // keeps the pitch constant - a wider window means more coils.
+    const TWIST = Math.max(2.8, (W / H) * 2.0) * Math.PI;
+    if (!s.dust) {
+      s.dust = [];
+      for (let i = 0; i < 70; i++) s.dust.push({ x: Math.random(), y: Math.random(), v: 0.004 + Math.random() * 0.012 });
+    }
+    ctx.globalCompositeOperation = "lighter";
+    for (const d of s.dust) {
+      d.x += d.v * dt * 12;
+      if (d.x > 1) d.x -= 1;
+      scopeSprite(ctx, sp.glow, d.x * W, d.y * H, 0.05 + d.v * 3, 0.05 + energy * 0.1);
+    }
+    // oldest ghost first, live strand last, so the head draws over its tail
+    const GHOSTS = [[2, 0.12], [1, 0.3], [0, 1]];
+    for (const [g, ghostK] of GHOSTS) {
+      const phase = s.phase - g * 0.16 * (0.6 + energy);
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 0; i <= SEG; i++) {
+          const u = i / SEG;
+          const x = W * u;
+          let boost = 0;
+          for (const w of s.waves) {
+            const front = (ts - w.born) / 1600;
+            boost += w.life * (1 - front) * Math.exp(-Math.pow((u - front) * 9, 2));
+          }
+          const band = scopeBandAt(u);
+          const R = R0 * (0.8 + band * 0.34 + boost * 0.6);
+          const a2 = phase + u * TWIST;
+          // rungs ride the live strand only, never the ghosts
+          if (g === 0 && i % 6 === 3 && pass === 1) {
+            const y1 = cy + Math.sin(a2) * R;
+            const y2 = cy - Math.sin(a2) * R;
+            const rg = clamp(0.08 + band * 0.8 + boost * 0.5, 0, 1);
+            ctx.strokeStyle = scopeCol(pal, 0.95, rg * 0.5);
+            ctx.lineWidth = 1.5 + band * 3;
+            ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x, y2); ctx.stroke();
+            scopeSprite(ctx, sp.glow, x, (y1 + y2) / 2, 0.16 + band * 0.2, rg * 0.5);
+          }
+          for (let strand = 0; strand < 2; strand++) {
+            const ang = a2 + strand * Math.PI;
+            const z = (Math.cos(ang) + 1) / 2;       // 0 far, 1 near
+            if ((pass === 0) !== (z < 0.5)) continue; // far half first
+            const y = cy + Math.sin(ang) * R;
+            const size = (0.16 + z * 0.34) * (1 + boost * 0.7);
+            const alpha = (0.10 + z * 0.42) * (0.5 + band * 0.5 + boost * 0.6) * ghostK;
+            scopeSprite(ctx, sp.glow, x, y, size, alpha);
+          }
+        }
+      }
+    }
+  }
+
+  function scopeFrame(ts) {
+    const s = scopeState;
+    const win = s.win;
+    if (!win || win.closed || !s.ctx) return;
+    win.requestAnimationFrame(scopeFrame);
+    const dt = Math.min(0.05, (ts - (s.lastTs || ts)) / 1000);
+    s.lastTs = ts;
+
+    const lanes = logoRenderState.lanes;
+    let loudest = 0;
+    for (let i = 0; i < LOGO_METER_BAND_COUNT; i++) if (lanes[i] > loudest) loudest = lanes[i];
+    s.peak = Math.max(loudest, s.peak * 0.994);
+    s.gain = s.peak > 0.06 ? 1 / (s.peak * 0.6 + 0.4) : 0;
+    const punch = clamp(logoRenderState.punch, 0, 1);
+    if (punch > 0.34 && punch > s.lastPunch + 0.08) {
+      s.waves.push({ born: ts, life: punch });
+    }
+    s.lastPunch = punch;
+
+    const pal = scopePalette();
+    const key = pal.join(",");
+    if (s.spritesKey !== key) { s.sprites = makeScopeSprites(pal); s.spritesKey = key; }
+
+    const cv = s.canvas;
+    const dw = Math.round(win.innerWidth * Math.min(win.devicePixelRatio || 1, 1.5));
+    const dh = Math.round(win.innerHeight * Math.min(win.devicePixelRatio || 1, 1.5));
+    if (cv.width !== dw || cv.height !== dh) { cv.width = dw; cv.height = dh; }
+    if (s.hintEl) {
+      const hint = logoGlowEnabled ? "" : "PULSE OFF";
+      if (s.hintEl.textContent !== hint) s.hintEl.textContent = hint;
+    }
+    // The faceplate readout, every twelfth frame - a faceplate that carries
+    // controls also has to TELL you what it is controlling. Same fallbacks as
+    // the display's own transport for shuffle and heart state.
+    s.uiTick++;
+    if (s.face && s.uiTick % 12 === 0) {
+      const it = safeReturn(() => Spicetify.Player.data.item, null);
+      const m = (it && it.metadata) || {};
+      const title = m.title || (it && it.name) || "\u2014";
+      const artist = m.artist_name || "";
+      if (s.face.mt.textContent !== title) s.face.mt.textContent = title;
+      if (s.face.ma.textContent !== artist) s.face.ma.textContent = artist;
+      const t = pvfdPlaybackTimes();
+      const tmText = pvfdFmtTime(t.prog) + " / " + pvfdFmtTime(t.dur);
+      if (s.face.tm.textContent !== tmText) s.face.tm.textContent = tmText;
+      const playing = safePlayerIsPlaying(false);
+      const glyph = playing ? "\u23F8\uFE0E" : "\u25B6\uFE0E";
+      if (s.face.kPlay.textContent !== glyph) s.face.kPlay.textContent = glyph;
+      let shuffling = safeReturn(() => Spicetify.Player.getShuffle(), null);
+      if (shuffling === null) {
+        shuffling = !!safeReturn(() => Spicetify.Player.data.options.shufflingContext, false);
+      }
+      s.face.kShuffle.classList.toggle("on", !!shuffling);
+      let liked = safeReturn(() => Spicetify.Player.getHeart && Spicetify.Player.getHeart(), null);
+      if (liked === null) liked = m.has_liked === "true" || m.has_liked === true;
+      s.face.kHeart.classList.toggle("on", !!liked);
+      const hGlyph = liked ? "\u2665\uFE0E" : "\u2661\uFE0E";
+      if (s.face.kHeart.textContent !== hGlyph) s.face.kHeart.textContent = hGlyph;
+    }
+    drawScopeHelix(s.ctx, dw, dh, dt, ts, pal, s.sprites);
+  }
+
+  function applyScopeScene() {
+    const s = scopeState;
+    s.waves.length = 0;
+    s.dust = null;
+    if (s.tagEl) {
+      s.tagEl.textContent = PVFD_SCOPE_SCENES[0];
+      s.tagEl.style.opacity = "0.9";
+      window.setTimeout(() => { if (s.tagEl) s.tagEl.style.opacity = "0"; }, 1400);
+    }
+  }
+
+  async function togglePvfdScope() {
+    const s = scopeState;
+    if (s.win && !s.win.closed) { safe(() => s.win.close()); return; }
+    const dpip = window.documentPictureInPicture;
+    if (!dpip || !dpip.requestWindow) {
+      console.warn("[PVFD] SCOPE needs Document Picture-in-Picture, which this client lacks");
+      return;
+    }
+    const win = await dpip.requestWindow({ width: 960, height: 540 });
+    s.win = win;
+    const doc = win.document;
+    doc.title = "PVFD · DFS";
+    const style = doc.createElement("style");
+    style.textContent = [
+      "html,body{margin:0;height:100%;background:#000;overflow:hidden}",
+      "canvas{position:absolute;inset:0;width:100%;height:100%;cursor:pointer}",
+      // the display treatments the rest of the theme wears: scanlines + vignette
+      ".scan{position:absolute;inset:0;pointer-events:none;z-index:2;",
+      " background-image:linear-gradient(180deg,transparent 0,transparent 50%,rgba(0,0,0,0.22) 50%,rgba(0,0,0,0.22) 100%);",
+      " background-size:100% 3px}",
+      ".vig{position:absolute;inset:0;pointer-events:none;z-index:3;",
+      " background:radial-gradient(ellipse at center,transparent 52%,rgba(0,0,0,0.5) 100%)}",
+      ".tag{position:absolute;top:12px;left:16px;z-index:4;font:11px monospace;",
+      " letter-spacing:5px;color:#fff;opacity:0;transition:opacity 300ms;pointer-events:none}",
+      // the faceplate bar owns the bottom edge, so the wordmark and the
+      // PULSE-off hint move up under the drag strip
+      ".brand{position:absolute;top:38px;right:14px;z-index:4;font:italic 700 12px monospace;",
+      " color:rgba(255,255,255,0.4);letter-spacing:1px;pointer-events:none}",
+      ".hint{position:absolute;top:40px;left:16px;z-index:4;font:10px monospace;",
+      " letter-spacing:3px;color:rgba(255,255,255,0.35);pointer-events:none}",
+      // The faceplate: chrome transport keys on a fade so the scene runs
+      // underneath, the way the deck's own silk sits over its glass.
+      ".deck{position:absolute;left:0;right:0;bottom:0;height:56px;z-index:5;",
+      " display:flex;align-items:center;gap:14px;padding:0 14px;",
+      " background:linear-gradient(0deg,rgba(2,4,8,0.9),rgba(2,4,8,0.4) 72%,transparent)}",
+      ".meta{flex:1;min-width:0;pointer-events:none}",
+      ".mt{font:700 13px monospace;letter-spacing:1px;color:rgba(255,255,255,0.92);",
+      " white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+      ".ma{font:10px monospace;letter-spacing:2px;color:rgba(255,255,255,0.5);text-transform:uppercase;",
+      " white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+      ".tm{font:11px monospace;color:rgba(255,255,255,0.55);white-space:nowrap;",
+      " font-variant-numeric:tabular-nums;pointer-events:none}",
+      ".tb{width:38px;height:32px;cursor:pointer;line-height:1;",
+      " font:700 15px 'Segoe UI Symbol','Symbola',monospace;color:#1a2030;",
+      " background:linear-gradient(180deg,#b8babb,#5e6064);border:1px solid #2a2c30;",
+      " border-radius:3px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.45),0 1px 2px rgba(0,0,0,0.6)}",
+      ".tb:hover{background:linear-gradient(180deg,#d0d2d3,#6e7074)}",
+      ".tb.on{color:#000;background:linear-gradient(180deg,#ffffff,#9aa0a4);",
+      " box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 0 10px rgba(255,255,255,0.45)}",
+      // The window is always on top by the API's nature, so it MUST be
+      // movable and closable from itself, or it is a trap sitting over the
+      // desktop (owner report - it covered their editor). app-region:drag is
+      // how Spotify's own miniplayer moves; the close key and ESC both work
+      // regardless.
+      ".drag{position:absolute;top:0;left:0;right:0;height:34px;z-index:5;",
+      " app-region:drag;-webkit-app-region:drag}",
+      ".x{position:absolute;top:8px;right:10px;z-index:6;cursor:pointer;",
+      " app-region:no-drag;-webkit-app-region:no-drag;",
+      " font:700 12px monospace;color:rgba(255,255,255,0.55);",
+      " background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);padding:3px 9px}",
+      ".x:hover{color:#fff;border-color:rgba(255,255,255,0.7)}",
+    ].join("");
+    doc.head.appendChild(style);
+    const cv = doc.createElement("canvas");
+    const mk = (cls) => { const el = doc.createElement("div"); el.className = cls; doc.body.appendChild(el); return el; };
+    doc.body.appendChild(cv);
+    mk("scan"); mk("vig");
+    s.tagEl = mk("tag");
+    s.hintEl = mk("hint");
+    const brand = mk("brand");
+    brand.textContent = "pioneer";
+    // the faceplate itself: readout left, times, then the transport
+    const deck = mk("deck");
+    const meta = doc.createElement("div");
+    meta.className = "meta";
+    const mt = doc.createElement("div"); mt.className = "mt";
+    const ma = doc.createElement("div"); ma.className = "ma";
+    meta.appendChild(mt); meta.appendChild(ma);
+    const tm = doc.createElement("div"); tm.className = "tm";
+    deck.appendChild(meta); deck.appendChild(tm);
+    const key = (glyph, title, fn) => {
+      const b = doc.createElement("button");
+      b.className = "tb"; b.textContent = glyph; b.title = title;
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        safe(fn);
+        // Echo into the display behind, the same beat the display's own keys
+        // use: its control state is event-driven (open + songchange), and a
+        // faceplate press is neither, so without this the FSD's heart stayed
+        // red after an unlike from here (owner report). The refresh guards
+        // itself when the display is closed, and the faceplate's own readout
+        // catches up on its 12-frame tick regardless.
+        setTimeout(() => safe(refreshPvfdCinemaControlState), 180);
+      });
+      deck.appendChild(b);
+      return b;
+    };
+    const kShuffle = key("\u21C6\uFE0E", "Shuffle", () => Spicetify.Player.toggleShuffle());
+    key("\u23EE\uFE0E", "Previous", () => Spicetify.Player.back());
+    const kPlay = key("\u25B6\uFE0E", "Play / pause", () => Spicetify.Player.togglePlay());
+    key("\u23ED\uFE0E", "Next", () => Spicetify.Player.next());
+    const kHeart = key("\u2661\uFE0E", "Save to liked", () => Spicetify.Player.toggleHeart());
+    s.face = { mt, ma, tm, kPlay, kShuffle, kHeart };
+    mk("drag");
+    const closeBtn = doc.createElement("button");
+    closeBtn.className = "x";
+    closeBtn.textContent = "✕";
+    closeBtn.title = "Close SCOPE (Esc)";
+    doc.body.appendChild(closeBtn);
+    closeBtn.addEventListener("click", () => safe(() => win.close()));
+    doc.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") safe(() => win.close());
+    });
+    s.canvas = cv;
+    s.ctx = cv.getContext("2d");
+    s.lastTs = 0;
+    // The window can die by its own X, by Spotify claiming the PiP slot, or by
+    // us. pagehide covers all three.
+    win.addEventListener("pagehide", () => {
+      if (s.win !== win) return;
+      s.win = null; s.ctx = null; s.canvas = null; s.tagEl = null; s.hintEl = null;
+      s.face = null;
+      if (document.body) document.body.removeAttribute("data-pvfd-scope");
+    });
+    if (document.body) document.body.setAttribute("data-pvfd-scope", "on");
+    applyScopeScene();
+    win.requestAnimationFrame(scopeFrame);
+  }
+
+  const LOGO_METER_W = 48;
+  const LOGO_METER_H = 23;
+  const LOGO_METER_BAND_COUNT = 7;
+  const LOGO_GLOW_W = 170;
+  const LOGO_GLOW_H = 34;
+  const LOGO_RENDER_NORMAL_MS = 33;
+  const LOGO_RENDER_STRESS_MS = 66;
+  const LOGO_RENDER_EPSILON = 0.0035;
+
+  const logoRenderState = {
+    lanes: new Float32Array(LOGO_METER_BAND_COUNT),
+    opacities: new Float32Array(LOGO_METER_BAND_COUNT),
+    energy: 0,
+    punch: 0,
+    dirty: true,
+    lastRenderAt: -Infinity
+  };
+
+  const logoBarSpriteCache = {
+    sprite: null,
+    paletteVersion: -1
+  };
+
+  const logoGlowCanvasCache = {
+    canvas: null,
+    ctx: null,
+    halo: null,
+    haloPaletteVersion: -1
+  };
+
+  function isLogoRenderStressActive() {
+    return (
+      (typeof isRouteChurnActive === "function" && isRouteChurnActive()) ||
+      (pvfdRouteState && Number.isFinite(pvfdRouteState.churnUntil) && performance.now() < pvfdRouteState.churnUntil)
+    );
+  }
+
+  function resetLogoRenderState() {
+    logoRenderState.lanes.fill(0);
+    logoRenderState.opacities.fill(0);
+    logoRenderState.energy = 0;
+    logoRenderState.punch = 0;
+    logoRenderState.dirty = true;
+    logoRenderState.lastRenderAt = -Infinity;
+    logoBarSpriteCache.sprite = null;
+    logoBarSpriteCache.paletteVersion = -1;
+    logoGlowCanvasCache.halo = null;
+    logoGlowCanvasCache.haloPaletteVersion = -1;
+  }
+
+  function getLogoBarSprite() {
+    if (
+      logoBarSpriteCache.sprite &&
+      logoBarSpriteCache.paletteVersion === pvfdPaletteVersion
+    ) {
+      return logoBarSpriteCache.sprite;
+    }
+
+    const sprite = document.createElement("canvas");
+    sprite.width = 6;
+    sprite.height = LOGO_METER_H;
+
+    const c = sprite.getContext("2d", { alpha: true });
+    if (!c) return null;
+
+    c.imageSmoothingEnabled = false;
+
+    const grad = c.createLinearGradient(0, 0, 0, LOGO_METER_H);
+    grad.addColorStop(0.00, "rgba(255,255,255,1)");
+    grad.addColorStop(0.36, pvfdRgba(pvfdCssPalette.light, 0.96));
+    grad.addColorStop(1.00, pvfdRgba(pvfdCssPalette.deep, 0.58));
+
+    c.fillStyle = grad;
+    c.fillRect(0, 0, 6, LOGO_METER_H);
+
+    logoBarSpriteCache.sprite = sprite;
+    logoBarSpriteCache.paletteVersion = pvfdPaletteVersion;
+
+    return sprite;
+  }
+
+  function buildLogoGlowHaloSprite() {
+    const halo = document.createElement("canvas");
+    halo.width = LOGO_GLOW_W;
+    halo.height = LOGO_GLOW_H;
+
+    const c = halo.getContext("2d", { alpha: true });
+    if (!c) return null;
+
+    c.imageSmoothingEnabled = false;
+
+    const g = c.createRadialGradient(
+      LOGO_GLOW_W * 0.5,
+      LOGO_GLOW_H * 0.5,
+      1,
+      LOGO_GLOW_W * 0.5,
+      LOGO_GLOW_H * 0.5,
+      Math.max(LOGO_GLOW_W, LOGO_GLOW_H) * 0.48
+    );
+
+    g.addColorStop(0.00, "rgba(255,255,255,0.42)");
+    g.addColorStop(0.22, pvfdRgba(pvfdCssPalette.light, 0.72));
+    g.addColorStop(0.50, pvfdRgba(pvfdCssPalette.mid, 0.38));
+    g.addColorStop(0.76, pvfdRgba(pvfdCssPalette.deep, 0.16));
+    g.addColorStop(1.00, "rgba(0,0,0,0)");
+
+    c.fillStyle = g;
+    c.fillRect(0, 0, LOGO_GLOW_W, LOGO_GLOW_H);
+
+    logoGlowCanvasCache.halo = halo;
+    logoGlowCanvasCache.haloPaletteVersion = pvfdPaletteVersion;
+
+    return halo;
+  }
+
+  function ensureLogoCanvasReady() {
+    if (!logoStrip || !logoStrip.isConnected) {
+      logoStrip = chassis && chassis.querySelector(".pvfd-logo-strip");
+    }
+
+    if (!logoStrip) return false;
+
+    const left = logoMeterCache.left;
+    const right = logoMeterCache.right;
+    const glow = logoGlowCanvasCache;
+
+    if (
+      !left ||
+      !right ||
+      !left.canvas ||
+      !right.canvas ||
+      !left.canvas.isConnected ||
+      !right.canvas.isConnected ||
+      !glow.canvas ||
+      !glow.canvas.isConnected
+    ) {
+      ensureLogoSpectrumMarkup();
+    }
+
+    return !!(
+      logoMeterCache.left &&
+      logoMeterCache.right &&
+      logoMeterCache.left.ctx &&
+      logoMeterCache.right.ctx &&
+      logoGlowCanvasCache.ctx
+    );
+  }
+
+  function setLogoRenderState(energy, sub, low, mid, presence, high, punch) {
+    const e = clamp(Number(energy) || 0, 0, 1);
+    const p = clamp(Number(punch) || 0, 0, 1);
+
+    const envSum =
+      logoLiveSubEnv +
+      logoLiveBassEnv +
+      logoLiveLowMidEnv +
+      logoLiveMidEnv +
+      logoLiveUpperMidEnv +
+      logoLivePresenceEnv +
+      logoLiveAirEnv;
+
+    const hasEnv = envSum > 0.001;
+
+    const subLane = hasEnv ? clamp(logoLiveSubEnv, 0, 1) : clamp(sub, 0, 1);
+    const bassLane = hasEnv ? clamp(logoLiveBassEnv, 0, 1) : clamp(low, 0, 1);
+    const lowMidLane = hasEnv ? clamp(logoLiveLowMidEnv, 0, 1) : clamp(low, 0, 1);
+    const midLane = hasEnv ? clamp(logoLiveMidEnv, 0, 1) : clamp(mid, 0, 1);
+    const upperMidLane = hasEnv ? clamp(logoLiveUpperMidEnv, 0, 1) : clamp(presence, 0, 1);
+    const presenceLane = hasEnv ? clamp(logoLivePresenceEnv, 0, 1) : clamp(presence, 0, 1);
+    const airLane = hasEnv ? clamp(logoLiveAirEnv, 0, 1) : clamp(high, 0, 1);
+
+    const presenceDisplay = clamp(upperMidLane * 0.65 + presenceLane * 0.35, 0, 1);
+
+    const nextValues = [
+      airLane,
+      presenceDisplay,
+      upperMidLane,
+      midLane,
+      lowMidLane,
+      bassLane,
+      subLane
+    ];
+
+    const lanes = logoRenderState.lanes;
+    const opacities = logoRenderState.opacities;
+
+    let dirty = false;
+
+    for (let i = 0; i < LOGO_METER_BAND_COUNT; i++) {
+      const v = nextValues[i];
+      const o = clamp(0.70 + v * 0.30, 0, 1);
+
+      if (Math.abs(lanes[i] - v) >= LOGO_RENDER_EPSILON) {
+        lanes[i] = v;
+        dirty = true;
+      }
+
+      if (Math.abs(opacities[i] - o) >= LOGO_RENDER_EPSILON) {
+        opacities[i] = o;
+        dirty = true;
+      }
+    }
+
+    if (Math.abs(logoRenderState.energy - e) >= LOGO_RENDER_EPSILON) {
+      logoRenderState.energy = e;
+      dirty = true;
+    }
+
+    if (Math.abs(logoRenderState.punch - p) >= LOGO_RENDER_EPSILON) {
+      logoRenderState.punch = p;
+      dirty = true;
+    }
+
+    logoRenderState.dirty = logoRenderState.dirty || dirty;
+  }
+
+  function drawLogoMeterCanvasFast(cacheEntry, reverse) {
+    if (!cacheEntry || !cacheEntry.canvas || !cacheEntry.ctx) return;
+
+    const canvas = cacheEntry.canvas;
+    const c = cacheEntry.ctx;
+
+    if (canvas.width !== LOGO_METER_W) canvas.width = LOGO_METER_W;
+    if (canvas.height !== LOGO_METER_H) canvas.height = LOGO_METER_H;
+
+    c.clearRect(0, 0, LOGO_METER_W, LOGO_METER_H);
+
+    if (!logoGlowEnabled || !logoLiveAudioActive) return;
+
+    const sprite = getLogoBarSprite();
+    if (!sprite) return;
+
+    const lanes = logoRenderState.lanes;
+    const opacities = logoRenderState.opacities;
+
+    for (let i = 0; i < LOGO_METER_BAND_COUNT; i++) {
+      const srcIdx = reverse ? LOGO_METER_BAND_COUNT - 1 - i : i;
+      const value = clamp(lanes[srcIdx] || 0, 0, 1);
+      const alpha = clamp(opacities[srcIdx] || 0, 0, 1);
+
+      const x = i * 7;
+      const barHeight = Math.max(1, Math.min(LOGO_METER_H, Math.round(1 + value * 22)));
+      const y = LOGO_METER_H - barHeight;
+
+      c.globalAlpha = alpha;
+      c.drawImage(
+        sprite,
+        0, LOGO_METER_H - barHeight, 6, barHeight,
+        x, y, 6, barHeight
+      );
+
+      c.globalAlpha = clamp(alpha * 0.42, 0, 1);
+      c.fillStyle = "rgba(255,255,255,0.9)";
+      c.fillRect(x, y, 6, 1);
+    }
+
+    c.globalAlpha = 1;
+  }
+
+  function drawLogoGlowCanvas() {
+    const canvas = logoGlowCanvasCache.canvas;
+    const c = logoGlowCanvasCache.ctx;
+
+    if (!canvas || !c) return;
+
+    if (canvas.width !== LOGO_GLOW_W) canvas.width = LOGO_GLOW_W;
+    if (canvas.height !== LOGO_GLOW_H) canvas.height = LOGO_GLOW_H;
+
+    c.clearRect(0, 0, LOGO_GLOW_W, LOGO_GLOW_H);
+
+    if (!logoGlowEnabled || !logoLiveAudioActive) return;
+
+    const energy = clamp(logoRenderState.energy, 0, 1);
+    const punch = clamp(logoRenderState.punch, 0, 1);
+
+    if (energy < 0.012 && punch < 0.012) return;
+
+    let halo = logoGlowCanvasCache.halo;
+
+    if (!halo || logoGlowCanvasCache.haloPaletteVersion !== pvfdPaletteVersion) {
+      halo = buildLogoGlowHaloSprite();
+    }
+
+    if (!halo) return;
+
+    c.globalAlpha = clamp(0.08 + energy * 0.52 + punch * 0.10, 0, 0.72);
+
+    const scale = 0.92 + energy * 0.12 + punch * 0.04;
+    const dw = LOGO_GLOW_W * scale;
+    const dh = LOGO_GLOW_H * scale;
+    const dx = (LOGO_GLOW_W - dw) * 0.5;
+    const dy = (LOGO_GLOW_H - dh) * 0.5;
+
+    c.drawImage(halo, dx, dy, dw, dh);
+    c.globalAlpha = 1;
+  }
+
+  function renderLogoVisuals(ts = performance.now(), force = false) {
+    // All three canvases live on the chassis, which the full screen display
+    // covers. Capture and the band envelopes keep running - they cost almost
+    // nothing and the display is going to want them - but there is no reason
+    // to draw meters into something nobody can see. setPvfdCinemaOpen forces
+    // one render on close so they come back current rather than stale.
+    if (pvfdCinemaOpen && !force) return;
+    if (!force && !logoRenderState.dirty) return;
+    if (!ensureLogoCanvasReady()) return;
+
+    const interval = isLogoRenderStressActive()
+      ? LOGO_RENDER_STRESS_MS
+      : LOGO_RENDER_NORMAL_MS;
+
+    if (!force && ts - logoRenderState.lastRenderAt < interval) return;
+
+    const perfAt = pvfdPerfStart();
+
+    logoRenderState.lastRenderAt = ts;
+    logoRenderState.dirty = false;
+
+    drawLogoMeterCanvasFast(logoMeterCache.left, false);
+    drawLogoMeterCanvasFast(logoMeterCache.right, true);
+    drawLogoGlowCanvas();
+
+    pvfdPerfEnd("logoCanvasRender", perfAt);
+  }
+
+  // Compatibility shim:
+  // Old name stays so existing start/stop/update call sites do not break.
+  // New behavior: no per-frame CSS vars, no text-shadow vars, no DOM-band vars.
+  function setLogoAudioGlowVars(energy, sub, low, mid, presence, high, punch) {
+    setLogoRenderState(energy, sub, low, mid, presence, high, punch);
+    renderLogoVisuals(performance.now(), !logoGlowEnabled || !logoLiveAudioActive);
+  }
+
+  function smoothLogoEnvelope(prev, value, attack = LOGO_LIVE_ATTACK, release = LOGO_LIVE_RELEASE) {
+    const mix = value > prev ? attack : release;
+    return prev + (value - prev) * mix;
+  }
+
+  function compressAudioValue(value, gain = 1, curve = 0.70) {
+    return clamp(Math.pow(Math.max(0, value) * gain, curve), 0, 1);
+  }
+
+  // Per-band AGC: update the band's rolling peak, return a gain reduction
+  // factor in [floor, 1]. When peak ≤ target, returns 1 (full base gain).
+  // When peak rises above target, returns target/peak so the effective gain
+  // shrinks proportionally with how hard the band has been pinned.
+  function pvfdBandAgcGain(bandIdx, rawValue) {
+    let peak = logoLiveBandPeaks[bandIdx] * LOGO_LIVE_AGC_DECAY;
+    if (rawValue > peak) peak = rawValue;
+    logoLiveBandPeaks[bandIdx] = peak;
+    const ceiling = peak < LOGO_LIVE_AGC_FLOOR ? LOGO_LIVE_AGC_FLOOR : peak;
+    return ceiling <= LOGO_LIVE_AGC_TARGET ? 1 : (LOGO_LIVE_AGC_TARGET / ceiling);
+  }
+
+  // Pre-computed bin offsets for each band, keyed on (sampleRate, fftSize, binsLen).
+  // Recomputed only when those values actually change. Order:
+  //   0=sub, 1=bass, 2=lowMid, 3=mid, 4=upperMid, 5=presence, 6=air
+  const ANALYSER_BAND_RANGES = [
+    [LOGO_LIVE_SUB_MIN_HZ,      LOGO_LIVE_SUB_MAX_HZ],
+    [LOGO_LIVE_BASS_MIN_HZ,     LOGO_LIVE_BASS_MAX_HZ],
+    [LOGO_LIVE_LOWMID_MIN_HZ,   LOGO_LIVE_LOWMID_MAX_HZ],
+    [LOGO_LIVE_MID_MIN_HZ,      LOGO_LIVE_MID_MAX_HZ],
+    [LOGO_LIVE_UPPERMID_MIN_HZ, LOGO_LIVE_UPPERMID_MAX_HZ],
+    [LOGO_LIVE_PRESENCE_MIN_HZ, LOGO_LIVE_PRESENCE_MAX_HZ],
+    [LOGO_LIVE_AIR_MIN_HZ,      LOGO_LIVE_AIR_MAX_HZ],
+  ];
+  // Flat Int32Array: [lo0, hi0, lo1, hi1, ...]. Uses Int32 to avoid SMI-vs-double
+  // boundary jitter in tight loops.
+  const _analyserBandOffsets = new Int32Array(ANALYSER_BAND_RANGES.length * 2);
+  let _analyserBandOffsetKey = "";
+
+  function ensureAnalyserBandOffsets(binHz, binsLen) {
+    const key = `${binHz}|${binsLen}`;
+    if (_analyserBandOffsetKey === key) return;
+    _analyserBandOffsetKey = key;
+    const cap = binsLen - 1;
+    for (let b = 0; b < ANALYSER_BAND_RANGES.length; b++) {
+      const range = ANALYSER_BAND_RANGES[b];
+      const lo = Math.max(1, Math.floor(range[0] / binHz));
+      const hi = Math.min(cap, Math.ceil(range[1] / binHz));
+      _analyserBandOffsets[b * 2] = lo;
+      _analyserBandOffsets[b * 2 + 1] = hi <= lo ? -1 : hi;
+    }
+  }
+
+  // Reused per-frame so the analyser path doesn't allocate a 17-key object × 30fps.
+  // Initialized to zero; mutated and returned on each call.
+  const _analyserMetricsBuf = {
+    sub: 0, bass: 0, lowMid: 0, mid: 0, upperMid: 0, presence: 0, air: 0,
+    low: 0, high: 0,
+    subFlux: 0, bassFlux: 0, lowMidFlux: 0, midFlux: 0,
+    upperMidFlux: 0, presenceFlux: 0, airFlux: 0, highFlux: 0,
+    guitarMotion: 0,
+    guitarLevel: 0,
+  };
+
+  function readLogoLiveAudioMetrics(nowTs = performance.now()) {
+    const perfAt = pvfdPerfStart();
+    // Chromium desktop capture only. If no analyser is active, PULSE has no signal.
+    const analyser = logoLiveAudioAnalyser;
+    const bins = logoLiveAudioBins;
+    const ctx = logoLiveAudioCtx;
+    if (!analyser || !bins || !ctx) {
+      pvfdPerfEnd("liveAudioRead", perfAt);
+      return null;
+    }
+
+    analyser.getByteFrequencyData(bins);
+    ensureAnalyserBandOffsets(ctx.sampleRate / analyser.fftSize, bins.length);
+    const prev = logoLivePrevBins;
+    const offsets = _analyserBandOffsets;
+    const out = _analyserMetricsBuf;
+
+    // Inline 7-band sweep: one loop per band, no function-call/closure overhead.
+    // Uses pre-cached lo/hi indices instead of recomputing from frequency every call.
+    let energy, flux, lo, hi;
+    for (let b = 0; b < 7; b++) {
+      lo = offsets[b * 2];
+      hi = offsets[b * 2 + 1];
+      energy = 0;
+      flux = 0;
+      if (hi > 0) {
+        const count = hi - lo + 1;
+        const denom = count * 255;
+
+        let squareSum = 0;
+        let fSum = 0;
+
+        let top1 = 0;
+        let top2 = 0;
+        let top3 = 0;
+        let top4 = 0;
+
+        if (prev) {
+          for (let i = lo; i <= hi; i++) {
+            const v = bins[i];
+            const n = v / 255;
+
+            squareSum += n * n;
+
+            if (n > top1) {
+              top4 = top3;
+              top3 = top2;
+              top2 = top1;
+              top1 = n;
+            } else if (n > top2) {
+              top4 = top3;
+              top3 = top2;
+              top2 = n;
+            } else if (n > top3) {
+              top4 = top3;
+              top3 = n;
+            } else if (n > top4) {
+              top4 = n;
+            }
+
+            const d = v - prev[i];
+            if (d > 0) fSum += d;
+          }
+        } else {
+          for (let i = lo; i <= hi; i++) {
+            const v = bins[i];
+            const n = v / 255;
+
+            squareSum += n * n;
+
+            if (n > top1) {
+              top4 = top3;
+              top3 = top2;
+              top2 = top1;
+              top1 = n;
+            } else if (n > top2) {
+              top4 = top3;
+              top3 = top2;
+              top2 = n;
+            } else if (n > top3) {
+              top4 = top3;
+              top3 = n;
+            } else if (n > top4) {
+              top4 = n;
+            }
+          }
+        }
+
+        const rms = Math.sqrt(squareSum / count);
+        // Divide by min(4, count) so narrow bands (sub: ~2-4 bins, bass:
+        // ~4-6 bins) compute topAverage from the actual count of available
+        // top bins instead of always dividing by 4. Without this, top3/top4
+        // stay zero in narrow bands and topAverage is underestimated.
+        const topAverage = (top1 + top2 + top3 + top4) / (count < 4 ? count : 4);
+
+        // 50/50 RMS-vs-top blend (was 72/28). RMS captures sustained spectral
+        // fill (walls, drones); topAverage captures discrete loud bins (note
+        // harmonics, vocal formants). Equal weight means a guitar harmonic
+        // riding on top of a saturated wall still moves the bar.
+        energy = rms * 0.50 + topAverage * 0.50;
+        flux = fSum / denom;
+      }
+      // Map band index → out fields. Order matches ANALYSER_BAND_RANGES.
+      switch (b) {
+        case 0: out.sub      = energy; out.subFlux      = flux; break;
+        case 1: out.bass     = energy; out.bassFlux     = flux; break;
+        case 2: out.lowMid   = energy; out.lowMidFlux   = flux; break;
+        case 3: out.mid      = energy; out.midFlux      = flux; break;
+        case 4: out.upperMid = energy; out.upperMidFlux = flux; break;
+        case 5: out.presence = energy; out.presenceFlux = flux; break;
+        case 6: out.air      = energy; out.airFlux      = flux; break;
+      }
+    }
+
+    out.low = out.bass * 0.58 + out.lowMid * 0.42;
+    if (out.low > 1) out.low = 1; else if (out.low < 0) out.low = 0;
+    out.high = out.upperMid * 0.42 + out.air * 0.58;
+    if (out.high > 1) out.high = 1; else if (out.high < 0) out.high = 0;
+    out.highFlux = out.upperMidFlux * 0.42 + out.airFlux * 0.58;
+    if (out.highFlux > 1) out.highFlux = 1; else if (out.highFlux < 0) out.highFlux = 0;
+
+    {
+      const binHz = ctx.sampleRate / analyser.fftSize;
+      const guitarLo = Math.max(1, Math.floor(180 / binHz));
+      const guitarHi = Math.min(bins.length - 1, Math.ceil(5200 / binHz));
+
+      let weighted = 0;
+      let total = 0;
+
+      for (let i = guitarLo; i <= guitarHi; i++) {
+        const n = bins[i] / 255;
+
+        if (n < 0.035) continue;
+
+        const hz = i * binHz;
+
+        const guitarWeight =
+          hz < 320 ? 0.45 :
+          hz < 700 ? 0.78 :
+          hz < 1800 ? 1.00 :
+          hz < 3600 ? 0.82 :
+          0.52;
+
+        const shaped = n * n * guitarWeight;
+
+        weighted += shaped * i;
+        total += shaped;
+      }
+
+      out.guitarLevel = clamp(total / Math.max(1, guitarHi - guitarLo + 1) * 18.0, 0, 1);
+
+      if (total <= 0.00001) {
+        out.guitarMotion = 0;
+      } else {
+        const centroid = weighted / total;
+
+        if (!logoLiveGuitarCentroidPrev) {
+          logoLiveGuitarCentroidPrev = centroid;
+          out.guitarMotion = 0;
+        } else {
+          const centroidMotion = Math.abs(centroid - logoLiveGuitarCentroidPrev) / Math.max(1, guitarHi - guitarLo);
+          logoLiveGuitarCentroidPrev = centroid;
+
+          out.guitarMotion = clamp(compressAudioValue(centroidMotion, 28.0, 0.52) * out.guitarLevel, 0, 1);
+        }
+      }
+    }
+
+    if (prev) prev.set(bins);
+    pvfdPerfEnd("liveAudioRead", perfAt);
+    return out;
+  }
+
+  function updateLogoLiveAudioPulse(nowTs = performance.now()) {
+    if (!logoGlowEnabled || !logoLiveAudioActive) return;
+    const now = nowTs;
+    const metrics = readLogoLiveAudioMetrics(nowTs);
+    if (!metrics) return;
+
+    const subRaw = clamp(metrics.sub, 0, 1);
+    const bassRaw = clamp(metrics.bass != null ? metrics.bass : metrics.low, 0, 1);
+    const lowMidRaw = clamp(metrics.lowMid != null ? metrics.lowMid : metrics.low, 0, 1);
+    const midRaw = clamp(metrics.mid, 0, 1);
+    const upperMidRaw = clamp(metrics.upperMid != null ? metrics.upperMid : metrics.presence, 0, 1);
+    const presenceRaw = clamp(metrics.presence, 0, 1);
+    const airRaw = clamp(metrics.air != null ? metrics.air : metrics.high, 0, 1);
+    const subFlux = clamp(metrics.subFlux, 0, 1);
+    const bassFlux = clamp(metrics.bassFlux != null ? metrics.bassFlux : metrics.lowFlux, 0, 1);
+    const lowMidFlux = clamp(metrics.lowMidFlux != null ? metrics.lowMidFlux : metrics.lowFlux, 0, 1);
+    const midFlux = clamp(metrics.midFlux, 0, 1);
+    const upperMidFlux = clamp(metrics.upperMidFlux != null ? metrics.upperMidFlux : metrics.presenceFlux, 0, 1);
+    const presenceFlux = clamp(metrics.presenceFlux, 0, 1);
+    const airFlux = clamp(metrics.airFlux != null ? metrics.airFlux : metrics.highFlux, 0, 1);
+    if (!Number.isFinite(subRaw + bassRaw + lowMidRaw + midRaw + upperMidRaw + presenceRaw + airRaw + subFlux + bassFlux + lowMidFlux + midFlux + upperMidFlux + presenceFlux + airFlux)) return;
+
+    const metricEnergy = metrics.energy != null ? clamp(Number(metrics.energy), 0, 1) : null;
+    const metricPunch = metrics.punch != null ? clamp(Number(metrics.punch), 0, 1) : null;
+
+    const subEnergy      = compressAudioValue(subRaw,      2.35 * pvfdBandAgcGain(0, subRaw),      0.58);
+    const bassEnergy     = compressAudioValue(bassRaw,     2.20 * pvfdBandAgcGain(1, bassRaw),     0.57);
+    const lowMidEnergy   = compressAudioValue(lowMidRaw,   2.55 * pvfdBandAgcGain(2, lowMidRaw),   0.55);
+    const midEnergy      = compressAudioValue(midRaw,      4.60 * pvfdBandAgcGain(3, midRaw),      0.50);
+    const upperMidEnergy = compressAudioValue(upperMidRaw, 5.40 * pvfdBandAgcGain(4, upperMidRaw), 0.49);
+    const presenceEnergy = compressAudioValue(presenceRaw, 6.80 * pvfdBandAgcGain(5, presenceRaw), 0.47);
+    const airEnergy      = compressAudioValue(airRaw,      8.40 * pvfdBandAgcGain(6, airRaw),      0.45);
+
+    const subMotion = compressAudioValue(subFlux, 9.5, 0.68);
+    const bassMotion = compressAudioValue(bassFlux, 9.0, 0.68);
+    const lowMidMotion = compressAudioValue(lowMidFlux, 8.2, 0.66);
+    const midMotion = compressAudioValue(midFlux, 7.4, 0.64);
+    const upperMidMotion = compressAudioValue(upperMidFlux, 6.8, 0.62);
+    const presenceMotion = compressAudioValue(presenceFlux, 6.2, 0.60);
+    const airMotion = compressAudioValue(airFlux, 5.8, 0.58);
+
+    const hazeTexture = clamp(
+      midEnergy * 0.10
+        + upperMidEnergy * 0.13
+        + presenceEnergy * 0.13
+        + airEnergy * 0.05
+        - bassEnergy * 0.06,
+      0,
+      0.12
+    );
+
+    const hazeMotion = clamp(
+      midMotion * 0.30
+        + upperMidMotion * 0.28
+        + presenceMotion * 0.22
+        + airMotion * 0.12,
+      0,
+      1
+    );
+
+    const hazeLift = clamp(hazeTexture * 0.34 + hazeMotion * 0.08, 0, 0.075);
+
+    const guitarMotion = clamp(metrics.guitarMotion || 0, 0, 1);
+
+    logoLiveGuitarMotionEnv = smoothLogoEnvelope(
+      logoLiveGuitarMotionEnv,
+      guitarMotion,
+      0.58,
+      0.105
+    );
+
+    const subInput = clamp(subEnergy * 0.44 + subMotion * 0.42 + subFlux * 2.2, 0, 1);
+    const bassInput = clamp(bassEnergy * 0.42 + bassMotion * 0.44 + bassFlux * 2.4, 0, 1);
+    const lowMidInput = clamp(lowMidEnergy * 0.36 + lowMidMotion * 0.46 + lowMidFlux * 2.8 + hazeLift * 0.020, 0, 1);
+    const midInput = clamp(midEnergy * 0.30 + midMotion * 0.48 + midFlux * 3.2 + hazeLift * 0.040, 0, 1);
+    const upperMidInput = clamp(upperMidEnergy * 0.26 + upperMidMotion * 0.50 + upperMidFlux * 3.4 + hazeLift * 0.050, 0, 1);
+    const presenceInput = clamp(presenceEnergy * 0.24 + presenceMotion * 0.52 + presenceFlux * 3.6 + hazeLift * 0.055, 0, 1);
+    const airInput = clamp(airEnergy * 0.24 + airMotion * 0.50 + airFlux * 3.2 + hazeLift * 0.040, 0, 1);
+
+    if (!logoLiveSubEnv && !logoLiveBassEnv && !logoLiveLowMidEnv && !logoLiveMidEnv && !logoLiveUpperMidEnv && !logoLivePresenceEnv && !logoLiveAirEnv && !logoLiveLogoEnv) {
+      logoLiveSubEnv = subInput;
+      logoLiveBassEnv = bassInput;
+      logoLiveLowMidEnv = lowMidInput;
+      logoLiveMidEnv = midInput;
+      logoLiveUpperMidEnv = upperMidInput;
+      logoLivePresenceEnv = presenceInput;
+      logoLiveAirEnv = airInput;
+      logoLiveLowEnv = clamp(logoLiveBassEnv * 0.58 + logoLiveLowMidEnv * 0.42, 0, 1);
+      logoLiveHighEnv = clamp(logoLiveUpperMidEnv * 0.42 + logoLiveAirEnv * 0.58, 0, 1);
+      logoLiveLogoEnv = metricEnergy != null
+        ? metricEnergy
+        : clamp(compressAudioValue(subRaw * 0.16 + bassRaw * 0.18 + lowMidRaw * 0.16 + midRaw * 0.18 + upperMidRaw * 0.12 + presenceRaw * 0.11 + airRaw * 0.09, 1.80, 0.72), 0, 1);
+      setLogoAudioGlowVars(logoLiveLogoEnv, logoLiveSubEnv, logoLiveLowEnv, logoLiveMidEnv, logoLivePresenceEnv, logoLiveHighEnv, 0);
+      return;
+    }
+
+    logoLiveSubEnv = smoothLogoEnvelope(logoLiveSubEnv, subInput, LOGO_LIVE_ATTACK, 0.600);
+    logoLiveBassEnv = smoothLogoEnvelope(logoLiveBassEnv, bassInput, LOGO_LIVE_ATTACK, 0.620);
+    logoLiveLowMidEnv = smoothLogoEnvelope(logoLiveLowMidEnv, lowMidInput, LOGO_LIVE_ATTACK, 0.640);
+    logoLiveMidEnv = smoothLogoEnvelope(logoLiveMidEnv, midInput, LOGO_LIVE_ATTACK, 0.660);
+    logoLiveUpperMidEnv = smoothLogoEnvelope(logoLiveUpperMidEnv, upperMidInput, LOGO_LIVE_HIGH_ATTACK, 0.700);
+    logoLivePresenceEnv = smoothLogoEnvelope(logoLivePresenceEnv, presenceInput, LOGO_LIVE_HIGH_ATTACK, 0.740);
+    logoLiveAirEnv = smoothLogoEnvelope(logoLiveAirEnv, airInput, LOGO_LIVE_HIGH_ATTACK, 0.780);
+
+    logoLiveLowEnv = clamp(logoLiveBassEnv * 0.58 + logoLiveLowMidEnv * 0.42, 0, 1);
+    logoLiveHighEnv = clamp(logoLiveUpperMidEnv * 0.42 + logoLiveAirEnv * 0.58, 0, 1);
+
+    const totalRaw = subRaw * 0.16 + bassRaw * 0.18 + lowMidRaw * 0.16 + midRaw * 0.18 + upperMidRaw * 0.12 + presenceRaw * 0.11 + airRaw * 0.09;
+    const logoInput = metricEnergy != null
+      ? metricEnergy
+      : clamp(
+          compressAudioValue(totalRaw, 1.80, 0.72) * 0.72
+            + logoLiveSubEnv * 0.07
+            + logoLiveBassEnv * 0.07
+            + logoLiveLowMidEnv * 0.06
+            + logoLiveMidEnv * 0.05
+            + logoLiveUpperMidEnv * 0.04
+            + logoLivePresenceEnv * 0.03
+            + logoLiveAirEnv * 0.02,
+          0,
+          1
+        );
+    logoLiveLogoEnv = smoothLogoEnvelope(logoLiveLogoEnv, logoInput, LOGO_LIVE_LOGO_ATTACK, LOGO_LIVE_LOGO_RELEASE);
+
+    const punchInput = metricPunch != null
+      ? metricPunch
+      : clamp(
+          subFlux * 4.2
+            + bassFlux * 3.4
+            + lowMidFlux * 2.4
+            + midFlux * 1.5
+            + upperMidFlux * 0.9
+            + presenceFlux * 0.6
+            + airFlux * 0.4,
+          0,
+          1
+        );
+    logoLivePunchEnv = Math.max(logoLivePunchEnv * 0.58, punchInput > 0.24 ? punchInput : 0);
+
+    setLogoAudioGlowVars(
+      logoLiveLogoEnv,
+      logoLiveSubEnv,
+      logoLiveLowEnv,
+      logoLiveMidEnv,
+      logoLivePresenceEnv,
+      logoLiveHighEnv,
+      logoLivePunchEnv
+    );
+
+    if (LOGO_LIVE_DEBUG && now - logoLiveDebugLastMs > 500) {
+      logoLiveDebugLastMs = now;
+      console.log("[PVFD_AUDIO]", {
+        raw: [
+          Number(subRaw.toFixed(3)),
+          Number(bassRaw.toFixed(3)),
+          Number(lowMidRaw.toFixed(3)),
+          Number(midRaw.toFixed(3)),
+          Number(upperMidRaw.toFixed(3)),
+          Number(presenceRaw.toFixed(3)),
+          Number(airRaw.toFixed(3))
+        ],
+        flux: [
+          Number(subFlux.toFixed(4)),
+          Number(bassFlux.toFixed(4)),
+          Number(lowMidFlux.toFixed(4)),
+          Number(midFlux.toFixed(4)),
+          Number(upperMidFlux.toFixed(4)),
+          Number(presenceFlux.toFixed(4)),
+          Number(airFlux.toFixed(4))
+        ],
+        lanes: [
+          Number(logoLiveSubEnv.toFixed(3)),
+          Number(logoLiveBassEnv.toFixed(3)),
+          Number(logoLiveLowMidEnv.toFixed(3)),
+          Number(logoLiveMidEnv.toFixed(3)),
+          Number(logoLiveUpperMidEnv.toFixed(3)),
+          Number(logoLivePresenceEnv.toFixed(3)),
+          Number(logoLiveAirEnv.toFixed(3))
+        ],
+        logo: Number(logoLiveLogoEnv.toFixed(3)),
+        punch: Number(logoLivePunchEnv.toFixed(3))
+      });
+    }
+
+  }
+
+  function updateBars(isPlaying) {
+    const base = isPlaying ? 0.52 : 0.10;
+    const spread = isPlaying ? 0.30 : 0.06;
+
+    let energySum = 0;
+
+    for (let i = 0; i < NUM_BARS; i++) {
+      const phase = NUM_BARS <= 1 ? 0 : i / (NUM_BARS - 1);
+      let target = base + spread * (1 - Math.abs(phase - 0.5) * 1.65);
+
+      if (target < 0.05) target = 0.05;
+      else if (target > 1) target = 1;
+
+      const prev = barHeights[i];
+      const next = SMOOTHING * prev + (1 - SMOOTHING) * target;
+
+      barHeights[i] = Math.abs(next - prev) >= VISUALIZER_EPSILON ? next : prev;
+      energySum += barHeights[i];
+    }
+
+    sideVuEnergy = clamp(energySum / NUM_BARS, 0, 1);
+  }
+
+  // Compose display filters. The WebM one-color path is already tinted by the
+  // CSS RGB wash, so only full-color OEL mode keeps the hue-rotate filter.
+  function applyLcdFilter() {
+    if (!chassis) return;
+
+    const adaptiveRenderedMonoMode = adaptiveTintActive ? adaptiveMonoMode : "";
+    const tintName = adaptiveTintActive ? (adaptiveRenderedMonoMode || "adaptive") : mapTintNameForCss(tintIdx);
+    const monoMode = adaptiveTintActive ? adaptiveRenderedMonoMode : (TINT_MONO_MODE[tintIdx] || "");
+    const perf = activePerformanceConfig();
+
+    // During a deck-scoped glide the tint attribute is intentionally NOT touched:
+    // writing it on <html> re-styles all of Spotify every frame. The gliding
+    // chassis inline vars carry the deck; the app flips once at commit.
+    if (!tintTransitionActive) {
+      chassis.setAttribute("data-pvfd-tint", tintName);
+      document.documentElement.setAttribute("data-pvfd-tint", tintName);
+      if (monoMode) {
+        chassis.setAttribute("data-pvfd-mono", monoMode);
+        document.documentElement.setAttribute("data-pvfd-mono", monoMode);
+      } else {
+        chassis.removeAttribute("data-pvfd-mono");
+        document.documentElement.removeAttribute("data-pvfd-mono");
+      }
+    }
+    refreshPvfdCssPalette();
+
+    // Adaptive color covers derive hue-rotate from the album hue. Adaptive mono
+    // covers borrow the fixed B-ON-W/W-ON-B palettes, so no hue rotation applies.
+    const deg = tintTransitionDeg != null
+      ? tintTransitionDeg
+      : (adaptiveRenderedMonoMode ? 0 : (adaptiveTintActive ? adaptiveHueDeg : TINT_HUE_DEG[tintIdx]));
+    const baseLcdParts = [];
+
+    if (perf.reducedEffects) {
+      if (lcdDimmed) baseLcdParts.push("brightness(0.70)");
+    } else if (lcdDimmed) {
+      baseLcdParts.push("brightness(0.50) contrast(0.98) saturate(1.05)");
+    } else {
+      baseLcdParts.push("brightness(1.00) contrast(0.96) saturate(1.20)");
+    }
+
+    chassis.querySelectorAll(".pvfd-lcd").forEach((lcd) => {
+      const colorMode = lcd.getAttribute("data-pvfd-oel-color");
+      const videoState = lcd.getAttribute("data-pvfd-video-state");
+      const cssTintedWebm = colorMode === "tint" && (videoState === "active" || videoState === "loading" || videoState === "gauges");
+      setStyleIfChanged(lcd, "--pvfd-lcd-counter-hue-deg", colorMode === "color" && deg !== 0 ? (-deg) + "deg" : "0deg");
+      const parts = [];
+      if (deg !== 0 && !cssTintedWebm) parts.push(`hue-rotate(${deg}deg)`);
+      // Mono modes: grayscale the LCD canvas + video. Racing clip in COLOR
+      // mode keeps full color (colorMode === "color") so racing remains
+      // expressive even when the rest of the chassis is monochrome.
+      // Both B-ON-W and W-ON-B keep the chassis LCD dark with light ink
+      // (the LCD is a "screen inside a dark housing" in both modes), so
+      // grayscale alone is enough — no invert.
+      if (monoMode && colorMode !== "color") parts.push("grayscale(1)");
+      parts.push(...baseLcdParts);
+      const nextFilter = parts.join(" ");
+      if (lcd.style.filter !== nextFilter) lcd.style.filter = nextFilter;
+    });
+
+    const panelParts = [];
+
+    if (lcdDimmed) {
+      panelParts.push("brightness(0.55)");
+    }
+
+    chassis.querySelectorAll(".pvfd-meta-lcd, .pvfd-lcd-side").forEach((lcd) => {
+      lcd.style.filter = panelParts.join(" ");
+    });
+  }
+
+  function clearClipRenderCache(clip, clearPrevious = true) {
+    if (!clip) return;
+    if (clip.renderCache) {
+      clip.renderCache.frames = [];
+      clip.renderCache.recentFrames = [];
+      clip.renderCache = null;
+    }
+    if (clearPrevious && clip.lastReadyRenderCache) {
+      clip.lastReadyRenderCache.frames = [];
+      clip.lastReadyRenderCache = null;
+    }
+  }
+
+  function clearAllClipRenderCaches(clearPrevious = true, exceptClip = null) {
+    CLIPS.forEach((clip) => {
+      if (clip !== exceptClip) clearClipRenderCache(clip, clearPrevious);
+    });
+  }
+
+  function releaseInactiveClipBytes(activeClip) {
+    CLIPS.forEach((clip) => {
+      if (clip !== activeClip) clip.bytes = null;
+    });
+  }
+
+  function setActiveClip(idx, persist = false) {
+    const clips = getOelClips();
+    if (!clips.length) return;
+    clipIdx = ((idx % clips.length) + clips.length) % clips.length;
+    const activeClip = clips[clipIdx];
+    console.log(`[PVFD] OEL WebM clip: ${activeClip.name}`);
+    syncOelVideoPlayback(true);
+    syncOelColorModeAttributes();
+    applyLcdFilter();
+    if (persist) safe(() => window.localStorage.setItem(CLIP_STORAGE_KEY, clipStorageId(activeClip, clipIdx)));
+    markStaticReadoutsDirty();
+    updateMenuPanel();
+  }
+
+  function markClipCacheRebuildStress(ms = CLIP_CACHE_ROUTE_REBUILD_BLOCK_MS) {
+    clipCacheRebuildBlockedUntil = Math.max(clipCacheRebuildBlockedUntil, performance.now() + ms);
+  }
+
+  function syncCurrentTrackFromPlayer(force = false, ts = performance.now()) {
+    if (!force && ts - lastTrackSyncAt < TRACK_SYNC_INTERVAL_MS) return;
+    lastTrackSyncAt = ts;
+    const item = Spicetify.Player.data && Spicetify.Player.data.item;
+    if (!item) return;
+
+    const uri = item.uri || item.link || item.name || "";
+    if (uri && uri !== lastTrackUri) {
+      lastTrackUri = uri;
+      trackTitle = (item.name || "").toUpperCase();
+      trackArtist = ((item.artists && item.artists.map(a => a.name).join(", ")) || "").toUpperCase();
+      markPlayerStateDirty();
+    }
+
+    if (!trackTitle && item.name) {
+      trackTitle = item.name.toUpperCase();
+    }
+    if (!trackArtist && item.artists) {
+      trackArtist = item.artists.map(a => a.name).join(", ").toUpperCase();
+    }
+  }
+
+  function getCurrentDurationMs() {
+    const data = Spicetify.Player.data || {};
+    const item = data.item || {};
+    const raw = data.duration || item.duration_ms || item.duration || item.durationMs || 0;
+    if (typeof raw === "number") return raw;
+    if (raw && typeof raw.milliseconds === "number") return raw.milliseconds;
+    return 0;
+  }
+
+  function getRepeatState() {
+    const data = Spicetify.Player.data || {};
+    const candidates = [data.repeat, data.repeat_mode, data.options && data.options.repeat, data.state && data.state.repeat, data.state && data.state.repeat_mode, data.context && data.context.repeat, safeReturn(() => Spicetify.Player.getRepeat && Spicetify.Player.getRepeat(), null)].filter(v => v !== undefined && v !== null);
+    for (const raw of candidates) {
+      const val = String(raw).toLowerCase();
+      if (val === "2" || val.includes("track") || val.includes("one")) return "ONE";
+      if (val === "1" || val.includes("context") || val.includes("all") || val === "true") return "ALL";
+      if (val === "0" || val.includes("off") || val === "false") return "OFF";
+    }
+    const btn = document.querySelector("[data-testid='control-button-repeat'], button[aria-label*='repeat' i]");
+    const label = (btn && btn.getAttribute("aria-label") || "").toLowerCase();
+    if (label.includes("enable repeat one")) return "ALL";
+    if (label.includes("disable repeat") || label.includes("disable repeat one")) return "ONE";
+    return "OFF";
+  }
+
+  function getShuffleState() {
+    const data = Spicetify.Player.data || {};
+    const raw = data.shuffle ?? (data.options && data.options.shuffle) ?? (data.state && data.state.shuffle);
+    if (typeof raw === "boolean") return raw;
+    if (raw !== undefined && raw !== null) return String(raw).toLowerCase() === "true" || String(raw) === "1";
+    const btn = document.querySelector("[data-testid='control-button-shuffle'], button[aria-label*='shuffle' i]");
+    if (!btn) return false;
+    const checked = btn.getAttribute("aria-checked");
+    if (checked) return checked === "true";
+    return (btn.getAttribute("aria-label") || "").toLowerCase().includes("disable shuffle");
+  }
+
+  function makeProgressLabel(progressMs, durationMs) {
+    const elapsed = fmtTime(progressMs);
+    return durationMs > 0 ? `${elapsed} / ${fmtTime(durationMs)}` : elapsed;
+  }
+
+  function makeLcdClockLabel(date = new Date()) {
+    const h = date.getHours() % 12 || 12;
+    const m = String(date.getMinutes()).padStart(2, "0");
+    return h + ":" + m;
+  }
+
+  function updateLcdCornerReadouts(playerState = getSampledPlayerState(), ts = performance.now()) {
+    const dom = getPvfdDom();
+    if (dom.lcdStatus) {
+      // BAND tuner active = the VFD is showing FM, not Spotify transport state.
+      const bandOn = bandPresetIdx >= 0;
+      const status = bandOn ? "FM" : (playerState.playing ? "PLAY" : "PAUSE");
+      setLcdCornerTextIfChanged(dom.lcdStatus, status);
+      dom.lcdStatus.classList.toggle("paused", !bandOn && !playerState.playing);
+    }
+    if (dom.lcdClock && ts - lastLcdClockReadoutAt >= LCD_CLOCK_READOUT_INTERVAL_MS) {
+      lastLcdClockReadoutAt = ts;
+      setLcdCornerTextIfChanged(dom.lcdClock, makeLcdClockLabel());
+    }
+  }
+
+  function updateButtonStates(playerState = getSampledPlayerState()) {
+    const dom = getPvfdDom();
+    setPlayButtonGlyph(playerState.playing);
+    const shuffleBtn = dom.buttons && dom.buttons.shuffle;
+    const shuffleOn = playerState.shuffle;
+    if (shuffleBtn) {
+      shuffleBtn.classList.toggle("active", shuffleOn);
+      setDataIfChanged(shuffleBtn, "label", shuffleOn ? "ON" : "OFF");
+      setAttrIfChanged(shuffleBtn, "title", shuffleOn ? "Shuffle: on" : "Shuffle: off");
+    }
+    const repeatBtn = dom.buttons && dom.buttons.repeat;
+    const rpt = playerState.repeat;
+    if (repeatBtn) {
+      repeatBtn.classList.toggle("active", rpt !== "OFF");
+      repeatBtn.classList.toggle("repeat-context", rpt === "ALL");
+      repeatBtn.classList.toggle("repeat-one", rpt === "ONE");
+      setDataIfChanged(repeatBtn, "label", rpt);
+      setAttrIfChanged(repeatBtn, "title", rpt === "ONE" ? "Repeat: current song" : (rpt === "ALL" ? "Repeat: playlist/album" : "Repeat: off"));
+      // Cinema-mode parity: ↻ for off/all, ↻ with a superscript 1 for
+      // repeat-one. Written into the glyph span (never the button — LED strip
+      // child) and guarded by dataset so innerHTML isn't rebuilt every tick.
+      if (dom.repeatGlyph && dom.repeatGlyph.dataset.pvfdRepeatMode !== rpt) {
+        dom.repeatGlyph.dataset.pvfdRepeatMode = rpt;
+        dom.repeatGlyph.innerHTML = rpt === "ONE"
+          ? "&#8635;<sub class=\"pvfd-tab-glyph-sub\">1</sub>"
+          : "&#8635;";
+      }
+    }
+    // LOVE lamp: light the heart when the current track is already in Liked
+    // Songs, so users don't un-like by reflex. Mirrors the cinema-mode logic.
+    // No setText here — the button holds an LED strip child (see play above).
+    const loveBtn = dom.buttons && dom.buttons.love;
+    if (loveBtn) {
+      let liked = safeReturn(() => Spicetify.Player.getHeart && Spicetify.Player.getHeart(), null);
+      if (liked === null) {
+        const meta = safeReturn(() => Spicetify.Player.data && Spicetify.Player.data.item && Spicetify.Player.data.item.metadata, null);
+        liked = !!(meta && (meta.has_liked === "true" || meta.has_liked === true));
+      }
+      loveBtn.classList.toggle("active", !!liked);
+      setAttrIfChanged(loveBtn, "title", liked ? "Remove from Liked Songs" : "Save to liked");
+    }
+    // LYRICS lamp: light while a lyrics view is open (like the other toggles).
+    const lyricsBtn = dom.buttons && dom.buttons.lyrics;
+    if (lyricsBtn) {
+      const lyricsOn = isLyricsViewOpen();
+      lyricsBtn.classList.toggle("active", lyricsOn);
+      setAttrIfChanged(lyricsBtn, "title", lyricsOn ? "Lyrics: on" : "Lyrics: off");
+    }
+    updateRoleButtonStates();
+  }
+
+  function disableSideVuReadout(opacity = "0.18") {
+    const vu = getPvfdDom().sideVu || [];
+    vu.forEach((seg) => {
+      if (seg.classList.contains("on")) seg.classList.remove("on");
+      setStyleIfChanged(seg, "opacity", opacity);
+    });
+  }
+
+  function updateSideVuReadout() {
+    if (!activePerformanceConfig().sideVu) {
+      disableSideVuReadout("0.14");
+      return;
+    }
+    const vu = getPvfdDom().sideVu || [];
+    if (!vu.length) return;
+    const energy = sideVuEnergy;
+    vu.forEach((seg, idx) => {
+      const threshold = 1 - (idx + 1) / vu.length;
+      const on = energy > threshold * 0.92;
+      setStyleIfChanged(seg, "opacity", on ? (0.35 + energy * 0.65).toFixed(2) : "0.22");
+    });
+  }
+
+  function updateSideProgressReadouts(progressMs, durationMs) {
+    const side = getPvfdDom().side || {};
+    if (!activePerformanceConfig().sideReadouts) {
+      setTextIfChanged(side.prog, "--");
+      setTextIfChanged(side.left, "--:--");
+      return;
+    }
+    const pct = durationMs ? clamp(progressMs / durationMs, 0, 1) : 0;
+    setTextIfChanged(side.prog, durationMs ? Math.round(pct * 100) + "%" : "--%");
+    setTextIfChanged(side.left, durationMs ? "-" + fmtTime(durationMs - progressMs) : "--:--");
+  }
+
+  function updateSideStaticReadouts(playerState = getSampledPlayerState()) {
+    const dom = getPvfdDom();
+    const side = dom.side || {};
+    const perf = activePerformanceConfig();
+    if (!perf.sideReadouts) {
+      setTextIfChanged(side.vol, attActive ? "ATTENUATOR" : (Math.round(getPlayerVolume() * 100) + "%"));
+      setTextIfChanged(side.mode, playbackContextLabel());
+      setTextIfChanged(side.tint, currentTintLabel());
+      setTextIfChanged(side.dim, lcdDimmed ? "DIM" : "FULL");
+      setTextIfChanged(side.prog, "--");
+      setTextIfChanged(side.left, "--:--");
+      setTextIfChanged(side.repeat, playerState.repeat);
+      setTextIfChanged(side.shuffle, playerState.shuffle ? "ON" : "OFF");
+      setTextIfChanged(side.status, "ECO");
+      setDataIfChanged(side.status, "label", "ECO");
+      setTextIfChanged(side.playbadge, playerState.playing ? "RUN" : "IDLE");
+      updateSideBadgeLamps(side);
+      if (side.ecoModel) side.ecoModel.hidden = false;
+      disableSideVuReadout("0.14");
+      return;
+    }
+    const activeClipLabel = activeClipName(10);
+    const source = SOURCE_TARGETS[sourceIdx] || SOURCE_TARGETS[0];
+    const sourceFlash = performance.now() < sourceFlashUntil;
+    if (side.ecoModel) side.ecoModel.hidden = true;
+    setTextIfChanged(side.vol, attActive ? "ATTENUATOR" : (Math.round(getPlayerVolume() * 100) + "%"));
+    setTextIfChanged(side.mode, demoAutoMode ? "DEMO" : playbackContextLabel());
+    setTextIfChanged(side.tint, currentTintLabel());
+    setTextIfChanged(side.dim, perf.label === "ECO" ? (lcdDimmed ? "ECO DIM" : "ECO") : (lcdDimmed ? "DIM" : "FULL"));
+    setTextIfChanged(side.repeat, playerState.repeat);
+    setTextIfChanged(side.shuffle, playerState.shuffle ? "ON" : "OFF");
+    const sideStatusText = sourceFlash ? ("SRC " + source.label) : (demoAutoMode ? "DEMO" : (oelDisplayEnabled ? activeClipLabel : (playerState.playing ? "PLAY" : "PAUSE")));
+    setTextIfChanged(side.status, sideStatusText);
+    setDataIfChanged(side.status, "label", sideStatusText);
+    setTextIfChanged(side.playbadge, demoAutoMode ? "AUTO" : (playerState.playing ? "RUN" : "IDLE"));
+    updateSideBadgeLamps(side);
+  }
+
+  // MODE row: what the player is playing FROM, head-unit source semantics
+  // (like CD/TUNER/USB on a real Pioneer). Replaces the old "WEBM" echo of
+  // the OEL toggle, which now lives in the VFD badge lamp instead.
+  // Order matters: station uris embed :playlist:, and Liked Songs is
+  // spotify:user:<id>:collection.
+  function playbackContextLabel() {
+    // BAND tuned = the source is the fake-FM tuner, not the Spotify context.
+    if (bandPresetIdx >= 0) return "FM";
+    const uri = safeReturn(() => Spicetify.Player.data && Spicetify.Player.data.context && Spicetify.Player.data.context.uri, "") || "";
+    if (!uri) return "----";
+    if (uri.includes(":station:") || uri.includes(":radio:")) return "RADIO";
+    if (uri.includes(":collection")) return "LIKED";
+    if (uri.includes(":playlist:")) return "PLST";
+    if (uri.includes(":album:")) return "ALBM";
+    if (uri.includes(":artist:")) return "ARTST";
+    if (uri.includes(":show:") || uri.includes(":episode:")) return "PODC";
+    if (uri.includes(":local")) return "LOCAL";
+    if (uri.includes(":search")) return "SRCH";
+    return "TRACK";
+  }
+
+  function updateSideBadgeLamps(side) {
+    // LIVE lights for either kind of "live": PULSE audio capture feeding the
+    // VFD, or the BAND fake-FM tuner playing a broadcast.
+    const pulseLabel = currentPulseModeLabel();
+    const pulseLit = pulseLabel === "LIVE" || pulseLabel === "HLPR";
+    const bandLit = bandPresetIdx >= 0;
+    if (side.badgeLive) side.badgeLive.classList.toggle("lit", pulseLit || bandLit);
+    if (side.badgeVfd) side.badgeVfd.classList.toggle("lit", !!oelDisplayEnabled);
+  }
+
+  function activeStaticReadoutIntervalMs() {
+    return activePerformanceConfig().label === "ECO" ? ECO_STATIC_READOUT_INTERVAL_MS : STATIC_READOUT_INTERVAL_MS;
+  }
+
+  function runStaticOverlayUpdate(playerState, ts) {
+    lastStaticReadoutAt = ts;
+    staticReadoutsDirty = false;
+    updateButtonStates(playerState);
+    updateSideStaticReadouts(playerState);
+    updateLcdCornerReadouts(playerState, ts);
+    // Slow-cadence fallback for the mutation-driven check (e.g. pure window
+    // resizes produce no DOM mutations).
+    reconcileLibraryFullscreenState();
+  }
+
+  function updateOverlays(progressMs, timing, ts = performance.now()) {
+    const staticDue = staticReadoutsDirty || ts - lastStaticReadoutAt >= activeStaticReadoutIntervalMs();
+    if (ts - lastProgressReadoutAt < PROGRESS_READOUT_INTERVAL_MS) {
+      if (staticDue) runStaticOverlayUpdate(getSampledPlayerState(ts), ts);
+      return;
+    }
+    lastProgressReadoutAt = ts;
+    const dom = getPvfdDom();
+    const playerState = getSampledPlayerState(ts);
+    const title = trackTitle || PVFD_META_IDLE_GLYPH;
+    const artist = trackArtist || "";
+    const label = artist ? `${artist} - ${title}` : title;
+    const durationMs = timing && timing.durationMs !== undefined ? timing.durationMs : getCurrentDurationMs();
+    const elapsed = fmtTime(progressMs);
+    const timeText = durationMs > 0 ? `${elapsed} / ${fmtTime(durationMs)}` : elapsed;
+    const pct = durationMs > 0 ? clamp(progressMs / durationMs, 0, 1) : 0;
+
+    if (dom.meta) {
+      const metaLabel = "Open Now Playing: " + label;
+      const metaShortcut = dom.metaTitle || dom.meta;
+      setMetaTrackContent(label, playerState.playing);
+      if (dom.meta.title !== metaLabel) dom.meta.title = metaLabel;
+      if (metaShortcut && metaShortcut.title !== metaLabel) metaShortcut.title = metaLabel;
+      setAttrIfChanged(metaShortcut, "aria-label", metaLabel);
+    }
+    setTextIfChanged(dom.time, timeText);
+    if (dom.progress) {
+      setStyleIfChanged(dom.progress, "--pvfd-progress", (pct * 100).toFixed(2) + "%");
+      const progressLabel = makeProgressLabel(progressMs, durationMs);
+      const titleText = "Scrub: " + progressLabel;
+      if (dom.progress.title !== titleText) dom.progress.title = titleText;
+      setAttrIfChanged(dom.progress, "aria-label", "Scrub progress " + progressLabel);
+    }
+    setTextIfChanged(dom.progressText, "");
+    updateLcdCornerReadouts(playerState, ts);
+    if (activePerformanceConfig().sideReadouts) updateSideProgressReadouts(progressMs, durationMs);
+    if (staticDue) runStaticOverlayUpdate(playerState, ts);
+  }
+
+  function updateLknobLED() {
+    knobLedDirty = false;
+    const dom = getPvfdDom();
+    if (!dom.knobArc) return;
+    // 12 o'clock is 0%, one full clockwise sweep is 100%.
+    const sweepDeg = (360 * getPlayerVolume()).toFixed(1) + "deg";
+    setStyleIfChanged(dom.knobArc, "--pvfd-led-deg", sweepDeg);
+    setStyleIfChanged(dom.knobIndicator, "--pvfd-rot", sweepDeg);
+  }
+
+  let lastFrame = 0;
+  let lastProgressReadoutAt = -Infinity;
+  let lastLcdClockReadoutAt = -Infinity;
+  let lastStaticReadoutAt = -Infinity;
+  let lastTrackSyncAt = -Infinity;
+  let lastBarUpdateAt = -Infinity;
+  let lastKnobLedAt = -Infinity;
+
+  function activeFrameIntervalMs() {
+    const perf = activePerformanceConfig();
+    return perf.frameMs;
+  }
+
+  function syncLogoAudioDemand(wantAudio) {
+    if (!wantAudio) {
+      if (logoLiveAudioResumeTimer) {
+        clearTimeout(logoLiveAudioResumeTimer);
+        logoLiveAudioResumeTimer = 0;
+      }
+      if (logoLiveAudioActive || logoLiveAudioPending) stopLogoLiveAudioCapture();
+      return;
+    }
+    if (!logoLiveAudioActive && !logoLiveAudioPending && !logoLiveAudioResumeTimer) {
+      logoLiveAudioResumeTimer = window.setTimeout(() => {
+        logoLiveAudioResumeTimer = 0;
+        if (logoGlowEnabled && !logoLiveAudioActive && !logoLiveAudioPending && safePlayerIsPlaying(false)) {
+          startLogoLiveAudioCapture();
+        }
+      }, 250);
+    }
+  }
+
+  installPvfdPlaylistScrollStressDetector();
+  function loop(ts) {
+    requestAnimationFrame(loop);
+    pvfdDiag.loopFrames++;
+
+    if (ts - lastFrame < activeFrameIntervalMs()) return;
+
+    lastFrame = ts;
+
+    if (!ctx || !chassis) return;
+
+    const perfAt = pvfdPerfStart();
+    const scrollStress = isPvfdPlaylistScrollStressActive(ts);
+
+    setAttrIfChanged(chassis, "data-pvfd-demo", demoAutoMode ? "on" : "off");
+
+    // DEMO showroom auto-cycle. Advance to the next clip every
+    // DEMO_CYCLE_INTERVAL_MS while DEMO is on. setActiveClip with persist=false
+    // means the cycle doesn't overwrite the user's saved clip preference.
+    if (demoAutoMode && ts - demoLastClipSwitchMs >= DEMO_CYCLE_INTERVAL_MS) {
+      setActiveClip(nextDemoClipIdx(clipIdx), false);
+      demoLastClipSwitchMs = ts;
+    }
+
+    // Never read canvas.clientWidth/Height inline — that forces a synchronous layout
+    // flush which collides with Spotify's main-view mouseover delegate and React
+    // scheduler tick on the same thread (measured 98ms forcedLayout across 4 frames
+    // during home-quicklink sweeps). If the size cache is missing, schedule a
+    // sizeCanvas in its own rAF and bail this frame.
+    if (!canvasCssW || !canvasCssH) {
+      scheduleSizeCanvas();
+      pvfdPerfEnd("mainLoopTotal", perfAt);
+      return;
+    }
+
+    const w = canvasCssW;
+    const h = canvasCssH;
+
+    const timing = getSampledPlaybackTiming(ts);
+    const progressMs = getDisplayProgressMs(ts, timing);
+    const perf = activePerformanceConfig();
+
+    // OEL stays hot. Do not hide this inside the medium lane.
+    if (oelDisplayEnabled) {
+      syncOelVideoPlayback();
+      renderPioneerVfdSting(ts);
+    } else {
+      hidePioneerVfdSting();
+    }
+
+    // Side VU/readout is decorative, so it yields during playlist scroll.
+    if (perf.sideVu && !scrollStress) {
+      const sideVuStateChanged = lastSideVuPlayingState !== timing.playing;
+
+      if (sideVuStateChanged) {
+        lastSideVuPlayingState = timing.playing;
+        sideVuSettleUntil = ts + SIDE_VU_SETTLE_MS;
+      }
+
+      if (
+        sideVuStateChanged ||
+        (ts < sideVuSettleUntil && ts - lastBarUpdateAt >= SIDE_VU_SETTLE_UPDATE_MS)
+      ) {
+        lastBarUpdateAt = ts;
+
+        const visualizerPerfAt = pvfdPerfStart();
+        updateBars(timing.playing);
+        pvfdPerfEnd("sideVuBarsUpdate", visualizerPerfAt);
+      }
+
+      if (sideVuStateChanged || ts - lastSideVuReadoutAt >= SIDE_VU_READOUT_MS) {
+        lastSideVuReadoutAt = ts;
+
+        const readoutPerfAt = pvfdPerfStart();
+        updateSideVuReadout();
+        pvfdPerfEnd("sideVuReadoutUpdate", readoutPerfAt);
+      }
+    }
+
+    // Medium DOM maintenance yields during playlist scroll.
+    // Logo audio demand still gets checked occasionally so the main visualizer stays alive.
+    if (scrollStress) {
+      if (ts - lastScrollStressLogoDemandAt >= SCROLL_STRESS_LOGO_DEMAND_MS) {
+        lastScrollStressLogoDemandAt = ts;
+        syncLogoAudioDemand(logoGlowEnabled && timing.playing);
+      }
+
+      if (
+        (pendingVolume !== null || knobLedDirty) &&
+        ts - lastScrollStressKnobLedAt >= SCROLL_STRESS_KNOB_LED_MS
+      ) {
+        lastScrollStressKnobLedAt = ts;
+        updateLknobLED();
+      }
+    } else if (ts - lastMediumLaneAt >= MEDIUM_LANE_INTERVAL_MS) {
+      lastMediumLaneAt = ts;
+
+      syncCurrentTrackFromPlayer(false, ts);
+      updateOverlays(progressMs, timing, ts);
+      syncLogoAudioDemand(logoGlowEnabled && timing.playing);
+
+      if (pendingVolume !== null || knobLedDirty || ts - lastKnobLedAt >= EXTERNAL_VOLUME_LED_SAMPLE_MS) {
+        lastKnobLedAt = ts;
+        updateLknobLED();
+      }
+    }
+
+    // Main logo visualizer audio stays hot.
+    if (logoGlowEnabled && logoLiveAudioActive && ts - lastLogoLiveAudioUpdateAt >= LOGO_LIVE_AUDIO_SCHEDULER_MS) {
+      lastLogoLiveAudioUpdateAt = ts;
+      updateLogoLiveAudioPulse(ts);
+    }
+
+    // Main logo visualizer render stays hot.
+    if (logoRenderState.dirty) {
+      renderLogoVisuals(ts, false);
+    }
+
+    // The mosaic runs off the loop rather than off the dirty flag, because
+    // every mode keeps moving through a quiet bar - FIELD's ripples expand,
+    // LIQUID's springs settle, SPECTRUM's peaks fall - while the flag only
+    // trips when a band actually moves. It gates itself on the display being
+    // open and PULSE on.
+    renderPvfdMosaic(ts);
+
+    // Slow maintenance yields during playlist scroll.
+    if (!scrollStress && ts - lastSlowLaneAt >= SLOW_LANE_INTERVAL_MS) {
+      lastSlowLaneAt = ts;
+      refreshPvfdPerfEnabled();
+      updateRouteState(false, ts);
+      }
+
+    pvfdPerfEnd("mainLoopTotal", perfAt);
+  }
+
+  function onTrackChange() {
+    markPlayerStateDirty();
+    playerTimingCache.at = -Infinity;
+    lastTrackSyncAt = -Infinity;
+    syncCurrentTrackFromPlayer(true);
+    setPlayButtonGlyph(safePlayerIsPlaying(false));
+    // Re-derive the adaptive tint from the new album art. Once engaged, a
+    // colorless cover keeps the current hue ("keep"); the first application
+    // (boot / not yet active) falls to neutral CYAN.
+    if (adaptiveDesired) applyAdaptiveTint({ onNull: adaptiveTintActive ? "keep" : "neutral" });
+  }
+
+  const LIBRARY_RECENTS_SELECTOR = [
+    "button[aria-label*='Recents' i]",
+    "[role='button'][aria-label*='Recents' i]",
+    "button[title*='Recents' i]",
+    "[role='button'][title*='Recents' i]",
+    "[data-testid*='recents' i]",
+    "[class*='recents' i]",
+    "[class*='Recents']"
+  ].join(",");
+  let librarySearchFixTimer = 0;
+  let libraryFullscreenObserver = null;
+  let pvfdMutationTimer = 0;
+  let pvfdMutationFlushTimer = 0;
+  let librarySearchLastRoot = null;
+  let lyricsSyncFixTimer = 0;
+  let lyricsSyncLastRoot = null;
+  let lyricsViewCacheAt = -Infinity;
+  let lyricsViewCache = false;
+
+  function syncLibrarySearchState(container, input) {
+    const hasText = !!input.value;
+    container.classList.toggle("pvfd-filter-has-text", hasText);
+  }
+
+  function isGlobalSearchFocusTarget(target) {
+    if (!target || !target.matches) return false;
+    if (!target.matches("input, [role='searchbox'], [contenteditable='true']")) return false;
+    return !!(target.closest && target.closest(
+      ".Root__top-bar, .Root__globalNav, [data-testid*='global-nav' i], [class*='globalNav' i]"
+    ));
+  }
+
+  function syncGlobalSearchFocus(target = document.activeElement) {
+    const perfAt = pvfdPerfStart();
+    const nextFocused = isGlobalSearchFocusTarget(target);
+    if (nextFocused === globalSearchFocusState) {
+      pvfdPerfEnd("globalSearchFocusSync", perfAt);
+      return;
+    }
+    globalSearchFocusState = nextFocused;
+    document.documentElement.classList.toggle("pvfd-global-search-focused", nextFocused);
+    if (document.body && document.body.dataset) document.body.dataset.pvfdGlobalSearchFocused = nextFocused ? "1" : "0";
+    pvfdPerfEnd("globalSearchFocusSync", perfAt);
+  }
+
+  function scheduleGlobalSearchFocusSync(target = document.activeElement, delay = 0) {
+    pendingGlobalSearchFocusTarget = target;
+    if (globalSearchFocusTimer) return;
+    globalSearchFocusTimer = window.setTimeout(() => {
+      globalSearchFocusTimer = 0;
+      const nextTarget = pendingGlobalSearchFocusTarget || document.activeElement;
+      pendingGlobalSearchFocusTarget = null;
+      syncGlobalSearchFocus(nextTarget);
+    }, delay);
+  }
+
+  function findLibraryToolbarParts(container) {
+    let node = container && container.parentElement;
+    for (let depth = 0; node && depth < 6; depth++, node = node.parentElement) {
+      if (node.matches && node.matches(".Root__nav-bar, nav[aria-label='Main'], aside, [role='navigation']")) break;
+      const recents = node.querySelector && node.querySelector(LIBRARY_RECENTS_SELECTOR);
+      if (recents) {
+        return {
+          toolbar: node,
+          recents: (recents.closest && recents.closest("button, [role='button']")) || recents,
+        };
+      }
+    }
+    return { toolbar: null, recents: null };
+  }
+
+  function reconcileLibraryToolbar(container) {
+    const { toolbar, recents } = findLibraryToolbarParts(container);
+    if (toolbar && !patchedLibraryToolbars.has(toolbar)) {
+      patchedLibraryToolbars.add(toolbar);
+      toolbar.classList.add("pvfd-library-toolbar");
+    }
+    if (recents && !patchedLibraryRecentsControls.has(recents)) {
+      patchedLibraryRecentsControls.add(recents);
+      recents.classList.add("pvfd-library-recents-control");
+    }
+  }
+
+  function isLibrarySearchContainer(container) {
+    if (!container || !container.closest) return false;
+    // Only the left Your Library search should receive the JS layout class.
+    // Playlist / Local Files / Liked Songs search boxes live in .Root__main-view and must be styled by static CSS.
+    if (container.closest(".Root__main-view, .main-view-container, .main-view-container__scroll-node")) return false;
+    return !!container.closest(".Root__nav-bar, nav[aria-label='Main'], [role='navigation'], .main-yourLibraryX-library");
+  }
+
+  function collectLibrarySearchBoxes(root = document) {
+    const scope = root && root.querySelectorAll ? root : document;
+    const boxes = [];
+    if (scope.matches && scope.matches(".x-filterBox-filterInputContainer")) boxes.push(scope);
+    if (scope.querySelectorAll) scope.querySelectorAll(".x-filterBox-filterInputContainer").forEach((container) => boxes.push(container));
+    return boxes;
+  }
+
+  // Fullscreen-library detection (issues #18/#23). Spotify's cinema state
+  // marks the inactive main view inert while leaving the fullscreen Library
+  // nav interactive. Use that semantic state first; retain the old geometry
+  // check only for clients that do not expose inert during the transition.
+  // CSS consumes html.pvfd-library-fullscreen to remove the stale entity
+  // topbar layers and keep the remaining container below the Library surface.
+  // The geometry fallback used to call nav.getBoundingClientRect() here, and
+  // this runs on the 1.2s static-readout tick. A layout read makes the browser
+  // flush whatever style Spotify has dirtied since the last frame, and while
+  // music plays Spotify dirties style every 500ms, so on Home the tick was
+  // paying a whole-document recalc about once a second. The width now comes
+  // from a ResizeObserver, which reports after layout at no extra cost.
+  let libraryNavWidth = -1;            // -1 until the observer has reported
+  let libraryNavResizeObserver = null;
+  let libraryNavObserved = null;
+  function observeLibraryNavWidth(nav) {
+    if (!nav || nav === libraryNavObserved || typeof ResizeObserver !== "function") return;
+    if (libraryNavResizeObserver) libraryNavResizeObserver.disconnect();
+    libraryNavObserved = nav;
+    libraryNavWidth = -1;
+    libraryNavResizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[entries.length - 1];
+      const box = entry && entry.borderBoxSize && entry.borderBoxSize[0];
+      libraryNavWidth = box ? box.inlineSize : (entry ? entry.contentRect.width : -1);
+      reconcileLibraryFullscreenState();
+    });
+    libraryNavResizeObserver.observe(nav);
+  }
+
+  function reconcileLibraryFullscreenState() {
+    const mainView = document.querySelector(".Root__main-view");
+    const nav = document.querySelector(".Root__nav-bar");
+    observeLibraryNavWidth(nav);
+    const mainViewInert = !!mainView && (mainView.inert === true || mainView.hasAttribute("inert"));
+     const navInert = !!nav && (nav.inert === true || nav.hasAttribute("inert"));
+    const semanticFullscreen = mainViewInert && !!nav && !navInert;
+    const geometryFallback = !mainViewInert && !!nav && libraryNavWidth >= 0 &&
+      libraryNavWidth >= window.innerWidth * 0.95;
+    const fullscreen = semanticFullscreen || geometryFallback;
+    document.documentElement.classList.toggle("pvfd-library-fullscreen", fullscreen);
+  }
+
+  function installLibraryFullscreenObserver() {
+    if (libraryFullscreenObserver || typeof MutationObserver !== "function") return;
+    libraryFullscreenObserver = new MutationObserver((records) => {
+      for (const record of records) {
+        const target = record && record.target;
+        if (!target || !target.matches) continue;
+        if (target.matches(".Root__main-view, .Root__nav-bar")) {
+          reconcileLibraryFullscreenState();
+          return;
+        }
+      }
+    });
+    libraryFullscreenObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["inert"],
+      subtree: true,
+    });
+    reconcileLibraryFullscreenState();
+  }
+
+  function reconcileLibrarySearchBoxes(root = document) {
+    const perfAt = pvfdPerfStart();
+    reconcileLibraryFullscreenState();
+    collectLibrarySearchBoxes(root).forEach((container) => {
+      if (!isLibrarySearchContainer(container)) {
+        container.classList.remove("pvfd-library-search-box", "pvfd-filter-has-text");
+        return;
+      }
+      const input = container.querySelector(".x-filterBox-filterInput");
+      if (!input) return;
+
+      if (!patchedLibrarySearchContainers.has(container)) {
+        patchedLibrarySearchContainers.add(container);
+        container.classList.add("pvfd-library-search-box");
+      } else if (!container.classList.contains("pvfd-library-search-box")) {
+        container.classList.add("pvfd-library-search-box");
+      }
+      reconcileLibraryToolbar(container);
+
+      if (!patchedLibrarySearchInputs.has(input)) {
+        patchedLibrarySearchInputs.add(input);
+        const sync = () => syncLibrarySearchState(container, input);
+        input.addEventListener("input", sync);
+        input.addEventListener("change", sync);
+        input.addEventListener("focus", sync);
+        input.addEventListener("blur", sync);
+      }
+      syncLibrarySearchState(container, input);
+    });
+    pvfdPerfEnd("searchReconciliation", perfAt);
+  }
+
+  function scheduleLibrarySearchReconcile(root, delay = 120) {
+    librarySearchLastRoot = root && root.querySelectorAll ? root : document;
+    if (librarySearchFixTimer) return;
+    const nextDelay = Math.max(delay, isRouteChurnActive() ? ROUTE_CHURN_SEARCH_DELAY_MS : 0);
+    librarySearchFixTimer = window.setTimeout(() => {
+      const nextRoot = librarySearchLastRoot || document;
+      librarySearchFixTimer = 0;
+      librarySearchLastRoot = null;
+      reconcileLibrarySearchBoxes(nextRoot);
+    }, nextDelay);
+  }
+
+  function elementFromMutationNode(node) {
+    return node && node.nodeType === 1 ? node : null;
+  }
+
+  function findLibrarySearchBox(el, includeDescendants = false) {
+    if (!el || !el.matches) return null;
+    if (el.matches(".x-filterBox-filterInputContainer")) return el;
+    const closestBox = el.closest && el.closest(".x-filterBox-filterInputContainer");
+    if (closestBox) return closestBox;
+    if (includeDescendants && el.querySelector) return el.querySelector(".x-filterBox-filterInputContainer");
+    return null;
+  }
+
+  const BROWSE_FONT_TARGET_SELECTOR = ".Root__main-view, .main-view-container, .main-view-container__scroll-node";
+
+  function addedNodeContainsBrowseFontTarget(el) {
+    if (!el || !el.matches) return false;
+    return el.matches(BROWSE_FONT_TARGET_SELECTOR) || !!(el.querySelector && el.querySelector(BROWSE_FONT_TARGET_SELECTOR));
+  }
+
+  const LIBRARY_SEARCH_SCOPE_SELECTOR = ".Root__nav-bar, nav[aria-label='Main'], aside, [role='navigation'], .main-yourLibraryX-library";
+
+  function isLibrarySearchMutationScope(el) {
+    if (!el || !el.matches) return false;
+    if (el.matches(".x-filterBox-filterInputContainer, .x-filterBox-filterInput")) return true;
+    if (el.closest && el.closest(".x-filterBox-filterInputContainer")) return true;
+    return el.matches(LIBRARY_SEARCH_SCOPE_SELECTOR) || !!(el.closest && el.closest(LIBRARY_SEARCH_SCOPE_SELECTOR));
+  }
+
+  const LYRICS_SCOPE_SELECTOR = [
+    "[data-testid*='lyrics' i]",
+    "[class*='lyrics-lyrics' i]",
+    "[class*='LyricsLyrics' i]",
+    "[class*='lyricsPage' i]:not(.BeautifulLyricsPage)",
+    "[class*='LyricsPage' i]:not(.BeautifulLyricsPage)",
+    ".lyrics-lyrics-container",
+    ".lyrics-lyrics-background",
+    ".lyrics-lyrics-contentContainer",
+    // Spotify 1.3: no names on the page, see tagStructuralLyrics.
+    "[data-pvfd-lyrics-root]"
+  ].join(", ");
+
+  const LYRICS_SURFACE_SELECTOR = [
+    ".lyrics-lyrics-container",
+    "[class*='lyrics-lyrics-container' i]",
+    "[class*='LyricsLyricsContainer' i]",
+    ".lyrics-lyrics-background",
+    "[class*='lyrics-lyrics-background' i]",
+    "[class*='LyricsLyricsBackground' i]",
+    ".lyrics-lyrics-contentContainer",
+    "[class*='lyrics-lyrics-contentContainer' i]",
+    "[class*='LyricsLyricsContent' i]",
+    "[data-pvfd-lyrics-root]",
+    "[data-pvfd-lyrics-bg]",
+    "[data-pvfd-lyrics-content]"
+  ].join(", ");
+
+  function hasLyricsView() {
+    const now = performance.now();
+    if (now - lyricsViewCacheAt < 500) return lyricsViewCache;
+    lyricsViewCacheAt = now;
+    lyricsViewCache = !!document.querySelector(LYRICS_SCOPE_SELECTOR);
+    return lyricsViewCache;
+  }
+
+  function collectButtons(root) {
+    const scope = root && root.querySelectorAll ? root : document;
+    const buttons = [];
+    if (scope.matches && scope.matches("button, [role='button']")) buttons.push(scope);
+    scope.querySelectorAll("button, [role='button']").forEach((button) => buttons.push(button));
+    return buttons;
+  }
+
+  function rootLooksLyricsScoped(root) {
+    const scope = root && root.querySelectorAll ? root : document;
+    if (scope === document) return true;
+    return !!(
+      (scope.matches && scope.matches(LYRICS_SCOPE_SELECTOR)) ||
+      (scope.closest && scope.closest(LYRICS_SCOPE_SELECTOR)) ||
+      (scope.querySelector && scope.querySelector(LYRICS_SCOPE_SELECTOR))
+    );
+  }
+
+  function tagLyricsSurfaces(root = document) {
+    const scope = root && root.querySelectorAll ? root : document;
+    let tagged = 0;
+    const surfaces = [];
+    if (scope.matches && scope.matches(LYRICS_SURFACE_SELECTOR)) surfaces.push(scope);
+    scope.querySelectorAll(LYRICS_SURFACE_SELECTOR).forEach((el) => surfaces.push(el));
+
+    surfaces.forEach((el) => {
+      if (!el || !el.classList) return;
+      if (el.matches(".lyrics-lyrics-container, [class*='lyrics-lyrics-container' i], [class*='LyricsLyricsContainer' i], [data-pvfd-lyrics-root]") && !el.classList.contains("pvfd-lyrics-surface")) {
+        el.classList.add("pvfd-lyrics-surface");
+        tagged++;
+      }
+      if (el.matches(".lyrics-lyrics-background, [class*='lyrics-lyrics-background' i], [data-pvfd-lyrics-bg]")) {
+        el.classList.add("pvfd-lyrics-background");
+      }
+      if (el.matches(".lyrics-lyrics-contentContainer, [class*='lyrics-lyrics-contentContainer' i], [data-pvfd-lyrics-content]")) {
+        el.classList.add("pvfd-lyrics-content");
+      }
+    });
+
+    markLyricsScript();
+
+    return tagged;
+  }
+
+  // The same highlight signals the stylesheet keys the active line on.
+  // Each selector also accepts the data attribute tagStructuralLyrics stamps on
+  // a Spotify 1.3 page (below), so every consumer sees both generations of DOM.
+  const PVFD_LYRIC_ACTIVE_SELECTOR =
+    '[class*="lyrics-lyricsContent-highlight" i], [class*="LyricsLyricsContentHighlight" i], ' +
+    '[class*="lyrics-lyricsContent-active" i], [class*="LyricsLyricsContentActive" i], ' +
+    '[aria-current="true"], [data-highlighted="true"], [data-pvfd-line][data-pvfd-active]';
+  const PVFD_LYRIC_LINE_SELECTOR =
+    "[class*='lyrics-lyricsContent-lyric' i], [class*='LyricsLyricsContentLyric' i], [data-pvfd-line]";
+  const PVFD_LYRIC_TEXT_SELECTOR =
+    "[class*='lyrics-lyricsContent-text' i], [class*='LyricsLyricsContentText' i], [data-pvfd-linetext]";
+
+  // ----- Spotify 1.3: a lyrics page with no names on it ---------------------
+  // Spotify 1.3 renders the lyrics page with build-hashed classes only, and
+  // Spicetify's class map no longer covers it, so none of the lyrics-* names
+  // exist there. Every line went unseen, syncNoLyricsPanel called the track
+  // lyric-less, and the NO LYRICS cover dropped over lyrics that were rendering
+  // fine underneath (issue #45).
+  //
+  // Two things survive a hash rotation: the container carries the
+  // --lyrics-color-* variables INLINE, and each line is a div[dir="auto"]
+  // holding one text child. Those nodes get data attributes, which the
+  // selectors above and the stylesheet accept as alternatives.
+  //
+  // Attributes, not classes: React rewrites className on every line-state
+  // change and would wipe a stamped class, but leaves attributes it does not
+  // own alone.
+  const PVFD_LYRIC_CLASSED_LINE_SELECTOR =
+    "[class*='lyrics-lyricsContent-lyric' i], [class*='LyricsLyricsContentLyric' i]";
+  let pvfdStructLyricsRoot = null;
+  let pvfdStructLyricsObserver = null;
+
+  // Line state is only a hash too, but its SHAPE is stable: the second class
+  // token is the state (the first is the shared line class, a third marks
+  // blank lines), at most one line is active, and passed / active / upcoming
+  // lines sit in that order. Spotify always prepends two blank lines, so a real
+  // active line always has passed lines in front of it. Runs of equal state:
+  //   passed, ACTIVE, upcoming   the single middle line is active
+  //   passed, ACTIVE             the last line of the song
+  //   ACTIVE, upcoming           the opening blank line
+  // One run means nothing is active: before the first line, or unsynced
+  // lyrics. Any other shape is one this does not know, and it stamps nothing.
+  // That fails soft, because Spotify's own active colour still shows; a wrong
+  // guess would light two lines at once.
+  function stampStructuralActiveLine(root) {
+    const lines = root.querySelectorAll("[data-pvfd-line]");
+    const runs = [];
+    for (let i = 0; i < lines.length; i++) {
+      const state = lines[i].classList.length > 1 ? lines[i].classList[1] : "";
+      const last = runs[runs.length - 1];
+      if (last && last.state === state) last.items.push(lines[i]);
+      else runs.push({ state, items: [lines[i]] });
+    }
+    let active = null;
+    if (runs.length === 3 && runs[1].items.length === 1) {
+      active = runs[1].items[0];
+    } else if (runs.length === 2) {
+      const head = runs[0].items;
+      const tail = runs[1].items;
+      if (tail.length === 1 && head.length > 1) active = tail[0];
+      else if (head.length === 1 && tail.length > 1) active = head[0];
+    }
+    for (let i = 0; i < lines.length; i++) {
+      const on = lines[i] === active;
+      if (on !== lines[i].hasAttribute("data-pvfd-active")) {
+        if (on) lines[i].setAttribute("data-pvfd-active", "");
+        else lines[i].removeAttribute("data-pvfd-active");
+      }
+    }
+  }
+
+  // One pass over a 1.3 lyrics page. Every write is guarded, so a pass over a
+  // page that is already stamped costs attribute reads and nothing else.
+  function stampStructuralLyrics(root) {
+    const lines = root.querySelectorAll("div[dir='auto']");
+    if (!lines.length) return 0;
+    if (!root.hasAttribute("data-pvfd-lyrics-root")) root.setAttribute("data-pvfd-lyrics-root", "");
+    // The content container is the root's OWN child that holds the lines (the
+    // lines sit two unnamed wrappers further down), and the background is the
+    // empty child in front of it: the same two places the mapped names sat on
+    // Spotify 1.2. The background matters. It is opaque and covers the whole
+    // root, so unstamped it paints a flat colour over the LCD ground.
+    let content = lines[0];
+    while (content && content.parentElement !== root) content = content.parentElement;
+    if (content) {
+      if (!content.hasAttribute("data-pvfd-lyrics-content")) content.setAttribute("data-pvfd-lyrics-content", "");
+      const bg = root.firstElementChild;
+      if (bg && bg !== content && !bg.firstElementChild && !bg.hasAttribute("data-pvfd-lyrics-bg")) {
+        bg.setAttribute("data-pvfd-lyrics-bg", "");
+      }
+    }
+    let fresh = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (!lines[i].hasAttribute("data-pvfd-line")) { lines[i].setAttribute("data-pvfd-line", ""); fresh++; }
+      const text = lines[i].firstElementChild;
+      if (text && !text.hasAttribute("data-pvfd-linetext")) text.setAttribute("data-pvfd-linetext", "");
+    }
+    stampStructuralActiveLine(root);
+    if (fresh) markLyricsScript();
+    return fresh;
+  }
+
+  function tagStructuralLyrics() {
+    if (pvfdStructLyricsRoot && !pvfdStructLyricsRoot.isConnected) {
+      if (pvfdStructLyricsObserver) pvfdStructLyricsObserver.disconnect();
+      pvfdStructLyricsObserver = null;
+      pvfdStructLyricsRoot = null;
+    }
+    // Mapped names present: an older client, or a class map that caught up.
+    if (document.querySelector(PVFD_LYRIC_CLASSED_LINE_SELECTOR)) return 0;
+    const root = document.querySelector(".Root__main-view [style*='--lyrics-color-active']");
+    if (!root) return 0;
+
+    // React REPLACES a line's node when its state changes: passed, active and
+    // upcoming lines are three different components, so the new active line is
+    // a new element with no stamps on it. Those arrive as child-list changes,
+    // not class changes. Observer callbacks run before the next paint, so a
+    // remounted line is never shown unstamped, where waiting for the sampled
+    // tick would flash it in Spotify's own face first. Our own writes are
+    // attributes outside the filter and cannot re-trigger this.
+    if (pvfdStructLyricsRoot !== root) {
+      if (pvfdStructLyricsObserver) pvfdStructLyricsObserver.disconnect();
+      pvfdStructLyricsObserver = null;
+      pvfdStructLyricsRoot = root;
+      if (typeof MutationObserver === "function") {
+        pvfdStructLyricsObserver = new MutationObserver(() => safe(() => stampStructuralLyrics(root)));
+        pvfdStructLyricsObserver.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+      }
+    }
+    return stampStructuralLyrics(root);
+  }
+
+  // Spotify 1.3 renders lyrics in two places besides the lyrics page: the Now
+  // Playing card in the right sidebar, and a full-window lyrics panel that the
+  // card's full-screen control opens (mounted under the top container while
+  // the main view collapses to nothing). Both are the lyrics page component
+  // with hashed classes only, and both carry the --lyrics-color-* variables
+  // inline, so that is the hook. One attribute on each root is all the
+  // stylesheet needs: Spotify's own CSS reads the variables for line colours,
+  // so overriding them themes the lines without touching them. The root's
+  // empty first child is the opaque background layer, stamped too so the LCD
+  // ground can show through it. The panel also flags the body: the FULL SCREEN
+  // tab is anchored to the main view's right edge, which does not exist while
+  // the panel is up, so it hides there. React remounts these on track change
+  // and the sampled tick re-stamps them; every write is guarded, so a stamped
+  // surface costs a handful of reads.
+  function tagNpvLyricsCard() {
+    if (!document.body) return;
+    const roots = document.querySelectorAll("[style*='--lyrics-color-active']");
+    let panel = false;
+    for (let i = 0; i < roots.length; i++) {
+      const root = roots[i];
+      if (root.closest(".Root__main-view")) continue;          // the lyrics page: tagStructuralLyrics owns it
+      if (!root.hasAttribute("data-pvfd-npv-lyrics")) root.setAttribute("data-pvfd-npv-lyrics", "");
+      const bg = root.firstElementChild;
+      if (bg && !bg.firstElementChild && !bg.hasAttribute("data-pvfd-lyrics-bg")) bg.setAttribute("data-pvfd-lyrics-bg", "");
+      if (!root.closest(".Root__right-sidebar")) panel = true;
+    }
+    const cur = document.body.getAttribute("data-pvfd-lyrics-panel");
+    if (panel && cur !== "on") document.body.setAttribute("data-pvfd-lyrics-panel", "on");
+    else if (!panel && cur) document.body.removeAttribute("data-pvfd-lyrics-panel");
+  }
+
+  function markLyricsScript() {
+    if (!document.body) return;
+    const lines = document.querySelectorAll(PVFD_LYRIC_LINE_SELECTOR);
+    // Nothing painted yet — leave the previous verdict alone rather than
+    // clearing it, so the face doesn't flicker while a track's lyrics load.
+    if (!lines.length) return;
+    let text = "";
+    for (let i = 0; i < lines.length && text.length < 400; i++) {
+      text += lines[i].textContent || "";
+    }
+    if (!text.trim()) return;
+    const nonLatin = PVFD_NON_LATIN_RE.test(text);
+    if (document.body.classList.contains("pvfd-non-latin") !== nonLatin) {
+      document.body.classList.toggle("pvfd-non-latin", nonLatin);
+    }
+    // Text and durations land TOGETHER, inside the fetch resolve — see
+    // stampLyricDurations. Stamping data-pvfd-t synchronously here created the
+    // sweep pseudo on the 4s fallback, and when the durations arrived hundreds
+    // of ms later they retimed the RUNNING animation — the sweep visibly
+    // stopped short and restarted on every first open of a track.
+    stampLyricDurations();
+  }
+
+  // The scan-ridge on the active line is drawn by a ::after overlay that has to
+  // repeat the line's own words (it paints them transparent and clips a moving
+  // gradient inside the glyphs — see user.css). A pseudo-element can only get
+  // text from content: attr(), so the words have to live in an attribute.
+  //
+  // Stamped for EVERY line once per render rather than for the active line on
+  // each change: it is a handful of attribute writes when a track's lyrics
+  // appear, then nothing at all while the song plays. CSS alone decides which
+  // line actually shows the overlay, so there is no per-line-change JS and no
+  // per-frame work.
+  // Spotify puts a translation in a SIBLING div of .lyrics-lyricsContent-text,
+  // not inside it, so reading the text element already excludes it. The explicit
+  // first-text-node read is defensive only: some third-party translation
+  // extensions append into the text element instead, and this keeps the original
+  // words alone in the scan overlay if they do. Falls straight back to
+  // textContent whenever the first child is not a bare text node, so the normal
+  // case is unchanged.
+  function lyricWords(target) {
+    // First text node DEPTH-FIRST, not just firstChild. Extensions inject
+    // translations three ways: a sibling div (excluded by querying the text
+    // element), text appended INSIDE it (first text node is still the
+    // original), or the original WRAPPED in a new element — where firstChild
+    // is an element and the old fallback returned original+translation
+    // concatenated. That concat could never match the fetched lyrics, so on
+    // wrapped pages the duration stamps — and with them the fitted sweep
+    // rhythm — silently vanished, and data-pvfd-t fed the band's glyph twin
+    // the doubled text. Walking to the first non-empty text node covers all
+    // three layouts with the same cheap read.
+    let node = target.firstChild;
+    while (node) {
+      if (node.nodeType === 3 && node.textContent.trim()) {
+        return node.textContent.trim();
+      }
+      if (node.nodeType === 1 && node.firstChild) { node = node.firstChild; continue; }
+      while (node && !node.nextSibling && node.parentNode !== target) node = node.parentNode;
+      node = node && node.nextSibling;
+    }
+    return (target.textContent || "").trim();
+  }
+
+  function stampLyricText(lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const target = line.querySelector(PVFD_LYRIC_TEXT_SELECTOR) || line;
+      const words = lyricWords(target);
+      if (!words) continue;
+      if (target.getAttribute("data-pvfd-t") !== words) {
+        target.setAttribute("data-pvfd-t", words);
+      }
+    }
+  }
+
+  // Native lyrics carry NO timing: Spotify hands the line component a `start`
+  // prop but only closes over it in the click-to-seek handler, so nothing
+  // reaches the DOM. Without a duration the scan runs on a fixed clock and gets
+  // cut off part-way through fast lines.
+  //
+  // So fetch the same lyrics Spotify's own page just fetched and match by TEXT.
+  // Matching by index would be wrong: the fetch drops music-note lines while the
+  // DOM keeps them, so the two lists desynchronise partway through a track.
+  //
+  // Cost is one request per track while the lyrics page is open, and
+  // fetchPvfdLyrics answers from its cache after that. Fails safe in every
+  // direction — no network, no match, no timing, or a changed track all end with
+  // no custom property set and the CSS fallback applying.
+  const pvfdLyricNorm = (s) =>
+    (s || "").toLowerCase().replace(/[^\p{Letter}\p{Number}]+/gu, "");
+
+  function stampLyricDurations() {
+    const uri = safeReturn(() => Spicetify.Player.data.item.uri, "");
+    if (!uri) { stampLyricText(document.querySelectorAll(PVFD_LYRIC_LINE_SELECTOR)); return; }
+    fetchPvfdLyrics(uri).then((fetched) => {
+      const allLines = document.querySelectorAll(PVFD_LYRIC_LINE_SELECTOR);
+      if (!fetched || !fetched.length) { stampLyricText(allLines); return; }
+      // The track can change while the request is in flight.
+      if (safeReturn(() => Spicetify.Player.data.item.uri, "") !== uri) return;
+
+      // Retained for the native elapsed tick below — the display has its own
+      // ticker with these times; the native page needs them too.
+      pvfdNativeLyricTimes = { uri, times: fetched.map((l) => l.time) };
+
+      const byText = new Map();
+      for (let i = 0; i < fetched.length; i++) {
+        const l = fetched[i];
+        if (!Number.isFinite(l.dur) || l.dur <= 0) continue;
+        const key = pvfdLyricNorm(l.text);
+        // A repeated chorus line collapses to its first occurrence. The error is
+        // small (the same words are usually sung at the same tempo) and the
+        // alternative, index matching, is outright wrong.
+        if (key && !byText.has(key)) byText.set(key, l.dur);
+      }
+      if (!byText.size) return;
+
+      const nodes = document.querySelectorAll(PVFD_LYRIC_LINE_SELECTOR);
+      for (let i = 0; i < nodes.length; i++) {
+        const target = nodes[i].querySelector(PVFD_LYRIC_TEXT_SELECTOR) || nodes[i];
+        const dur = byText.get(pvfdLyricNorm(lyricWords(target)));
+        if (!dur) continue;
+        if (dur < 900) {
+          if (target.getAttribute("data-pvfd-scan") !== "off") {
+            target.setAttribute("data-pvfd-scan", "off");
+          }
+        } else {
+          // Same fitted rhythm as the display: see renderPvfdLyrics.
+          const passes = Math.max(1, Math.ceil(dur / 2800));
+          setStyleIfChanged(target, "--pvfd-lyric-passes", String(passes));
+          setStyleIfChanged(
+            target,
+            "--pvfd-lyric-pass",
+            (dur / passes / 1000).toFixed(2) + "s"
+          );
+        }
+      }
+      // data-pvfd-t LAST: it is the gate the sweep selector requires, so the
+      // pseudo is only ever created on a node that already carries its full
+      // timing. Landing it first put a 4s-fallback animation on screen that
+      // the late-arriving durations then retimed mid-flight.
+      stampLyricText(allLines);
+    });
+  }
+
+  // The display stamps --pvfd-lyric-elapsed at every activation, so a line
+  // entered mid-way starts its rhythm mid-phase. The native page had no one
+  // to do that: Spotify re-renders lyric nodes mid-line, the replaced node's
+  // pseudo restarted from zero, its rhythm ran phase-shifted, and the next
+  // line change cut it halfway through a pass. This tick is native's
+  // counterpart. Stamped ONCE per node instance — re-stamping every tick
+  // would retime the delay continuously — so a healthy node is one string
+  // read, and only a fresh (re-mounted) node gets a write.
+  let pvfdNativeLyricTimes = null;
+  let pvfdNativeElapsedEl = null;
+
+  function nativeLyricElapsedTick() {
+    if (pvfdRouteState.route !== "lyrics" || !pvfdNativeLyricTimes) return;
+    if (safeReturn(() => Spicetify.Player.data.item.uri, "") !== pvfdNativeLyricTimes.uri) return;
+    const { prog: progress } = pvfdPlaybackTimes();
+    let start = null;
+    for (const t of pvfdNativeLyricTimes.times) {
+      if (t == null) continue;
+      if (t <= progress) start = t; else break;
+    }
+    if (start == null) return;
+    const line = document.querySelector(PVFD_LYRIC_ACTIVE_SELECTOR);
+    const target = line && (line.querySelector(PVFD_LYRIC_TEXT_SELECTOR) || line);
+    if (!target) return;
+    if (pvfdNativeElapsedEl && pvfdNativeElapsedEl !== target) {
+      safe(() => pvfdNativeElapsedEl.style.removeProperty("--pvfd-lyric-elapsed"));
+      pvfdNativeElapsedEl = null;
+    }
+    if (!target.style.getPropertyValue("--pvfd-lyric-elapsed")) {
+      const into = Math.max(0, progress - start);
+      target.style.setProperty("--pvfd-lyric-elapsed", (into / 1000).toFixed(2) + "s");
+      pvfdNativeElapsedEl = target;
+    }
+  }
+
+  function isLyricsSyncButton(button) {
+    if (!button) return false;
+    const label = [
+      button.textContent,
+      button.getAttribute && button.getAttribute("aria-label"),
+      button.getAttribute && button.getAttribute("title")
+    ].map((value) => String(value || "").replace(/\s+/g, " ").trim().toLowerCase()).filter(Boolean).join(" ");
+    return label === "sync" || /\bsync\b/.test(label);
+  }
+
+  function reconcileLyricsSyncButtons(root = document) {
+    const perfAt = pvfdPerfStart();
+    if (!hasLyricsView() || !rootLooksLyricsScoped(root)) {
+      pvfdPerfEnd("searchReconciliation", perfAt);
+      return 0;
+    }
+    let tagged = tagLyricsSurfaces(root);
+    collectButtons(root).forEach((button) => {
+      if (isLyricsSyncButton(button)) {
+        if (!patchedLyricsSyncButtons.has(button)) patchedLyricsSyncButtons.add(button);
+        if (!button.classList.contains("pvfd-lyrics-sync-button")) {
+          button.classList.add("pvfd-lyrics-sync-button");
+          button.setAttribute("data-pvfd", "lyrics-sync");
+        }
+        tagged++;
+      }
+    });
+    pvfdPerfEnd("searchReconciliation", perfAt);
+    return tagged;
+  }
+
+  function scheduleLyricsSyncReconcile(root, delay = 120) {
+    lyricsSyncLastRoot = root && root.querySelectorAll ? root : document;
+    lyricsViewCacheAt = -Infinity;
+    if (lyricsSyncFixTimer) return;
+    lyricsSyncFixTimer = window.setTimeout(() => {
+      const nextRoot = lyricsSyncLastRoot || document;
+      lyricsSyncFixTimer = 0;
+      lyricsSyncLastRoot = null;
+      const tagged = reconcileLyricsSyncButtons(nextRoot);
+      if (!tagged && nextRoot !== document) reconcileLyricsSyncButtons(document);
+    }, delay);
+  }
+
+  function findLyricsSyncRoot(node, includeDescendants = false) {
+    if (!node || !node.matches) return null;
+    if (node.matches(LYRICS_SCOPE_SELECTOR)) return node;
+    const closestLyrics = node.closest && node.closest(LYRICS_SCOPE_SELECTOR);
+    if (closestLyrics) return closestLyrics;
+    if (includeDescendants && node.querySelector && node.querySelector(LYRICS_SCOPE_SELECTOR)) return node;
+    if (node.matches("button, [role='button']")) return node;
+    if (includeDescendants && node.querySelector) return node.querySelector("button, [role='button']");
+    return null;
+  }
+
+  function scheduleChassisRecheck() {
+    if (chassis && chassis.isConnected) return;
+    if (pvfdMutationTimer) return;
+    pvfdMutationTimer = window.setTimeout(() => {
+      pvfdMutationTimer = 0;
+      if (!chassis || !chassis.isConnected) injectChassis();
+    }, 250);
+  }
+
+  function flushMutationRecords() {
+    pvfdDiag.mutationFlushes++;
+    const perfAt = pvfdPerfStart();
+    pvfdMutationFlushTimer = 0;
+    const work = {
+      chassisRecheck: pvfdMutationWork.chassisRecheck,
+      mainViewChurn: pvfdMutationWork.mainViewChurn,
+      searchRoot: pvfdMutationWork.searchRoot,
+      lyricsRoot: pvfdMutationWork.lyricsRoot,
+      browseFontTarget: pvfdMutationWork.browseFontTarget,
+      routeMaybeChanged: pvfdMutationWork.routeMaybeChanged,
+    };
+    pvfdMutationWork.chassisRecheck = false;
+    pvfdMutationWork.mainViewChurn = false;
+    pvfdMutationWork.searchRoot = null;
+    pvfdMutationWork.lyricsRoot = null;
+    pvfdMutationWork.browseFontTarget = false;
+    pvfdMutationWork.routeMaybeChanged = false;
+    if (!work.chassisRecheck && !work.mainViewChurn && !work.searchRoot && !work.lyricsRoot && !work.browseFontTarget && !work.routeMaybeChanged) {
+      pvfdPerfEnd("mutationFlush", perfAt);
+      return;
+    }
+
+    if (work.chassisRecheck) scheduleChassisRecheck();
+    if (work.routeMaybeChanged) updateRouteState(true);
+    if (work.browseFontTarget) applyBrowseFontPreset(false);
+    if (work.searchRoot) scheduleLibrarySearchReconcile(work.searchRoot, work.mainViewChurn ? ROUTE_CHURN_SEARCH_DELAY_MS : 80);
+    if (hasLyricsView() && work.lyricsRoot) scheduleLyricsSyncReconcile(work.lyricsRoot, work.mainViewChurn ? ROUTE_CHURN_SEARCH_DELAY_MS : 80);
+    pvfdPerfEnd("mutationFlush", perfAt);
+  }
+
+  const MAIN_VIEW_MUTATION_SELECTOR = ".Root__main-view, .main-view-container, .main-view-container__scroll-node";
+
+  function isMainViewMutationTarget(el) {
+    if (!el || !el.matches) return false;
+    return !!(
+      el.matches(MAIN_VIEW_MUTATION_SELECTOR) ||
+      (el.closest && el.closest(MAIN_VIEW_MUTATION_SELECTOR))
+    );
+  }
+
+  function accumulateMutationNodeWork(el, includeDescendants = false) {
+    if (!el || !el.matches) return;
+    if (!pvfdMutationWork.browseFontTarget && addedNodeContainsBrowseFontTarget(el)) {
+      pvfdMutationWork.browseFontTarget = true;
+    }
+    if (!pvfdMutationWork.mainViewChurn) {
+      const mainViewHit = includeDescendants
+        ? addedNodeContainsBrowseFontTarget(el) || isMainViewMutationTarget(el)
+        : isMainViewMutationTarget(el);
+      if (mainViewHit) {
+        pvfdMutationWork.mainViewChurn = true;
+        pvfdMutationWork.routeMaybeChanged = true;
+        beginRouteChurn(CLIP_CACHE_ROUTE_REBUILD_BLOCK_MS);
+        markClipCacheRebuildStress(CLIP_CACHE_ROUTE_REBUILD_BLOCK_MS);
+      }
+    }
+    if (!pvfdMutationWork.searchRoot && isLibrarySearchMutationScope(el)) {
+      pvfdMutationWork.searchRoot = findLibrarySearchBox(el, includeDescendants) || document;
+    }
+    if (!pvfdMutationWork.lyricsRoot) {
+      const lyricsRoot = findLyricsSyncRoot(el, includeDescendants);
+      if (lyricsRoot) pvfdMutationWork.lyricsRoot = lyricsRoot;
+    }
+  }
+
+  function queueMutationRecords(records) {
+    pvfdDiag.mutationQueues++;
+    const perfAt = pvfdPerfStart();
+    let hasWork = false;
+    for (const record of records) {
+      const target = elementFromMutationNode(record.target);
+      if (chassis && target && chassis.contains(target)) continue;
+      pvfdMutationWork.chassisRecheck = true;
+      accumulateMutationNodeWork(target, false);
+      for (const node of record.addedNodes || []) {
+        accumulateMutationNodeWork(elementFromMutationNode(node), true);
+      }
+      hasWork = true;
+    }
+    if (!hasWork) {
+      pvfdPerfEnd("mutationQueue", perfAt);
+      return;
+    }
+    if (!pvfdMutationFlushTimer) {
+      pvfdMutationFlushTimer = window.setTimeout(flushMutationRecords, MUTATION_FLUSH_DELAY_MS);
+    }
+    pvfdPerfEnd("mutationQueue", perfAt);
+  }
+
+  function recoverNativePlayerAfterFatal() {
+    pvfdDiag.recoverFatals++;
+    try {
+      if (typeof stopLogoLiveAudioScheduler === "function") stopLogoLiveAudioScheduler();
+      if (chassis && chassis.parentNode) chassis.parentNode.removeChild(chassis);
+      const bar = findPlayerBar();
+      if (bar) {
+        bar.classList.remove("pvfd-mounted");
+        Array.from(bar.children).forEach((child) => {
+          child.classList.remove("pvfd-native-player-hidden");
+          if (child.getAttribute("aria-hidden") === "true") child.removeAttribute("aria-hidden");
+        });
+      }
+      chassis = null;
+      logoStrip = null;
+      pvfdDom = null;
+      canvas = null;
+      ctx = null;
+    } catch (recoverErr) {
+      console.warn("[PVFD] Native player recovery failed:", recoverErr);
+    }
+  }
+
+  function attach() {
+    try {
+      attachUnsafe();
+    } catch (err) {
+      console.error("[PVFD] Init failed; restored Spotify player and will retry.", err);
+      recoverNativePlayerAfterFatal();
+      window.__PVFD_EXTENSION_RUNNING__ = false;
+      setTimeout(PioneerVFD, 1000);
+    }
+  }
+
+  // Home-page hover/pointer event suppression — quicklinks-only at first,
+  // extended to the full set of home-page cards.
+  //
+  // Background (diagnosed May 7, 2026 via window-capture event blocking A/B):
+  //   After leaving Home and returning, fast horizontal sweeps over the top
+  //   quick-link tiles produced 100-130ms longtasks paced at the user's hover
+  //   rate. Attribution from `long-animation-frame`:
+  //     - `xpui-modules.js | tX`  (DIV#main mouseover listener)  ~99% forced layout
+  //     - `xpui-modules.js | P`   (MessagePort.onmessage = React 18 scheduler)
+  //                               ~86% forced layout
+  //   Each pointer movement drove a chain of:
+  //     mouseover -> tX reads layout (forced flush) -> tX writes React state
+  //     -> React schedules commit -> P commits the fiber, writes DOM
+  //     -> next mouseover/pointerover/pointermove -> tX flushes again.
+  //
+  //   Diagnostic A/B (window-capture stopImmediatePropagation per type):
+  //     - block mouseover  alone -> still lags
+  //     - block pointerover alone -> still lags
+  //     - block pointermove alone -> still lags
+  //     - block ALL of {mouseover, mouseout, mouseenter, mouseleave,
+  //                     pointerover, pointerout, pointerenter, pointerleave,
+  //                     pointermove, mousemove} -> buttery smooth
+  //   Conclusion: Spotify's React commit work is fired redundantly by every
+  //   hover-class event, so silencing only one type leaves the others as backup
+  //   triggers. Blocking the entire family is the minimum sufficient set.
+  //
+  //   An earlier intra-tile mouseover coalescer was insufficient: mouseover-
+  //   only, same-tile-only. It was replaced by the full-family block on the
+  //   quicklinks grid, then extended to the rest of the home page
+  //   (album/playlist cards and their chrome play-button containers), verified
+  //   via the same window-capture A/B method on the cards surface.
+  //
+  // What this DOES suppress (capture phase on `window`, scoped to the
+  // selectors below):
+  //     mouseover, mouseout, mouseenter, mouseleave,
+  //     pointerover, pointerout, pointerenter, pointerleave,
+  //     pointermove, mousemove.
+  //
+  // Scopes (any element matching closest() of these gets its hover events killed):
+  //   - `.view-homeShortcutsGrid-grid`         (top quicklink tiles)
+  //   - `[data-testid="home-page"] .main-card-card`
+  //   - `[data-testid="home-page"] [data-encore-id="card"]`
+  //   - `[data-testid="home-page"] .main-card-cardContainer`
+  //   - `[data-testid="home-page"] .main-card-PlayButtonContainer`
+  //
+  // What this does NOT touch:
+  //   - any event outside home (other pages unaffected; fix is gated by
+  //     `[data-testid="home-page"]` for the cards + a unique class for quicklinks)
+  //   - click, auxclick, dblclick, contextmenu (-> tile/card activation works)
+  //   - mousedown/up, pointerdown/up, touchstart/end (-> activation works)
+  //   - focusin/focusout, keydown/up (-> keyboard nav + focus rings work)
+  //   - drag, dragstart, dragend, dragover, drop (-> dnd unaffected)
+  //   - wheel, scroll (-> scrolling unaffected)
+  //   - CSS :hover (browser-internal, independent of JS event dispatch),
+  //     so the visible hover glow / play-button reveal still appear.
+  //
+  // Disable at runtime for A/B testing without a reinstall:
+  //     window.__pvfdDisableHoverBlock = true;
+  const PVFD_HOVER_BLOCK_TYPES = [
+    "mouseover", "mouseout", "mouseenter", "mouseleave",
+    "pointerover", "pointerout", "pointerenter", "pointerleave",
+    "pointermove", "mousemove"
+  ];
+  // Spotify 1.3 renamed the shortcuts grid to a hash (paired in user.css from
+  // the shortcuts chunk); without it the block silently stopped matching and
+  // Spotify's per-move handlers came back: an empty tippy tooltip mounted and
+  // unmounted on <body> for every tile (13-14 body childList per sweep, each
+  // one firing Spicetify's scroll-fix walk) plus ~100 scrollWidth forced
+  // layouts. Measured 2026-09-25: a 4-tile sweep went from p95 48.6ms / 10
+  // dropped frames to 13.9ms / 1 with this one entry. Cards still matched via
+  // [data-encore-id="card"], which is why they never regressed.
+  const PVFD_HOVER_BLOCK_SCOPE = [
+    ".view-homeShortcutsGrid-grid",
+    ".T6dZsClpRrOnjeExjvhx",
+    '[data-testid="home-page"] .main-card-card',
+    '[data-testid="home-page"] [data-encore-id="card"]',
+    '[data-testid="home-page"] .main-card-cardContainer',
+    '[data-testid="home-page"] .main-card-PlayButtonContainer',
+    '.main-rootlist-wrapper'
+  ].join(", ");
+  /* Chassis-scoped subset of the hover block. Excludes pointermove/mousemove
+     because our knob/scrubber drag handlers depend on those events. The
+     over/out/enter/leave family is the actual trigger for Spotify's `te`
+     forced-reflow chain during chassis interaction (Performance trace showed
+     86 layouts averaging 200ms each, all from `te @ xpui-modules.js:30`,
+     firing once per pointer event during knob drag). Blocking the hover-
+     enter/leave family on the chassis stops Spotify's listener from
+     re-running while keeping our drag handlers functional. */
+  const PVFD_CHASSIS_HOVER_BLOCK_TYPES = [
+    "mouseover", "mouseout", "mouseenter", "mouseleave",
+    "pointerover", "pointerout", "pointerenter", "pointerleave"
+  ];
+  const PVFD_CHASSIS_HOVER_BLOCK_SCOPE = ".pvfd-chassis";
+  let pvfdHoverBlockInstalled = false;
+  function pvfdHoverBlockHandler(e) {
+    if (window.__pvfdDisableHoverBlock) return;
+    const t = e.target;
+    if (!t || !t.closest) return;
+    if (!t.closest(PVFD_HOVER_BLOCK_SCOPE)) return;
+    e.stopImmediatePropagation();
+    e.stopPropagation();
+  }
+  function pvfdChassisHoverBlockHandler(e) {
+    if (window.__pvfdDisableHoverBlock) return;
+    const t = e.target;
+    if (!t || !t.closest) return;
+    if (!t.closest(PVFD_CHASSIS_HOVER_BLOCK_SCOPE)) return;
+    e.stopImmediatePropagation();
+    e.stopPropagation();
+  }
+  // Chassis-bubble pointer block. Different mechanism from the window-capture
+  // hover block above: this fires on the BUBBLE phase at the chassis element,
+  // AFTER our own knob/scrubber/navring handlers have run during target phase.
+  // Stops pointermove/mousemove from bubbling further to document/window where
+  // React 18's root dispatcher and any Spotify global tracker would receive
+  // them. Trace 20260530T214233 showed 139 forced layouts at 63ms avg during
+  // a knob drag with stacks rooted at xpui-modules.js callbacks, with zero
+  // pioneerVFD frames — the trigger is downstream of the event reaching the
+  // React root. Session 2's window-capture attempt had to exclude pointermove
+  // because window-capture runs BEFORE our handlers and would kill them; this
+  // bubble-phase attachment is the path that wasn't tried then.
+  // Disable for runtime A/B: window.__pvfdDisablePointerBubbleBlock = true
+  let pvfdPointerBubbleBlockInstalled = false;
+  function pvfdPointerBubbleBlockHandler(e) {
+    if (window.__pvfdDisablePointerBubbleBlock) return;
+    // Only stop bubble propagation. Do NOT stopImmediatePropagation —
+    // sibling bubble handlers on the chassis (if any) should still see the
+    // event. Our knob/scrubber/navring handlers already fired at target.
+    e.stopPropagation();
+    pvfdDiag.pointerBubbleBlocks = (pvfdDiag.pointerBubbleBlocks || 0) + 1;
+  }
+  function installChassisPointerBubbleBlock() {
+    if (pvfdPointerBubbleBlockInstalled) return;
+    if (!chassis) return;
+    pvfdPointerBubbleBlockInstalled = true;
+    chassis.addEventListener("pointermove", pvfdPointerBubbleBlockHandler, false);
+    chassis.addEventListener("mousemove", pvfdPointerBubbleBlockHandler, false);
+  }
+
+  function installShortcutHoverBlock() {
+    if (pvfdHoverBlockInstalled) return;
+    pvfdHoverBlockInstalled = true;
+    for (let i = 0; i < PVFD_HOVER_BLOCK_TYPES.length; i++) {
+      window.addEventListener(
+        PVFD_HOVER_BLOCK_TYPES[i],
+        pvfdHoverBlockHandler,
+        { capture: true, passive: true }
+      );
+    }
+    for (let i = 0; i < PVFD_CHASSIS_HOVER_BLOCK_TYPES.length; i++) {
+      window.addEventListener(
+        PVFD_CHASSIS_HOVER_BLOCK_TYPES[i],
+        pvfdChassisHoverBlockHandler,
+        { capture: true, passive: true }
+      );
+    }
+  }
+
+  function attachUnsafe() {
+    pvfdDiag.attachUnsafeCalls++;
+    if (!injectChassis()) {
+      setTimeout(attach, 500);
+      return;
+    }
+    fontPresetIdx = readFontPresetIdx();
+    lcdFontPresetIdx = readLcdFontPresetIdx();
+    artPixelEnabled = safeReturn(() => window.localStorage.getItem(ART_PIXEL_STORAGE_KEY), "") === "on";
+    tintIdx = readTintIdx();
+    lcdDimmed = readDimEnabled();
+    chromeDarkEnabled = readChromeDarkEnabled();
+    logoStyleIdx = readLogoStyleIdx();
+    everScrollMode = readEverScrollMode();
+    eeqTinted = readEeqTinted();
+    ledGlowMode = readLedGlowMode();
+    knobGlowEnabled = readKnobGlowEnabled();
+    attMode = readAttMode();
+    bandPresetIdx = readBandPresetIdx();
+    performanceModeIdx = readPerformanceModeIdx();
+    mosaicState.mode = safeReturn(() => {
+      const n = parseInt(window.localStorage.getItem(MOSAIC_MODE_KEY), 10);
+      return Number.isFinite(n) && n >= 0 && n < MOSAIC_MODES.length ? n : 0;
+    }, 0);
+    logoGlowEnabled = readLogoGlowEnabled();
+    oelDisplayEnabled = readOelDisplayEnabled();
+    racingColorEnabled = readRacingColorEnabled();
+    hydrateCustomOelClipMeta();
+    clipIdx = readClipIdx();
+    refreshPvfdPerfEnabled();
+    applyBrowseFontPreset(false);
+    applyLcdFontPreset(false);
+    applyPerformanceMode(false);
+    applyTintMode(false);
+    applyDimMode(false);
+    applyChromeMode(false);
+    applyLogoStyle(false);
+    applyEverScrollMode(false);
+    applyEeqTint(false);
+    applyLedGlow(false);
+    applyKnobGlow(false);
+    applyAttMode(false);
+    applyBandPreset(false, false);
+    applyLogoGlowMode(false);
+    applyOelDisplayMode(false);
+    applyRacingColorMode(false);
+    applyArtPixel(false);
+    ensureFsdTab();
+    hydrateCustomOelClipBlob();
+    hydrateCustomFont();
+    updateRouteState(true);
+    reconcileLibrarySearchBoxes();
+    reconcileLyricsSyncButtons();
+    syncGlobalSearchFocus();
+    // Restore ADAPTIVE after applyTintMode(false) above cleared it; onTrackChange
+    // then performs the first extraction once the player/album is ready.
+    adaptiveDesired = bootTintIsAdaptive();
+    onTrackChange();
+    if (typeof Spicetify.Player.addEventListener === "function") {
+      Spicetify.Player.addEventListener("songchange", onTrackChange);
+      Spicetify.Player.addEventListener("onplaypause", () => {
+        markPlayerStateDirty();
+        setPlayButtonGlyph(safePlayerIsPlaying(false));
+      });
+    } else {
+      console.warn("[PVFD] Spicetify Player events unavailable; using polling-only sync.");
+    }
+    requestAnimationFrame(loop);
+
+    const obs = new MutationObserver(queueMutationRecords);
+    pvfdDiag.mutationObserversCreated++;
+    obs.observe(document.body, { childList: true, subtree: true });
+    installLibraryFullscreenObserver();
+
+    document.addEventListener("focusin", (e) => {
+      const box = e.target && e.target.closest && e.target.closest(".x-filterBox-filterInputContainer");
+      if (box) scheduleLibrarySearchReconcile(box, 0);
+      scheduleGlobalSearchFocusSync(e.target, 0);
+    }, true);
+
+    document.addEventListener("focusout", (e) => {
+      if (isGlobalSearchFocusTarget(e.target)) scheduleGlobalSearchFocusSync(document.activeElement, 0);
+    }, true);
+
+    installShortcutHoverBlock();
+    installChassisPointerBubbleBlock();
+
+    console.log("[PVFD] PioneerVFD online.");
+  }
+
+  attach();
+})();
