@@ -13,7 +13,7 @@ Miss the old 2000s Pioneer head units, dolphins swimming while you bump tunes? N
 
 PioneerVFD turns Spotify desktop into a 2000s Pioneer-style VFD/LCD car stereo. It replaces the stock lower player with a chrome head-unit: WebM OEL animations, RGB and mono display modes, hardware-style readouts, ATT muting, and live spectrum bars around the center badge.
 
-**v5.2.0:** Spotify 1.3 support, lyrics restored, import your own font, smoother home.
+**v5.3.0:** Home shortcuts smooth again on Spotify 1.3, repeat-one shown truthfully, lighter console readouts.
 
 Import your own clips: https://www.youtube.com/watch?v=QuRZPHMGhso
 
