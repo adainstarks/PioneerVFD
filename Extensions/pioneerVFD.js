@@ -839,6 +839,7 @@
   }
 
   function findPlayerBar() {
+    stampLayoutAliases();
     const root = document.querySelector(".Root__now-playing-bar");
     if (root) return root;
 
@@ -1685,6 +1686,12 @@
     const entityHeader = mainView && mainView.querySelector(".main-entityHeader-container");
 
     const path = currentSpotifyPath();
+    // Home on the path alone, before the hint scan: Spotify 1.3 Home cards
+    // carry data-uri="spotify:album:..." (and playlist, artist), so the scan
+    // below read Home as an album page and every body[data-pvfd-route="home"]
+    // rule - the shortcut and card hover treatment among them - went dead
+    // (seen live on 1.3.6, 2026-10-24). "/" is Home and nothing else.
+    if (path === "/" || path === "/home") return "home";
 
     const allRouteHints = mainView
       ? Array.from(mainView.querySelectorAll("[data-test-uri], [data-uri], a[href]"))
@@ -1737,7 +1744,7 @@
       !entityHeader &&
       (
         document.fullscreenElement ||
-        document.querySelector("[data-testid*='fullscreen' i], [class*='fullscreenView' i]")
+        document.querySelector("[data-testid*='fullscreen' i]:not(button):not([role='button']), [class*='fullscreenView' i]") /* 1.3.x Settings has a fullscreen-mode-button */
       )
     ) {
       return "fullscreen";
@@ -1752,6 +1759,8 @@
       pvfdPerfEnd("routeStateUpdate", perfAt);
       return pvfdRouteState.route;
     }
+    // Before the detector: it and everything below read the layout classes.
+    stampLayoutAliases();
     const nextRoute = detectPvfdRoute();
     pvfdRouteState.at = ts;
     const prevRoute = pvfdRouteState.route;
@@ -4173,6 +4182,25 @@
       // Shared with the Spicy branch above — same job, same restore.
       preLyricsPath = currentSpotifyPathRaw();
     }
+    // Drive the route, not Spotify's button. Spotify serves /lyrics for every
+    // track; its own control is the thing that varies. On a track with no
+    // lyrics the control is rendered but declines, so a click "succeeds" while
+    // nothing happens (the LYRICS key looked dead on exactly the tracks users
+    // asked about). On Spotify 1.3.6 the control no longer goes to /lyrics at
+    // all: it opens the full-window lyrics panel over a collapsed main view,
+    // so clicking it first and then pushing the route on the 260ms verdict
+    // showed Spotify's blue panel, in Spotify's face and colours, for about a
+    // second before the page took over (#50, Discord 2026-10-24: "full-screens
+    // the no lyrics screen"). The route is the one surface that behaves the
+    // same on every client, and it is where the page stamps, the DSEG14 lines
+    // and the no-lyrics cover live. The control is only a fallback for a
+    // client with no History API.
+    const drive = () =>
+      safeReturn(() => pushSpotifyPath(wasOpen ? (preLyricsPath || "/") : "/lyrics"), false);
+    if (drive()) {
+      scheduleLyricsLampSync(); // lamp reflects actual open/closed state
+      return true;
+    }
     const clicked = clickFirstOutsideChassis([
       "button[data-testid='lyrics-button']",
       "button[data-testid='control-button-lyrics']",
@@ -4185,34 +4213,9 @@
       "button[aria-label*='Lyrics' i]",
       "[role='button'][aria-label*='Lyrics' i]"
     ]);
-
-    // Drive the route ourselves whenever the click did not actually change the
-    // surface. The old code only fell back when the click FAILED, which missed
-    // the case that matters: on a track with no lyrics Spotify still renders a
-    // lyrics control, so .click() succeeds and returns true while nothing
-    // happens — the LYRICS key looked dead on exactly the tracks users then
-    // asked about. Spotify does serve /lyrics for those tracks; only its button
-    // declines. Checking the OUTCOME rather than the click also covers a
-    // renamed testid or an aria-label we matched too eagerly, without needing
-    // to know which went wrong.
-    const drive = () =>
-      safeReturn(() => pushSpotifyPath(wasOpen ? (preLyricsPath || "/") : "/lyrics"), false);
-
-    if (!clicked) {
-      const ok = drive();
-      scheduleLyricsLampSync();
-      if (!ok) console.warn("[PVFD] lyrics control unavailable");
-      return ok;
-    }
-    // A route change is not synchronous, so the verdict has to wait a beat.
-    setTimeout(() => safe(() => {
-      if (nativeLyricsSurfaceOpen() === wasOpen) {
-        drive();
-        scheduleLyricsLampSync();
-      }
-    }), 260);
-    scheduleLyricsLampSync(); // lamp reflects actual open/closed state
-    return true;
+    scheduleLyricsLampSync();
+    if (!clicked) console.warn("[PVFD] lyrics control unavailable");
+    return clicked;
   }
 
   const NPV_TOGGLE_SELECTORS = [
@@ -7207,6 +7210,67 @@
   // data-pvfd-fsdtab and the CSS keeps the tab out entirely: an unmeasured tab
   // must be absent, never parked against the WINDOW edge, where its grip would
   // land on top of the Now Playing View as an invisible hover strip.
+  // ----- Layout aliases ---------------------------------------------------
+  // Spotify 1.3.6 hashed the four root layout classes the stylesheet scopes
+  // on (.Root__main-view carries 288 selectors alone, .Root__nav-bar 57,
+  // .Root__right-sidebar 62, .Root__now-playing-bar 15), and Spicetify's class
+  // map had not caught up, so every one of those rules went dead at once: flat
+  // chassis, Spotify's Home gradient back, stock play buttons, stock carousel
+  // arrows (owner, 2026-10-24; renzzuu in #50). The layout itself is named by
+  // Spotify's own grid contract - the nodes sit in grid areas called
+  // main-view, left-sidebar, right-sidebar and now-playing-bar, and the main
+  // view also carries id="main-view" - which is the stable thing, so the
+  // readable class is put back onto whichever node occupies each area. Only
+  // added when missing: once the map restores the names this is a no-op. Runs
+  // at boot, on every sampled route tick (the right sidebar and the lyrics
+  // cinema remount their nodes) and before the chassis mounts. Cheap: four
+  // :scope queries per tick, and a style read only when an alias is absent.
+  const PVFD_LAYOUT_ALIASES = [
+    ["main-view", "Root__main-view"],
+    ["left-sidebar", "Root__nav-bar"],
+    ["right-sidebar", "Root__right-sidebar"],
+    ["now-playing-bar", "Root__now-playing-bar"],
+  ];
+  function pvfdGridAreaIs(el, name) {
+    const t = String(getComputedStyle(el).gridArea || "").split("/").map((s) => s.trim());
+    // "main-view", or the four-slot form whose first three slots are the
+    // area ("main-view / main-view / main-view / right-sidebar" when the
+    // sidebar is hidden and the view spans across).
+    return t[0] === name && (t.length === 1 || (t[1] === name && t[2] === name));
+  }
+  let pvfdLayoutAliasObserver = null;
+  let pvfdLayoutAliasHost = null;
+  function stampLayoutAliases() {
+    const tc = document.querySelector(".Root__top-container") || document.querySelector(".Root > div");
+    if (!tc) return 0;
+    // React REPLACES these nodes rather than updating them: the right sidebar
+    // is remounted every time the lyrics panel closes, the main view when it
+    // opens. A replacement arrives with no alias, and until the next sampled
+    // tick (up to 1200ms) every rule scoped on it was dead - Spotify's own
+    // sidebar, in its own colours, for a second after leaving lyrics (seen
+    // live 2026-10-24). Direct children of the grid change only on those
+    // remounts and on sidebar toggles, so a child-list observer there is all
+    // but idle, and its callback runs before the next paint.
+    if (pvfdLayoutAliasHost !== tc && typeof MutationObserver === "function") {
+      if (pvfdLayoutAliasObserver) pvfdLayoutAliasObserver.disconnect();
+      pvfdLayoutAliasHost = tc;
+      pvfdLayoutAliasObserver = new MutationObserver(() => safe(stampLayoutAliases));
+      pvfdLayoutAliasObserver.observe(tc, { childList: true });
+    }
+    const need = PVFD_LAYOUT_ALIASES.filter(([, cls]) => !tc.querySelector(":scope > ." + cls));
+    if (!need.length) return 0;
+    let n = 0;
+    const mv = document.getElementById("main-view");
+    if (mv && mv.parentElement === tc && !mv.classList.contains("Root__main-view")) { mv.classList.add("Root__main-view"); n++; }
+    for (const el of tc.children) {
+      for (const [area, cls] of need) {
+        if (el.classList.contains(cls)) continue;
+        if (pvfdGridAreaIs(el, area)) { el.classList.add(cls); n++; }
+      }
+    }
+    return n;
+  }
+
   function syncFsdTabEdge() {
     const main = safeReturn(() => document.querySelector(".Root__main-view"), null);
     if (!main || !document.body) return false;
@@ -7287,12 +7351,16 @@
     if (document.body.classList.contains("pvfd-cinema-active")) return;
     if (pvfdRouteState.route !== "lyrics") return;
     getNoLyricsEl();
-    // Attribute BEFORE the measurement. syncFsdTabEdge reads a bounding rect,
-    // which flushes style, and anything resolved in that flush is resolved
-    // against the state we have not set yet.
     noLyricsEmptySince = 0;
+    // Measure FIRST, and no curtain at all if the main view cannot be found:
+    // the cover is positioned from the measured box, and with the box unset
+    // its CSS defaults are the whole window - which on Spotify 1.3.6, where
+    // the main view's class was hashed, put a black panel over the console
+    // and every control with it (#50: "can only exit through the title bar").
+    // The panel under the curtain is hidden by default, so resolving style in
+    // this measurement before the attribute lands cannot flash it.
+    if (!syncFsdTabEdge()) return;    // the box is positioned from those vars
     document.body.setAttribute("data-pvfd-nolyrics", "wait");
-    syncFsdTabEdge();                 // the box is positioned from those vars
   }
 
   function syncNoLyricsPanel() {
@@ -7316,7 +7384,8 @@
       if (uri !== noLyricsUri) {
         noLyricsUri = uri;
         noLyricsEmptySince = 0;
-        if (!hasLines && !spicy) document.body.setAttribute("data-pvfd-nolyrics", "wait");
+        // Same rule as armNoLyricsCover: only over a measured main view.
+        if (!hasLines && !spicy && syncFsdTabEdge()) document.body.setAttribute("data-pvfd-nolyrics", "wait");
       }
       if (spicy || hasLines) {
         noLyricsEmptySince = 0;
@@ -7339,6 +7408,9 @@
 
     const current = document.body.getAttribute("data-pvfd-nolyrics");
     if (state === current) return;
+    // A verdict only lands over a measured main view (see armNoLyricsCover);
+    // unmeasured, the cover comes off rather than defaulting to the window.
+    if (state && !syncFsdTabEdge()) state = null;
     if (state === "on") {
       const el = getNoLyricsEl();
       const title = el.querySelector("[data-pvfd='nolyrics-title']");
@@ -7347,11 +7419,10 @@
         title.textContent =
           (item && (item.name || (item.metadata && item.metadata.title))) || "—";
       }
-      syncFsdTabEdge();
       document.body.setAttribute("data-pvfd-nolyrics", "on");
     } else if (state === "wait") {
       document.body.setAttribute("data-pvfd-nolyrics", "wait");
-    } else {
+    } else if (current) {
       document.body.removeAttribute("data-pvfd-nolyrics");
     }
   }
@@ -7367,7 +7438,7 @@
   // 64px one. If that convention ever changes the replace simply no-ops and the
   // full-size URL is used — the art still gets tinted, it just stops being
   // chunky, which is a far better failure than a blank panel.
-  const PVFD_NPV_ART_HOST = ".Root__right-sidebar .main-nowPlayingView-coverArt";
+  const PVFD_NPV_ART_HOST = ".Root__right-sidebar :is(.main-nowPlayingView-coverArt, .NVWh8UPr5cdJCOqxaW9c)"; // 1.3.6 hash paired live 2026-10-24
 
   function paintNpvArt() {
     const host = safeReturn(() => document.querySelector(PVFD_NPV_ART_HOST), null);
@@ -11678,8 +11749,8 @@
   function collectLibrarySearchBoxes(root = document) {
     const scope = root && root.querySelectorAll ? root : document;
     const boxes = [];
-    if (scope.matches && scope.matches(".x-filterBox-filterInputContainer")) boxes.push(scope);
-    if (scope.querySelectorAll) scope.querySelectorAll(".x-filterBox-filterInputContainer").forEach((container) => boxes.push(container));
+    if (scope.matches && scope.matches(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)")) boxes.push(scope);
+    if (scope.querySelectorAll) scope.querySelectorAll(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)").forEach((container) => boxes.push(container));
     return boxes;
   }
 
@@ -11753,7 +11824,7 @@
         container.classList.remove("pvfd-library-search-box", "pvfd-filter-has-text");
         return;
       }
-      const input = container.querySelector(".x-filterBox-filterInput");
+      const input = container.querySelector(":is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9)");
       if (!input) return;
 
       if (!patchedLibrarySearchContainers.has(container)) {
@@ -11795,10 +11866,10 @@
 
   function findLibrarySearchBox(el, includeDescendants = false) {
     if (!el || !el.matches) return null;
-    if (el.matches(".x-filterBox-filterInputContainer")) return el;
-    const closestBox = el.closest && el.closest(".x-filterBox-filterInputContainer");
+    if (el.matches(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)")) return el;
+    const closestBox = el.closest && el.closest(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)");
     if (closestBox) return closestBox;
-    if (includeDescendants && el.querySelector) return el.querySelector(".x-filterBox-filterInputContainer");
+    if (includeDescendants && el.querySelector) return el.querySelector(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)");
     return null;
   }
 
@@ -11813,8 +11884,8 @@
 
   function isLibrarySearchMutationScope(el) {
     if (!el || !el.matches) return false;
-    if (el.matches(".x-filterBox-filterInputContainer, .x-filterBox-filterInput")) return true;
-    if (el.closest && el.closest(".x-filterBox-filterInputContainer")) return true;
+    if (el.matches(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g), :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9)")) return true;
+    if (el.closest && el.closest(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)")) return true;
     return el.matches(LIBRARY_SEARCH_SCOPE_SELECTOR) || !!(el.closest && el.closest(LIBRARY_SEARCH_SCOPE_SELECTOR));
   }
 
@@ -12046,6 +12117,12 @@
   // surface costs a handful of reads.
   function tagNpvLyricsCard() {
     if (!document.body) return;
+    // The split below is "inside the main view / inside the right sidebar /
+    // elsewhere (the full-window panel)". Without either landmark every root
+    // reads as the panel, which flagged the sidebar card on every page once
+    // Spotify 1.3.6 hashed the layout classes. Landmarks come from
+    // stampLayoutAliases; if neither is there yet, leave the flag as it is.
+    if (!document.querySelector(".Root__main-view") && !document.querySelector(".Root__right-sidebar")) return;
     const roots = document.querySelectorAll("[style*='--lyrics-color-active']");
     let panel = false;
     for (let i = 0; i < roots.length; i++) {
@@ -12661,7 +12738,7 @@
     installLibraryFullscreenObserver();
 
     document.addEventListener("focusin", (e) => {
-      const box = e.target && e.target.closest && e.target.closest(".x-filterBox-filterInputContainer");
+      const box = e.target && e.target.closest && e.target.closest(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)");
       if (box) scheduleLibrarySearchReconcile(box, 0);
       scheduleGlobalSearchFocusSync(e.target, 0);
     }, true);
