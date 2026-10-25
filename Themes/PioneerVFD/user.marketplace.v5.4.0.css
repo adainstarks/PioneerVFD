@@ -393,12 +393,25 @@ body.pvfd-theme-active:is(
 body.pvfd-theme-active :is(.CsidsUzBet0_Mp5i, .EP3LBOia3Hgj7HnbQvxB)::before,
 body.pvfd-theme-active :is(.CsidsUzBet0_Mp5i, .EP3LBOia3Hgj7HnbQvxB)::after,
 body.pvfd-theme-active [style*="--carousel-start-chevron-gradient"]::before,
-body.pvfd-theme-active [style*="--carousel-end-chevron-gradient"]::after {
+body.pvfd-theme-active [style*="--carousel-end-chevron-gradient"]::after,
+/* Spotify 1.3.6: the fade moved onto the carousel's content area (the same
+   element on Home shelves, genre chip rows and search categories, paired as
+   .search-searchCategory-contentArea), with the two gradient variables set by
+   a class rule on that element rather than inline. Set on the element, they
+   out-rank the transparent values on body, so both the pseudos and the
+   variables are handled right there (owner, 2026-10-24: "grey fade on the
+   sides of the carousels at home, still there but it didnt used to be"). */
+body.pvfd-theme-active :is(.search-searchCategory-contentArea, .tPfod6L1Bt5VzxPtQjsx)::before,
+body.pvfd-theme-active :is(.search-searchCategory-contentArea, .tPfod6L1Bt5VzxPtQjsx)::after {
   content: none !important;
   background: none !important;
   background-image: none !important;
   opacity: 0 !important;
   display: none !important;
+}
+body.pvfd-theme-active :is(.search-searchCategory-contentArea, .tPfod6L1Bt5VzxPtQjsx) {
+  --carousel-start-chevron-gradient: transparent !important;
+  --carousel-end-chevron-gradient: transparent !important;
 }
 
 
