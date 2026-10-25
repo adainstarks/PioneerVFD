@@ -341,7 +341,7 @@ body.pvfd-theme-active {
 body.pvfd-theme-active .Root__main-view :is(
   .main-view-container__scroll-node.main-actionBar-ActionBarContainer,
   .main-actionBar-ActionBarContainer,
-  :is(.main-actionBarBackground-background, .M7ECcaA17LC8UqL2GKVD),
+  :is(:is(.main-actionBarBackground-background, .r8bczAWCEgb9_L0iyIcc, .IfBZ5VdI_2nwDMl4H6Yh), .M7ECcaA17LC8UqL2GKVD),
   .playlist-playlist-actionBarBackground-background
 ),
 body.pvfd-theme-active:is(
@@ -350,9 +350,9 @@ body.pvfd-theme-active:is(
   [data-pvfd-route="profile"],
   [data-pvfd-route="artist"]
 ) .Root__main-view :is(
-  :is(.main-entityHeader-backgroundColor, .kMUtWcOMOZmCWTMAc_gu),
-  :is(:is(.main-actionBarBackground-background, .M7ECcaA17LC8UqL2GKVD), .playlist-playlist-actionBarBackground-background),
-  :is(.main-entityHeader-backgroundColor, .kMUtWcOMOZmCWTMAc_gu)
+  :is(.main-entityHeader-backgroundColor, .hbNOZbHD3bPL3OcHQWNn, .kMUtWcOMOZmCWTMAc_gu, .uP1rcUSIWCFaOZaoH0ZG),
+  :is(:is(:is(.main-actionBarBackground-background, .r8bczAWCEgb9_L0iyIcc, .IfBZ5VdI_2nwDMl4H6Yh), .M7ECcaA17LC8UqL2GKVD), .playlist-playlist-actionBarBackground-background),
+  :is(.main-entityHeader-backgroundColor, .hbNOZbHD3bPL3OcHQWNn, .kMUtWcOMOZmCWTMAc_gu, .uP1rcUSIWCFaOZaoH0ZG)
 ) {
   --background-base: var(--pvfd-lcd-void) !important;
   --background-highlight: rgba(var(--pvfd-light-deep-rgb), 0.16) !important;
@@ -393,12 +393,25 @@ body.pvfd-theme-active:is(
 body.pvfd-theme-active :is(.CsidsUzBet0_Mp5i, .EP3LBOia3Hgj7HnbQvxB)::before,
 body.pvfd-theme-active :is(.CsidsUzBet0_Mp5i, .EP3LBOia3Hgj7HnbQvxB)::after,
 body.pvfd-theme-active [style*="--carousel-start-chevron-gradient"]::before,
-body.pvfd-theme-active [style*="--carousel-end-chevron-gradient"]::after {
+body.pvfd-theme-active [style*="--carousel-end-chevron-gradient"]::after,
+/* Spotify 1.3.6: the fade moved onto the carousel's content area (the same
+   element on Home shelves, genre chip rows and search categories, paired as
+   .search-searchCategory-contentArea), with the two gradient variables set by
+   a class rule on that element rather than inline. Set on the element, they
+   out-rank the transparent values on body, so both the pseudos and the
+   variables are handled right there (owner, 2026-10-24: "grey fade on the
+   sides of the carousels at home, still there but it didnt used to be"). */
+body.pvfd-theme-active :is(.search-searchCategory-contentArea, .tPfod6L1Bt5VzxPtQjsx)::before,
+body.pvfd-theme-active :is(.search-searchCategory-contentArea, .tPfod6L1Bt5VzxPtQjsx)::after {
   content: none !important;
   background: none !important;
   background-image: none !important;
   opacity: 0 !important;
   display: none !important;
+}
+body.pvfd-theme-active :is(.search-searchCategory-contentArea, .tPfod6L1Bt5VzxPtQjsx) {
+  --carousel-start-chevron-gradient: transparent !important;
+  --carousel-end-chevron-gradient: transparent !important;
 }
 
 
@@ -512,7 +525,7 @@ h1, h2, h3,
 
 
 .main-card-card,
-.main-trackList-trackList {
+:is(.main-trackList-trackList, .CZ8iCvJmvbL4HX68y0KW) {
   background:
     linear-gradient(
       180deg,
@@ -535,17 +548,17 @@ h1, h2, h3,
 }
 
 
-.main-trackList-trackListRow {
+:is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) {
   border-bottom: 1px solid rgba(var(--pvfd-accent-dim-rgb), 0.60);
 }
 
 
-.main-trackList-trackListRow:hover {
+:is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y):hover {
   background: rgba(var(--pvfd-light-deep-rgb), 0.06) !important;
 }
 
 
-.main-trackList-trackListRow .main-trackList-rowTitle {
+:is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) :is(.main-trackList-rowTitle, .WvhEXhNiDbsGHjHOSn8t) {
   color: var(--pvfd-cyan) !important;
   text-shadow: var(--pvfd-glow-cyan);
 }
@@ -566,8 +579,8 @@ h1, h2, h3,
    2026-06-11: row had --index-column-width: 5ch yet template said 16px).
    Spotify never sets --index-column-width itself on this surface; the
    !important is just insurance against future inline writes. */
-body.pvfd-theme-active .main-trackList-trackList,
-body.pvfd-theme-active .main-trackList-trackListRowGrid {
+body.pvfd-theme-active :is(.main-trackList-trackList, .CZ8iCvJmvbL4HX68y0KW),
+body.pvfd-theme-active :is(.main-trackList-trackListRowGrid, .Jkul2hYwJZhZQGymDO5p) {
   --index-column-width: 5ch !important;
   --tracklist-index-column-width: 5ch !important;
 }
@@ -583,10 +596,10 @@ body.pvfd-theme-active .main-trackList-trackListRowGrid {
    album art, i.e. "normal". The number keeps its right anchor
    (inset-inline-end:.25em) so 4-digit counts still fit. The extra
    .main-trackList-rowMarker in the selector out-specifies the reskin rule. */
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRowGrid
-  .main-trackList-rowMarker .main-trackList-rowImagePlayButton,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow
-  .main-trackList-rowMarker .main-trackList-rowImagePlayButton {
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRowGrid, .Jkul2hYwJZhZQGymDO5p)
+  :is(.main-trackList-rowMarker, .i4al53dvQH5ltFut6LyQ) :is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E),
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y)
+  :is(.main-trackList-rowMarker, .i4al53dvQH5ltFut6LyQ) :is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) {
   inline-size: 100% !important;
   width: 100% !important;
   justify-content: center !important;
@@ -786,7 +799,7 @@ footer[class*="connect"], .pvfd-nevermatch {
    The right cluster (bell/friends/avatar) and surrounding layout stay
    exactly the same in both states, so nothing else needs to be touched. */
 body.pvfd-theme-active .Root__globalNav.searchInputCollapsed:not(.forceExpandSearchInput)
-  .main-globalNav-searchInputSection > .main-globalNav-searchInputContainer {
+  :is(.main-globalNav-searchInputSection, .UmbvWivEpyn9EExmm6oQ) > :is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) {
   width: 238px !important;
 }
 
@@ -5265,7 +5278,7 @@ nav[aria-label="Main"] button[aria-label*="Recents" i] {
 }
 
 
-.pvfd-library-search-box .x-filterBox-filterInput {
+.pvfd-library-search-box :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9) {
   position: relative !important;
   z-index: 2 !important;
   width: 100% !important;
@@ -5294,15 +5307,15 @@ nav[aria-label="Main"] button[aria-label*="Recents" i] {
 }
 
 
-.pvfd-library-search-box .x-filterBox-filterInput::placeholder {
+.pvfd-library-search-box :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9)::placeholder {
   color: transparent !important;
   opacity: 0 !important;
   text-shadow: none !important;
 }
 
 
-.pvfd-library-search-box .x-filterBox-overlay,
-.pvfd-library-search-box .x-filterBox-searchIconContainer,
+.pvfd-library-search-box :is(.x-filterBox-overlay, .O6lWIfkdVrTYW3JSTGsQ),
+.pvfd-library-search-box :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a),
 .pvfd-library-search-box :is(button, [role="button"]) {
   background: transparent !important;
   border: 0 !important;
@@ -5312,7 +5325,7 @@ nav[aria-label="Main"] button[aria-label*="Recents" i] {
 
 
 
-.pvfd-library-search-box .x-filterBox-searchIconContainer {
+.pvfd-library-search-box :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a) {
   position: absolute !important;
   z-index: 3 !important;
   left: 8px !important;
@@ -5341,21 +5354,21 @@ nav[aria-label="Main"] button[aria-label*="Recents" i] {
 }
 
 
-.pvfd-library-search-box .x-filterBox-overlay {
+.pvfd-library-search-box :is(.x-filterBox-overlay, .O6lWIfkdVrTYW3JSTGsQ) {
   position: absolute !important;
   inset: 0 !important;
   pointer-events: none !important;
 }
 
 
-.pvfd-library-search-box.pvfd-filter-has-text .x-filterBox-searchIconContainer {
+.pvfd-library-search-box.pvfd-filter-has-text :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a) {
   opacity: 0 !important;
   visibility: hidden !important;
 }
 
 
 .Root__nav-bar [data-testid="no-search-results-view"],
-.main-yourLibraryX-library [data-testid="no-search-results-view"] {
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) [data-testid="no-search-results-view"] {
   width: calc(100% - 28px) !important;
   max-width: 340px !important;
   min-height: 96px !important;
@@ -5374,7 +5387,7 @@ nav[aria-label="Main"] button[aria-label*="Recents" i] {
 
 
 .Root__nav-bar [data-testid="no-search-results-view"] :is([data-encore-id="text"], h1, h2, p, span),
-.main-yourLibraryX-library [data-testid="no-search-results-view"] :is([data-encore-id="text"], h1, h2, p, span) {
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) [data-testid="no-search-results-view"] :is([data-encore-id="text"], h1, h2, p, span) {
   color: rgba(var(--pvfd-light-rgb),0.9) !important;
   opacity: 1 !important;
   font-family: var(--pvfd-font-pixel) !important;
@@ -8097,10 +8110,10 @@ body[data-pvfd-performance="eco"] .pvfd-library-search-box {
 
 
 /* v2.31: make the sticky header play control float on the banner color. */
-.Root__top-bar .main-playButton-PlayButton button,
-.Root__top-bar .main-playButton-PlayButton button,
-.main-topBar-container .main-playButton-PlayButton button,
-.main-topBar-container .main-playButton-PlayButton button {
+.Root__top-bar :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button,
+.Root__top-bar :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button,
+.main-topBar-container :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button,
+.main-topBar-container :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
@@ -8109,10 +8122,10 @@ body[data-pvfd-performance="eco"] .pvfd-library-search-box {
 }
 
 
-.Root__top-bar .main-playButton-PlayButton button *,
-.Root__top-bar .main-playButton-PlayButton button *,
-.main-topBar-container .main-playButton-PlayButton button *,
-.main-topBar-container .main-playButton-PlayButton button * {
+.Root__top-bar :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button *,
+.Root__top-bar :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button *,
+.main-topBar-container :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button *,
+.main-topBar-container :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button * {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
@@ -8120,28 +8133,28 @@ body[data-pvfd-performance="eco"] .pvfd-library-search-box {
 }
 
 
-.Root__top-bar .main-playButton-PlayButton button svg,
-.Root__top-bar .main-playButton-PlayButton button svg,
-.main-topBar-container .main-playButton-PlayButton button svg,
-.main-topBar-container .main-playButton-PlayButton button svg {
+.Root__top-bar :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button svg,
+.Root__top-bar :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button svg,
+.main-topBar-container :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button svg,
+.main-topBar-container :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button svg {
   color: var(--pvfd-cyan) !important;
   fill: currentColor !important;
   filter: drop-shadow(0 0 4px rgba(var(--pvfd-light-rgb), 0.58)) !important;
 }
 
 
-.Root__top-bar .main-playButton-PlayButton button:hover,
-.Root__top-bar .main-playButton-PlayButton button:hover,
-.main-topBar-container .main-playButton-PlayButton button:hover,
-.main-topBar-container .main-playButton-PlayButton button:hover {
+.Root__top-bar :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button:hover,
+.Root__top-bar :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button:hover,
+.main-topBar-container :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button:hover,
+.main-topBar-container :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button:hover {
   background: rgba(var(--pvfd-light-rgb), 0.07) !important;
 }
 
 
 /* v2.32: dock the scrolled track-list header directly under the capped top bar. */
-.Root__main-view .main-trackList-trackListHeader,
-.Root__main-view .main-trackList-trackListHeaderRow,
-.Root__main-view :is(.main-trackList-durationHeader, .main-trackList-trackListHeader, .main-trackList-trackListHeaderRow):is(.main-trackList-durationHeader, .main-trackList-trackListHeader, .main-trackList-trackListHeaderRow),
+.Root__main-view :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc),
+.Root__main-view :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8),
+.Root__main-view :is(:is(.main-trackList-durationHeader, .K3Lk0rC_cS5HIwOfAdPY), :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc), :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8)):is(:is(.main-trackList-durationHeader, .K3Lk0rC_cS5HIwOfAdPY), :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc), :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8)),
 .Root__main-view .pvfd-nevermatch,
 .Root__main-view [data-testid*="tracklist-header" i],
 .Root__main-view [role="row"][aria-rowindex="1"] {
@@ -8151,9 +8164,9 @@ body[data-pvfd-performance="eco"] .pvfd-library-search-box {
 }
 
 
-.Root__main-view .main-trackList-trackListHeader::before,
-.Root__main-view .main-trackList-trackListHeaderRow::before,
-.Root__main-view :is(.main-trackList-durationHeader, .main-trackList-trackListHeader, .main-trackList-trackListHeaderRow):is(.main-trackList-durationHeader, .main-trackList-trackListHeader, .main-trackList-trackListHeaderRow)::before,
+.Root__main-view :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc)::before,
+.Root__main-view :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8)::before,
+.Root__main-view :is(:is(.main-trackList-durationHeader, .K3Lk0rC_cS5HIwOfAdPY), :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc), :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8)):is(:is(.main-trackList-durationHeader, .K3Lk0rC_cS5HIwOfAdPY), :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc), :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8))::before,
 .Root__main-view .pvfd-nevermatch::before,
 .Root__main-view [data-testid*="tracklist-header" i]::before {
   display: none !important;
@@ -8161,9 +8174,9 @@ body[data-pvfd-performance="eco"] .pvfd-library-search-box {
 
 
 @media (max-width: 1040px) {
-  .Root__main-view .main-trackList-trackListHeader,
-  .Root__main-view .main-trackList-trackListHeaderRow,
-  .Root__main-view :is(.main-trackList-durationHeader, .main-trackList-trackListHeader, .main-trackList-trackListHeaderRow):is(.main-trackList-durationHeader, .main-trackList-trackListHeader, .main-trackList-trackListHeaderRow),
+  .Root__main-view :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc),
+  .Root__main-view :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8),
+  .Root__main-view :is(:is(.main-trackList-durationHeader, .K3Lk0rC_cS5HIwOfAdPY), :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc), :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8)):is(:is(.main-trackList-durationHeader, .K3Lk0rC_cS5HIwOfAdPY), :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc), :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8)),
   .Root__main-view .pvfd-nevermatch,
   .Root__main-view [data-testid*="tracklist-header" i],
   .Root__main-view [role="row"][aria-rowindex="1"] {
@@ -8174,7 +8187,7 @@ body[data-pvfd-performance="eco"] .pvfd-library-search-box {
 /* Sticky playlist column header. Spotify pins this exact wrapper under the
    topbar while scrolling; give it the same solid header band instead of a
    separate row tint. Keep this exact so virtualized track rows stay cheap. */
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListHeaderRow.main-trackList-trackListRowGrid {
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8):is(.main-trackList-trackListRowGrid, .Jkul2hYwJZhZQGymDO5p) {
   --pvfd-sticky-track-header-bg: color-mix(
     in srgb,
     rgb(var(--pvfd-light-deep-rgb)) 48%,
@@ -8191,7 +8204,7 @@ body.pvfd-theme-active .Root__main-view .main-trackList-trackListHeaderRow.main-
 }
 
 
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListHeaderRow.main-trackList-trackListRowGrid :is(span, div, button, [data-encore-id="text"]) {
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8):is(.main-trackList-trackListRowGrid, .Jkul2hYwJZhZQGymDO5p) :is(span, div, button, [data-encore-id="text"]) {
   color: var(--pvfd-text-main) !important;
   -webkit-text-fill-color: currentColor !important;
 }
@@ -8220,9 +8233,9 @@ body.pvfd-theme-active .Root__main-view :is(.artist-artistDiscography-topBar, .m
 }
 
 body.pvfd-theme-active .Root__main-view :is(.artist-artistDiscography-tracklist, .Kk1wrqS3hIvjOFLxYHSy) :is(
-  .main-trackList-trackListHeader,
-  .main-trackList-trackListHeaderRow,
-  :is(.main-trackList-durationHeader, .main-trackList-trackListHeader, .main-trackList-trackListHeaderRow):is(.main-trackList-durationHeader, .main-trackList-trackListHeader, .main-trackList-trackListHeaderRow),
+  :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc),
+  :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8),
+  :is(:is(.main-trackList-durationHeader, .K3Lk0rC_cS5HIwOfAdPY), :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc), :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8)):is(:is(.main-trackList-durationHeader, .K3Lk0rC_cS5HIwOfAdPY), :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc), :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8)),
   .pvfd-nevermatch,
   [data-testid*="tracklist-header" i],
   [role="row"][aria-rowindex="1"]
@@ -8236,9 +8249,9 @@ body.pvfd-theme-active .Root__main-view :is(.artist-artistDiscography-tracklist,
     top: 44px !important;
   }
   body.pvfd-theme-active .Root__main-view :is(.artist-artistDiscography-tracklist, .Kk1wrqS3hIvjOFLxYHSy) :is(
-    .main-trackList-trackListHeader,
-    .main-trackList-trackListHeaderRow,
-    :is(.main-trackList-durationHeader, .main-trackList-trackListHeader, .main-trackList-trackListHeaderRow):is(.main-trackList-durationHeader, .main-trackList-trackListHeader, .main-trackList-trackListHeaderRow),
+    :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc),
+    :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8),
+    :is(:is(.main-trackList-durationHeader, .K3Lk0rC_cS5HIwOfAdPY), :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc), :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8)):is(:is(.main-trackList-durationHeader, .K3Lk0rC_cS5HIwOfAdPY), :is(.main-trackList-trackListHeader, .rrn0EjHTu7eCxn9G0Rrc), :is(.main-trackList-trackListHeaderRow, .wa2PCV98IHUuN_LjuUV8)),
     .pvfd-nevermatch,
     [data-testid*="tracklist-header" i],
     [role="row"][aria-rowindex="1"]
@@ -8350,7 +8363,25 @@ body.pvfd-theme-active .Root__main-view :is(.artist-artistDiscography-tracklist,
 }
 
 
-.Root__nav-bar :is(.main-yourLibraryX-library, [class*="yourLibrary" i], [class*="YourLibrary" i], [data-testid*="library" i]),
+/* The host wrappers Spotify mounts each panel's app into paint an opaque
+   --background-base of their own. Through 1.3.1 the library's was
+   .main-yourLibraryX-entryPoints.main-yourLibraryX-library and the
+   [class*="yourLibrary"] form below caught it; 1.3.6 names it with two bare
+   hashes (and the right sidebar's likewise), so the void sat over the LCD skin
+   and the dot matrix vanished from both side panels (owner, 2026-10-24).
+   Named structurally - the first child of the nav and of the sidebar - so the
+   next hash rotation cannot bring the void back; the hashes ride along. */
+.Root__nav-bar > nav > div:first-child,
+.Root__nav-bar > nav > .u3xv0vOK9EJmOplXOrhG,
+.Root__right-sidebar > div:first-child,
+.Root__right-sidebar > .xyTYq7imng71iO6y2eGQ,
+/* Spotify 1.3.6's Now Playing root (first child of the aside) paints the same
+   opaque --background-base with its own 8px rounding; on 1.3.1 the widget had
+   layout only and the skin showed through, as it still does in the library
+   bar. The panel's own cards keep their elevated ground (owner, 2026-10-24). */
+.Root__right-sidebar aside > div:first-child,
+.Root__right-sidebar .vVF0gCDG9l8RCOK3_2kw,
+.Root__nav-bar :is(:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf), [class*="yourLibrary" i], [class*="YourLibrary" i], [data-testid*="library" i]),
 .Root__right-sidebar :is(section, aside, [class*="nowPlaying" i], [class*="NowPlaying" i], [data-testid*="now-playing" i]) {
   background-color: transparent !important;
   background-image: none !important;
@@ -8403,10 +8434,10 @@ body.pvfd-theme-active .Root__main-view :is(.artist-artistDiscography-tracklist,
 
 
 
-.Root__top-bar .main-playButton-PlayButton button :is(svg, path, polygon),
-.Root__top-bar .main-playButton-PlayButton button :is(svg, path, polygon),
-.main-topBar-container .main-playButton-PlayButton button :is(svg, path, polygon),
-.main-topBar-container .main-playButton-PlayButton button :is(svg, path, polygon) {
+.Root__top-bar :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button :is(svg, path, polygon),
+.Root__top-bar :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button :is(svg, path, polygon),
+.main-topBar-container :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button :is(svg, path, polygon),
+.main-topBar-container :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button :is(svg, path, polygon) {
   fill: currentColor !important;
   stroke: none !important;
 }
@@ -9161,8 +9192,8 @@ body:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
    whole button; Encore also paints inner wrappers. On a tiny square that reads as
    a solid black box behind the glyph. Force transparent fills on the control and
    direct children; hover is outline-only so the icon floats on the panel texture. */
-.Root__nav-bar :is(.main-yourLibraryX-headerIsCollapsed, .ZjXMMvh8qMKX0kipRuCn, .L8BqvioGh2h_qh1G4CX0) .main-yourLibraryX-collapseButton :is(button, [role="button"]),
-.Root__nav-bar :is(.main-yourLibraryX-headerIsCollapsed, .ZjXMMvh8qMKX0kipRuCn, .L8BqvioGh2h_qh1G4CX0) .main-yourLibraryX-collapseButton :is(button, [role="button"]) > :is(span, div) {
+.Root__nav-bar :is(.main-yourLibraryX-headerIsCollapsed, .ZjXMMvh8qMKX0kipRuCn, .L8BqvioGh2h_qh1G4CX0) :is(.main-yourLibraryX-collapseButton, .vw8hdZ9V2NHWZCYuJsLt) :is(button, [role="button"]),
+.Root__nav-bar :is(.main-yourLibraryX-headerIsCollapsed, .ZjXMMvh8qMKX0kipRuCn, .L8BqvioGh2h_qh1G4CX0) :is(.main-yourLibraryX-collapseButton, .vw8hdZ9V2NHWZCYuJsLt) :is(button, [role="button"]) > :is(span, div) {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
@@ -9171,17 +9202,17 @@ body:not([data-pvfd-performance="eco"]) .Root__right-sidebar :is(.main-card-card
 
 :is(.Root__nav-bar, nav[aria-label="Main"])
   :is(.main-yourLibraryX-headerIsCollapsed, .ZjXMMvh8qMKX0kipRuCn, .L8BqvioGh2h_qh1G4CX0)
-  .main-yourLibraryX-collapseButton
+  :is(.main-yourLibraryX-collapseButton, .vw8hdZ9V2NHWZCYuJsLt)
   :is(button, [role="button"]):is(:hover, :focus-visible),
 body:not([data-pvfd-performance="eco"])
   .Root__nav-bar
   :is(.main-yourLibraryX-headerIsCollapsed, .ZjXMMvh8qMKX0kipRuCn, .L8BqvioGh2h_qh1G4CX0)
-  .main-yourLibraryX-collapseButton
+  :is(.main-yourLibraryX-collapseButton, .vw8hdZ9V2NHWZCYuJsLt)
   :is(button, [role="button"]):is(:hover, :focus-visible),
 body[data-pvfd-performance="eco"]
   .Root__nav-bar
   :is(.main-yourLibraryX-headerIsCollapsed, .ZjXMMvh8qMKX0kipRuCn, .L8BqvioGh2h_qh1G4CX0)
-  .main-yourLibraryX-collapseButton
+  :is(.main-yourLibraryX-collapseButton, .vw8hdZ9V2NHWZCYuJsLt)
   :is(button, [role="button"]):is(:hover, :focus-visible) {
   background: transparent !important;
   background-color: transparent !important;
@@ -9214,10 +9245,10 @@ body[data-pvfd-performance="eco"]
 */
 
 /* Only the immediate toolbar row around the search box. Not every ancestor. */
-.Root__nav-bar :is(div, section):has(> .x-filterBox-filterInputContainer),
-nav[aria-label="Main"] :is(div, section):has(> .x-filterBox-filterInputContainer),
-[role="navigation"] :is(div, section):has(> .x-filterBox-filterInputContainer),
-.main-yourLibraryX-library :is(div, section):has(> .x-filterBox-filterInputContainer) {
+.Root__nav-bar :is(div, section):has(> :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)),
+nav[aria-label="Main"] :is(div, section):has(> :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)),
+[role="navigation"] :is(div, section):has(> :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)),
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) :is(div, section):has(> :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)) {
   display: flex !important;
   align-items: center !important;
   gap: 8px !important;
@@ -9227,10 +9258,10 @@ nav[aria-label="Main"] :is(div, section):has(> .x-filterBox-filterInputContainer
 
 
 /* Static left-library search box. */
-.Root__nav-bar .x-filterBox-filterInputContainer,
-nav[aria-label="Main"] .x-filterBox-filterInputContainer,
-[role="navigation"] .x-filterBox-filterInputContainer,
-.main-yourLibraryX-library .x-filterBox-filterInputContainer,
+.Root__nav-bar :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g),
+nav[aria-label="Main"] :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g),
+[role="navigation"] :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g),
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g),
 .pvfd-library-search-box {
   position: relative !important;
   display: flex !important;
@@ -9264,10 +9295,10 @@ nav[aria-label="Main"] .x-filterBox-filterInputContainer,
 }
 
 
-.Root__nav-bar .x-filterBox-filterInputContainer:focus-within,
-nav[aria-label="Main"] .x-filterBox-filterInputContainer:focus-within,
-[role="navigation"] .x-filterBox-filterInputContainer:focus-within,
-.main-yourLibraryX-library .x-filterBox-filterInputContainer:focus-within,
+.Root__nav-bar :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g):focus-within,
+nav[aria-label="Main"] :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g):focus-within,
+[role="navigation"] :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g):focus-within,
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g):focus-within,
 .pvfd-library-search-box:focus-within {
   border-color: rgba(var(--pvfd-light-rgb), 0.62) !important;
 
@@ -9280,11 +9311,11 @@ nav[aria-label="Main"] .x-filterBox-filterInputContainer:focus-within,
 }
 
 
-.Root__nav-bar .x-filterBox-filterInput,
-nav[aria-label="Main"] .x-filterBox-filterInput,
-[role="navigation"] .x-filterBox-filterInput,
-.main-yourLibraryX-library .x-filterBox-filterInput,
-.pvfd-library-search-box .x-filterBox-filterInput {
+.Root__nav-bar :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9),
+nav[aria-label="Main"] :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9),
+[role="navigation"] :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9),
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9),
+.pvfd-library-search-box :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9) {
   position: relative !important;
   z-index: 2 !important;
   width: 100% !important;
@@ -9313,11 +9344,11 @@ nav[aria-label="Main"] .x-filterBox-filterInput,
 }
 
 
-.Root__nav-bar .x-filterBox-filterInput::placeholder,
-nav[aria-label="Main"] .x-filterBox-filterInput::placeholder,
-[role="navigation"] .x-filterBox-filterInput::placeholder,
-.main-yourLibraryX-library .x-filterBox-filterInput::placeholder,
-.pvfd-library-search-box .x-filterBox-filterInput::placeholder {
+.Root__nav-bar :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9)::placeholder,
+nav[aria-label="Main"] :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9)::placeholder,
+[role="navigation"] :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9)::placeholder,
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9)::placeholder,
+.pvfd-library-search-box :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9)::placeholder {
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
   opacity: 0 !important;
@@ -9325,16 +9356,16 @@ nav[aria-label="Main"] .x-filterBox-filterInput::placeholder,
 }
 
 
-.Root__nav-bar .x-filterBox-overlay,
-.Root__nav-bar .x-filterBox-searchIconContainer,
-nav[aria-label="Main"] .x-filterBox-overlay,
-nav[aria-label="Main"] .x-filterBox-searchIconContainer,
-[role="navigation"] .x-filterBox-overlay,
-[role="navigation"] .x-filterBox-searchIconContainer,
-.main-yourLibraryX-library .x-filterBox-overlay,
-.main-yourLibraryX-library .x-filterBox-searchIconContainer,
-.pvfd-library-search-box .x-filterBox-overlay,
-.pvfd-library-search-box .x-filterBox-searchIconContainer {
+.Root__nav-bar :is(.x-filterBox-overlay, .O6lWIfkdVrTYW3JSTGsQ),
+.Root__nav-bar :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a),
+nav[aria-label="Main"] :is(.x-filterBox-overlay, .O6lWIfkdVrTYW3JSTGsQ),
+nav[aria-label="Main"] :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a),
+[role="navigation"] :is(.x-filterBox-overlay, .O6lWIfkdVrTYW3JSTGsQ),
+[role="navigation"] :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a),
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) :is(.x-filterBox-overlay, .O6lWIfkdVrTYW3JSTGsQ),
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a),
+.pvfd-library-search-box :is(.x-filterBox-overlay, .O6lWIfkdVrTYW3JSTGsQ),
+.pvfd-library-search-box :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a) {
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
@@ -9342,11 +9373,11 @@ nav[aria-label="Main"] .x-filterBox-searchIconContainer,
 }
 
 
-.Root__nav-bar .x-filterBox-searchIconContainer,
-nav[aria-label="Main"] .x-filterBox-searchIconContainer,
-[role="navigation"] .x-filterBox-searchIconContainer,
-.main-yourLibraryX-library .x-filterBox-searchIconContainer,
-.pvfd-library-search-box .x-filterBox-searchIconContainer {
+.Root__nav-bar :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a),
+nav[aria-label="Main"] :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a),
+[role="navigation"] :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a),
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a),
+.pvfd-library-search-box :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a) {
   position: absolute !important;
   z-index: 3 !important;
   left: 8px !important;
@@ -9368,11 +9399,11 @@ nav[aria-label="Main"] .x-filterBox-searchIconContainer,
 }
 
 
-.Root__nav-bar .x-filterBox-searchIconContainer :is(svg, path),
-nav[aria-label="Main"] .x-filterBox-searchIconContainer :is(svg, path),
-[role="navigation"] .x-filterBox-searchIconContainer :is(svg, path),
-.main-yourLibraryX-library .x-filterBox-searchIconContainer :is(svg, path),
-.pvfd-library-search-box .x-filterBox-searchIconContainer :is(svg, path) {
+.Root__nav-bar :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a) :is(svg, path),
+nav[aria-label="Main"] :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a) :is(svg, path),
+[role="navigation"] :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a) :is(svg, path),
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a) :is(svg, path),
+.pvfd-library-search-box :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a) :is(svg, path) {
   color: var(--pvfd-cyan-glow) !important;
   fill: currentColor !important;
   stroke: none !important;
@@ -9380,11 +9411,11 @@ nav[aria-label="Main"] .x-filterBox-searchIconContainer :is(svg, path),
 }
 
 
-.Root__nav-bar .x-filterBox-overlay,
-nav[aria-label="Main"] .x-filterBox-overlay,
-[role="navigation"] .x-filterBox-overlay,
-.main-yourLibraryX-library .x-filterBox-overlay,
-.pvfd-library-search-box .x-filterBox-overlay {
+.Root__nav-bar :is(.x-filterBox-overlay, .O6lWIfkdVrTYW3JSTGsQ),
+nav[aria-label="Main"] :is(.x-filterBox-overlay, .O6lWIfkdVrTYW3JSTGsQ),
+[role="navigation"] :is(.x-filterBox-overlay, .O6lWIfkdVrTYW3JSTGsQ),
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) :is(.x-filterBox-overlay, .O6lWIfkdVrTYW3JSTGsQ),
+.pvfd-library-search-box :is(.x-filterBox-overlay, .O6lWIfkdVrTYW3JSTGsQ) {
   position: absolute !important;
   inset: 0 !important;
   pointer-events: none !important;
@@ -9395,7 +9426,7 @@ nav[aria-label="Main"] .x-filterBox-overlay,
 .Root__nav-bar :is(button, [role="button"]):is([aria-label*="Recents" i], [title*="Recents" i], [data-testid*="recents" i], [class*="recents" i], [class*="Recents"]),
 nav[aria-label="Main"] :is(button, [role="button"]):is([aria-label*="Recents" i], [title*="Recents" i], [data-testid*="recents" i], [class*="recents" i], [class*="Recents"]),
 [role="navigation"] :is(button, [role="button"]):is([aria-label*="Recents" i], [title*="Recents" i], [data-testid*="recents" i], [class*="recents" i], [class*="Recents"]),
-.main-yourLibraryX-library :is(button, [role="button"]):is([aria-label*="Recents" i], [title*="Recents" i], [data-testid*="recents" i], [class*="recents" i], [class*="Recents"]),
+:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf) :is(button, [role="button"]):is([aria-label*="Recents" i], [title*="Recents" i], [data-testid*="recents" i], [class*="recents" i], [class*="Recents"]),
 .pvfd-library-recents-control {
   display: inline-flex !important;
   align-items: center !important;
@@ -9429,7 +9460,7 @@ nav[aria-label="Main"] :is(button, [role="button"]):is([aria-label*="Recents" i]
 
 /* Global nav search box: one outer frame only. */
 body.pvfd-theme-active #global-nav-bar
-  .main-globalNav-searchInputContainer {
+  :is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) {
   --pvfd-search-frame: rgba(var(--pvfd-light-mid-rgb), 0.82);
   --pvfd-search-frame-soft: rgba(var(--pvfd-accent-dim-rgb), 0.42);
 
@@ -9444,7 +9475,7 @@ body.pvfd-theme-active #global-nav-bar
 
 /* Focus state: same frame, just a tiny bit hotter. */
 body.pvfd-theme-active #global-nav-bar
-  .main-globalNav-searchInputContainer:focus-within {
+  :is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S):focus-within {
   border-color: rgba(var(--pvfd-light-mid-rgb), 0.92) !important;
   outline: 0 !important;
 
@@ -9472,7 +9503,7 @@ body.pvfd-theme-active #global-nav-bar
 
 /* Playlist explicit badge.
    Box Spotify's .x-explicit-label, tint the .x-explicit-icon "E" already in DOM. */
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow .x-explicit-label {
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) .x-explicit-label {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -9498,12 +9529,45 @@ body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow .x-explicit
   vertical-align: -1px !important;
 }
 
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow .x-explicit-label .x-explicit-icon {
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) .x-explicit-label .x-explicit-icon {
   display: block !important;
 
   color: var(--pvfd-cyan) !important;
   -webkit-text-fill-color: var(--pvfd-cyan) !important;
 
+  font-family: var(--pvfd-font-pixel, "VT323", monospace) !important;
+  font-size: 8px !important;
+  font-weight: 700 !important;
+  line-height: 11px !important;
+  text-shadow: none !important;
+}
+
+/* Spotify 1.3.6 dropped .x-explicit-label: the badge is an Encore tag now
+   (span[role="img"][aria-label="Explicit"] with the e-*-tag-icon classes)
+   inside the row's badges slot, and the "E" is the span's own text. Same box
+   as above, drawn on the tag itself. Keyed on the aria-label first (exact,
+   English client) with the tag-icon class as the fallback for other locales. */
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y)
+  :is([role="img"][aria-label="Explicit" i], [class*="-tag-icon"]) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 13px !important;
+  height: 11px !important;
+  min-width: 13px !important;
+  max-width: 13px !important;
+  margin-right: 5px !important;
+  padding: 0 !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.78) !important;
+  border-radius: 2px !important;
+  background: rgba(0, 0, 0, 0.52) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--pvfd-light-mid-rgb), 0.16),
+    0 0 4px rgba(var(--pvfd-light-mid-rgb), 0.22) !important;
+  overflow: hidden !important;
+  vertical-align: -1px !important;
+  color: var(--pvfd-cyan) !important;
+  -webkit-text-fill-color: var(--pvfd-cyan) !important;
   font-family: var(--pvfd-font-pixel, "VT323", monospace) !important;
   font-size: 8px !important;
   font-weight: 700 !important;
@@ -9824,7 +9888,7 @@ body.pvfd-theme-active [role="dialog"] {
 
 /* Snapshot-backed global-nav search magnifier. Only touch the leading icon
    lane inside the search form, never the search wrapper/layout nodes. */
-#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer {
+#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) {
   border: 1px solid rgba(var(--pvfd-accent-rgb), 0.62) !important;
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.78),
@@ -9832,17 +9896,17 @@ body.pvfd-theme-active [role="dialog"] {
   outline: 0 !important;
 }
 
-#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer:focus-within {
+#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S):focus-within {
   border-color: rgba(var(--pvfd-accent-rgb), 0.86) !important;
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.78),
     0 0 8px rgba(var(--pvfd-accent-rgb), 0.26) !important;
 }
 
-#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer
-  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(.x-filterBox-searchIcon, .Om_p8hB47p7vkd2bKfGN), .x-filterBox-searchIconContainer),
-#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer
-  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(.x-filterBox-searchIcon, .Om_p8hB47p7vkd2bKfGN), .x-filterBox-searchIconContainer)
+#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S)
+  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(:is(.x-filterBox-searchIcon, .DQFXnLANJVkrr5vuFOg9), .Om_p8hB47p7vkd2bKfGN), :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a)),
+#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S)
+  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(:is(.x-filterBox-searchIcon, .DQFXnLANJVkrr5vuFOg9), .Om_p8hB47p7vkd2bKfGN), :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a))
   :is(button, [role="button"], span, div) {
   --text-base: var(--pvfd-accent) !important;
   --text-subdued: var(--pvfd-accent) !important;
@@ -9867,8 +9931,8 @@ body.pvfd-theme-active [role="dialog"] {
 }
 
 
-#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer
-  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(.x-filterBox-searchIcon, .Om_p8hB47p7vkd2bKfGN), .x-filterBox-searchIconContainer)
+#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S)
+  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(:is(.x-filterBox-searchIcon, .DQFXnLANJVkrr5vuFOg9), .Om_p8hB47p7vkd2bKfGN), :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a))
   :is(svg, path, circle, rect, line, polyline, polygon, [data-encore-id="icon"]) {
   color: currentColor !important;
   fill: none !important;
@@ -9879,10 +9943,10 @@ body.pvfd-theme-active [role="dialog"] {
 }
 
 
-#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer
-  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(.x-filterBox-searchIcon, .Om_p8hB47p7vkd2bKfGN), .x-filterBox-searchIconContainer):is(:hover, :focus-within),
-#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer
-  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(.x-filterBox-searchIcon, .Om_p8hB47p7vkd2bKfGN), .x-filterBox-searchIconContainer)
+#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S)
+  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(:is(.x-filterBox-searchIcon, .DQFXnLANJVkrr5vuFOg9), .Om_p8hB47p7vkd2bKfGN), :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a)):is(:hover, :focus-within),
+#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S)
+  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(:is(.x-filterBox-searchIcon, .DQFXnLANJVkrr5vuFOg9), .Om_p8hB47p7vkd2bKfGN), :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a))
   :is(button, [role="button"]):is(:hover, :focus-visible) {
   background: transparent !important;
   background-color: transparent !important;
@@ -10241,8 +10305,8 @@ body.pvfd-theme-active .Root__globalNav button[data-encore-id="buttonTertiary"] 
 /* Exact Encore accent controls. These are the inner spans DevTools reported;
    setting the parent variables/background fixes icon text without descendant
    tracklist sweeps. */
-body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(.main-playButton-PlayButton *):not(.main-trackList-rowImagePlayButton *):not(:is(.main-card-PlayButtonContainer, .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *),
-body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(.main-playButton-PlayButton *):not(.main-trackList-rowImagePlayButton *):not(:is(.main-card-PlayButtonContainer, .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
+body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *),
+body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
 body.pvfd-theme-active [data-encore-id="popover"] button[data-encore-id="buttonPrimary"],
 body.pvfd-theme-active [data-encore-id="popover"] button[data-encore-id="buttonPrimary"] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
 body.pvfd-theme-active [role="dialog"] button[data-encore-id="buttonPrimary"] {
@@ -10262,8 +10326,8 @@ body.pvfd-theme-active [role="dialog"] button[data-encore-id="buttonPrimary"] {
     0 0 8px rgba(var(--pvfd-accent-rgb), 0.22) !important;
 }
 
-body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(.main-playButton-PlayButton *):not(.main-trackList-rowImagePlayButton *):not(:is(.main-card-PlayButtonContainer, .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) svg,
-body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(.main-playButton-PlayButton *):not(.main-trackList-rowImagePlayButton *):not(:is(.main-card-PlayButtonContainer, .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) path,
+body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) svg,
+body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) path,
 body.pvfd-theme-active [data-encore-id="popover"] button[data-encore-id="buttonPrimary"] svg,
 body.pvfd-theme-active [data-encore-id="popover"] button[data-encore-id="buttonPrimary"] path,
 body.pvfd-theme-active [role="dialog"] button[data-encore-id="buttonPrimary"] svg,
@@ -10296,7 +10360,7 @@ body.pvfd-theme-active .Root__globalNav input::placeholder {
 /* Exact search-category carousel arrows. The SVG inherits
    --encore-icon-fill from --text-base, so keep the tint local instead of
    globally recoloring every .e-10451-icon. */
-body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton {
+body.pvfd-theme-active .Root__main-view :is(.search-searchCategory-carouselButton, .gDqORSCbwbcSWQcVpGi_) {
   --text-base: var(--pvfd-accent) !important;
   --text-subdued: var(--pvfd-accent) !important;
   --essential-base: var(--pvfd-accent) !important;
@@ -10325,7 +10389,7 @@ body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton {
   -webkit-text-fill-color: var(--pvfd-accent) !important;
 }
 
-body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton:is(:hover, :focus-visible) {
+body.pvfd-theme-active .Root__main-view :is(.search-searchCategory-carouselButton, .gDqORSCbwbcSWQcVpGi_):is(:hover, :focus-visible) {
   background:
     radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.82), transparent 24%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.20) 33%, transparent 47%),
@@ -10337,8 +10401,8 @@ body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton:is
     0 0 7px rgba(var(--pvfd-accent-rgb), 0.18) !important;
 }
 
-body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton :is(.e-10451-icon, .e-10860-icon),
-body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton svg {
+body.pvfd-theme-active .Root__main-view :is(.search-searchCategory-carouselButton, .gDqORSCbwbcSWQcVpGi_) :is(.e-10451-icon, .e-10860-icon),
+body.pvfd-theme-active .Root__main-view :is(.search-searchCategory-carouselButton, .gDqORSCbwbcSWQcVpGi_) svg {
   --encore-icon-fill: currentColor !important;
   block-size: 16px !important;
   color: var(--pvfd-accent) !important;
@@ -10352,7 +10416,7 @@ body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton sv
   width: 16px !important;
 }
 
-body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton path {
+body.pvfd-theme-active .Root__main-view :is(.search-searchCategory-carouselButton, .gDqORSCbwbcSWQcVpGi_) path {
   fill: currentColor !important;
   stroke: none !important;
 }
@@ -10367,6 +10431,13 @@ body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton pa
    right chevron to land on top of them. Translate the button up by 37px (3px
    margin + 34px button height) so it clears the play buttons. Mirrored on
    the left chevron by virtue of the shared class. */
+/* Readable name only, on purpose: on Spotify 1.3.6 the same carousel arrow
+   (.gDqORSCbwbcSWQcVpGi_, paired in the chrome rules above, shared by Home
+   shelves, chip rows and search categories) is a div Spotify keeps at
+   opacity 0 and pointer-events none until a scroll-timeline animation shows
+   it, and its overlay already centres it on the row. Forcing pointer-events
+   on would make the invisible left arrow swallow clicks on the first card;
+   the 37px lift was for the 1.2 search layout and would float it off the row. */
 body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton {
   pointer-events: auto !important;
   transform: translateY(-37px) !important;
@@ -10431,18 +10502,18 @@ body.pvfd-theme-active .Root__main-view .main-card-card p {
   -webkit-text-fill-color: currentColor !important;
 }
 
-body.pvfd-theme-active .Root__main-view [data-encore-id="card"] button:not([data-encore-id="buttonPrimary"]):not(.main-playButton-PlayButton *):not(.main-trackList-rowImagePlayButton *):not(:is(.main-card-PlayButtonContainer, .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *),
-body.pvfd-theme-active .Root__main-view [data-encore-id="card"] [role="button"]:not([data-encore-id="buttonPrimary"]):not(.main-playButton-PlayButton *):not(.main-trackList-rowImagePlayButton *):not(:is(.main-card-PlayButtonContainer, .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) {
+body.pvfd-theme-active .Root__main-view [data-encore-id="card"] button:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *),
+body.pvfd-theme-active .Root__main-view [data-encore-id="card"] [role="button"]:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) {
   color: var(--pvfd-text-main) !important;
   background-color: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
 }
 
-body.pvfd-theme-active .Root__main-view [data-encore-id="card"] button:not([data-encore-id="buttonPrimary"]):not(.main-playButton-PlayButton *):not(.main-trackList-rowImagePlayButton *):not(:is(.main-card-PlayButtonContainer, .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) svg,
-body.pvfd-theme-active .Root__main-view [data-encore-id="card"] button:not([data-encore-id="buttonPrimary"]):not(.main-playButton-PlayButton *):not(.main-trackList-rowImagePlayButton *):not(:is(.main-card-PlayButtonContainer, .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) path,
-body.pvfd-theme-active .Root__main-view [data-encore-id="card"] [role="button"]:not([data-encore-id="buttonPrimary"]):not(.main-playButton-PlayButton *):not(.main-trackList-rowImagePlayButton *):not(:is(.main-card-PlayButtonContainer, .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) svg,
-body.pvfd-theme-active .Root__main-view [data-encore-id="card"] [role="button"]:not([data-encore-id="buttonPrimary"]):not(.main-playButton-PlayButton *):not(.main-trackList-rowImagePlayButton *):not(:is(.main-card-PlayButtonContainer, .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) path {
+body.pvfd-theme-active .Root__main-view [data-encore-id="card"] button:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) svg,
+body.pvfd-theme-active .Root__main-view [data-encore-id="card"] button:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) path,
+body.pvfd-theme-active .Root__main-view [data-encore-id="card"] [role="button"]:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) svg,
+body.pvfd-theme-active .Root__main-view [data-encore-id="card"] [role="button"]:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) path {
   color: currentColor !important;
   fill: currentColor !important;
   stroke: currentColor !important;
@@ -10503,23 +10574,23 @@ body.pvfd-theme-active .Root__main-view :is(.e-10451-legacy-chip__inner--selecte
 
 /* Library rail filter chips live outside Root__main-view, so keep this scoped
    to Spotify's library filter strip instead of widening the main-view bridge. */
-body.pvfd-theme-active .main-yourLibraryX-filterArea
-  .search-searchCategory-contentArea:has([role="listbox"][aria-label="Filter options"]) {
+body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt)
+  :is(.search-searchCategory-contentArea, .tPfod6L1Bt5VzxPtQjsx):has([role="listbox"][aria-label="Filter options"]) {
   min-height: 38px !important;
   padding-bottom: 4px !important;
   overflow-x: hidden !important;
   overflow-y: visible !important;
 }
 
-body.pvfd-theme-active .main-yourLibraryX-filterArea
-  .search-searchCategory-contentArea:has([role="listbox"][aria-label="Filter options"])
-  :is(.search-searchCategory-categoryGrid, [role="listbox"][aria-label="Filter options"]) {
+body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt)
+  :is(.search-searchCategory-contentArea, .tPfod6L1Bt5VzxPtQjsx):has([role="listbox"][aria-label="Filter options"])
+  :is(:is(.search-searchCategory-categoryGrid, .hsgbsNIodlFFDEyxiL7d), [role="listbox"][aria-label="Filter options"]) {
   min-height: 36px !important;
   padding-bottom: 2px !important;
   align-items: flex-start !important;
 }
 
-body.pvfd-theme-active .main-yourLibraryX-filterArea [data-encore-id="chip"] {
+body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) [data-encore-id="chip"] {
   --text-base: var(--pvfd-text-main) !important;
   --text-subdued: var(--pvfd-text-muted) !important;
   --essential-base: var(--pvfd-text-main) !important;
@@ -10535,7 +10606,7 @@ body.pvfd-theme-active .main-yourLibraryX-filterArea [data-encore-id="chip"] {
   -webkit-text-fill-color: var(--pvfd-text-main) !important;
 }
 
-body.pvfd-theme-active .main-yourLibraryX-filterArea [data-encore-id="chip"] :is(.e-10451-legacy-chip__inner, .e-10860-legacy-chip__inner) {
+body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) [data-encore-id="chip"] :is(.e-10451-legacy-chip__inner, .e-10860-legacy-chip__inner) {
   --text-base: inherit !important;
   --text-subdued: var(--pvfd-text-muted) !important;
   --essential-base: inherit !important;
@@ -10548,17 +10619,17 @@ body.pvfd-theme-active .main-yourLibraryX-filterArea [data-encore-id="chip"] :is
   -webkit-text-fill-color: inherit !important;
 }
 
-body.pvfd-theme-active .main-yourLibraryX-filterArea [data-encore-id="chip"]:is(:hover, :focus-visible) {
+body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) [data-encore-id="chip"]:is(:hover, :focus-visible) {
   background:
     linear-gradient(180deg, rgba(var(--pvfd-accent-rgb), 0.11), rgba(var(--pvfd-accent-dim-rgb), 0.06)),
     var(--pvfd-lcd-deep) !important;
   border-color: rgba(var(--pvfd-accent-rgb), 0.62) !important;
 }
 
-body.pvfd-theme-active .main-yourLibraryX-filterArea [data-encore-id="chip"]:is([aria-checked="true"], [aria-selected="true"], [aria-pressed="true"]),
-body.pvfd-theme-active .main-yourLibraryX-filterArea [data-encore-id="chip"]:is([aria-checked="true"], [aria-selected="true"], [aria-pressed="true"]) :is(.e-10451-legacy-chip__inner, .e-10860-legacy-chip__inner),
-body.pvfd-theme-active .main-yourLibraryX-filterArea :is(.e-10451-legacy-chip-selected, .e-10860-legacy-chip-selected),
-body.pvfd-theme-active .main-yourLibraryX-filterArea :is(.e-10451-legacy-chip__inner--selected, .e-10860-legacy-chip__inner--selected) {
+body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) [data-encore-id="chip"]:is([aria-checked="true"], [aria-selected="true"], [aria-pressed="true"]),
+body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) [data-encore-id="chip"]:is([aria-checked="true"], [aria-selected="true"], [aria-pressed="true"]) :is(.e-10451-legacy-chip__inner, .e-10860-legacy-chip__inner),
+body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) :is(.e-10451-legacy-chip-selected, .e-10860-legacy-chip-selected),
+body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) :is(.e-10451-legacy-chip__inner--selected, .e-10860-legacy-chip__inner--selected) {
   --text-base: var(--pvfd-lcd-void) !important;
   --text-subdued: rgba(var(--pvfd-lcd-void-rgb), 0.78) !important;
   --essential-base: var(--pvfd-lcd-void) !important;
@@ -10609,15 +10680,15 @@ body.pvfd-theme-active .Root__main-view [role="tab"] {
 
 /* ---------- Play / Preview buttons on stable card and header surfaces ---------- */
 
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label],
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label],
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label],
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label],
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label],
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label],
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label],
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label],
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] ,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label],
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label],
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label],
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label],
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label],
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label],
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label],
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label],
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] ,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"],
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"]{
   --pvfd-play-control-size: 48px;
@@ -10649,15 +10720,15 @@ body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-
   -webkit-text-fill-color: var(--pvfd-accent) !important;
 }
 
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label]:is(:hover, :focus-visible),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label]:is(:hover, :focus-visible),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label]:is(:hover, :focus-visible),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label]:is(:hover, :focus-visible),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label]:is(:hover, :focus-visible),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label]:is(:hover, :focus-visible),
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label]:is(:hover, :focus-visible),
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label]:is(:hover, :focus-visible),
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label]:is(:hover, :focus-visible) ,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label]:is(:hover, :focus-visible),
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label]:is(:hover, :focus-visible),
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label]:is(:hover, :focus-visible),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label]:is(:hover, :focus-visible),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label]:is(:hover, :focus-visible),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label]:is(:hover, :focus-visible),
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label]:is(:hover, :focus-visible),
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label]:is(:hover, :focus-visible),
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label]:is(:hover, :focus-visible) ,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"]:is(:hover, :focus-visible),
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"]:is(:hover, :focus-visible){
   background:
@@ -10671,24 +10742,24 @@ body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-
     0 0 6px rgba(var(--pvfd-accent-rgb), 0.16) !important;
 }
 
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .encore-bright-accent-set,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .encore-bright-accent-set,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .encore-bright-accent-set,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .encore-bright-accent-set,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .encore-bright-accent-set,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .encore-bright-accent-set,
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .encore-bright-accent-set,
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .encore-bright-accent-set,
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .encore-bright-accent-set ,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .encore-bright-accent-set,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .encore-bright-accent-set,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .encore-bright-accent-set,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .encore-bright-accent-set,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .encore-bright-accent-set,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .encore-bright-accent-set,
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] .encore-bright-accent-set,
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] .encore-bright-accent-set,
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] .encore-bright-accent-set ,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] :is(.e-10451-button-primary__inner, .e-10860-button-primary__inner),
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] .encore-bright-accent-set,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] .encore-bright-accent-set{
@@ -10707,24 +10778,24 @@ body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-
   -webkit-text-fill-color: var(--pvfd-accent) !important;
 }
 
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] path,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] path,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] path,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] path,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] path,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] path,
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] path,
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] path,
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] path ,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] path,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] path,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] path,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] path,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] path,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] path,
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] path,
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] path,
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] path ,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] svg,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] path,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] path{
@@ -10738,15 +10809,15 @@ body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-
   transform: none !important;
 }
 
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] svg,
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] svg ,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] svg,
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] svg ,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] svg,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] svg{
   filter:
@@ -10767,7 +10838,7 @@ body.pvfd-theme-active .Root__main-view :is(.view-homeShortcutsGrid-trailingIndi
 body.pvfd-theme-active .Root__main-view :is(.view-homeShortcutsGrid-PlayButtonContainer, .SydbRAmFUdPUwVFV47xp) {
   overflow: visible !important;
 }
-body.pvfd-theme-active .Root__main-view :is(.view-homeShortcutsGrid-PlayButtonContainer, .SydbRAmFUdPUwVFV47xp) .main-playButton-PlayButton {
+body.pvfd-theme-active .Root__main-view :is(.view-homeShortcutsGrid-PlayButtonContainer, .SydbRAmFUdPUwVFV47xp) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) {
   transform: scale(1.5) !important;
   transform-origin: center !important;
 }
@@ -10778,7 +10849,7 @@ body.pvfd-theme-active .Root__main-view :is(.view-homeShortcutsGrid-PlayButtonCo
    (the "unthemed" reports). Same chrome key-cap treatment as above, anchored
    on the stable .main-playButton-PlayButton component class because the
    library grid's wrapper classes are hashed and rotate per Spotify release. */
-body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playButton-PlayButton
+body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR)
   button[aria-label] {
   --pvfd-play-control-size: 48px;
   aspect-ratio: 1 / 1 !important;
@@ -10809,7 +10880,7 @@ body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playBut
   -webkit-text-fill-color: var(--pvfd-accent) !important;
 }
 
-body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playButton-PlayButton
+body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR)
   button[aria-label]:is(:hover, :focus-visible) {
   background:
     radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.86), transparent 24%),
@@ -10822,7 +10893,7 @@ body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playBut
     0 0 6px rgba(var(--pvfd-accent-rgb), 0.16) !important;
 }
 
-body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playButton-PlayButton
+body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR)
   button[aria-label]
   :is(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner), .encore-bright-accent-set) {
   background: transparent !important;
@@ -10840,7 +10911,7 @@ body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playBut
   -webkit-text-fill-color: var(--pvfd-accent) !important;
 }
 
-body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playButton-PlayButton
+body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR)
   button[aria-label]
   :is(svg, path) {
   color: var(--pvfd-accent) !important;
@@ -10853,7 +10924,7 @@ body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playBut
   transform: none !important;
 }
 
-body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playButton-PlayButton
+body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR)
   button[aria-label]
   svg {
   filter:
@@ -10865,11 +10936,11 @@ body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playBut
 }
 
 /* Tracklist rows keep Spotify's row geometry: glyph only, no button body. */
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow button.main-trackList-rowImagePlayButton,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow button.main-trackList-rowImagePlayButton,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow button.main-trackList-rowImagePlayButton,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow .main-trackList-rowImagePlayButton,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRowGrid .main-trackList-rowImagePlayButton {
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) button:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E),
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) button:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E),
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) button:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E),
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) :is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E),
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRowGrid, .Jkul2hYwJZhZQGymDO5p) :is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) {
   aspect-ratio: auto !important;
   block-size: auto !important;
   inline-size: auto !important;
@@ -10885,29 +10956,29 @@ body.pvfd-theme-active .Root__main-view .main-trackList-trackListRowGrid .main-t
   -webkit-text-fill-color: var(--pvfd-accent) !important;
 }
 
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow button.main-trackList-rowImagePlayButton span,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow button.main-trackList-rowImagePlayButton span,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow button.main-trackList-rowImagePlayButton span,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow .main-trackList-rowImagePlayButton span,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRowGrid .main-trackList-rowImagePlayButton span {
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) button:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) span,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) button:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) span,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) button:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) span,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) :is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) span,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRowGrid, .Jkul2hYwJZhZQGymDO5p) :is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) span {
   background: transparent !important;
   background-image: none !important;
   border: 0 !important;
   box-shadow: none !important;
 }
 
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow button.main-trackList-rowImagePlayButton svg,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow button.main-trackList-rowImagePlayButton path,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow button.main-trackList-rowImagePlayButton svg,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow button.main-trackList-rowImagePlayButton path,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow button.main-trackList-rowImagePlayButton svg,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow button.main-trackList-rowImagePlayButton path,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow :is(.main-trackList-rowImagePlayIcon, .FeDnOC5h1Q9iUMWg6oYl),
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow .main-trackList-rowImagePlayButton svg,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRow .main-trackList-rowImagePlayButton path,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRowGrid :is(.main-trackList-rowImagePlayIcon, .FeDnOC5h1Q9iUMWg6oYl),
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRowGrid .main-trackList-rowImagePlayButton svg,
-body.pvfd-theme-active .Root__main-view .main-trackList-trackListRowGrid .main-trackList-rowImagePlayButton path {
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) button:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) svg,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) button:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) path,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) button:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) svg,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) button:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) path,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) button:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) svg,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) button:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) path,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) :is(.main-trackList-rowImagePlayIcon, .FeDnOC5h1Q9iUMWg6oYl),
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) :is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) svg,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y) :is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) path,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRowGrid, .Jkul2hYwJZhZQGymDO5p) :is(.main-trackList-rowImagePlayIcon, .FeDnOC5h1Q9iUMWg6oYl),
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRowGrid, .Jkul2hYwJZhZQGymDO5p) :is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) svg,
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRowGrid, .Jkul2hYwJZhZQGymDO5p) :is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) path {
   color: var(--pvfd-accent) !important;
   fill: currentColor !important;
   stroke: currentColor !important;
@@ -10931,6 +11002,15 @@ body.pvfd-theme-active .Root__main-view [data-testid="home-page"] {
   min-block-size: 100% !important;
 }
 
+/* .jTuahgNncRCCfJfiJwQi is Spotify 1.3.6's sticky chip-bar wrapper on Home
+   (position: sticky; top: 0). The readable chip-section names below have not
+   been in a bundle since before 1.2.92, so the bar was sitting on the page
+   ground by accident; 1.3.6 also put a colour band inside the wrapper (see
+   the rule after the padding block), which made the accident visible. The
+   wrapper takes the ground here; its padding is NOT touched (the chips sit
+   in a contentSpacing child on 1.3.6, so extra padding would misalign them
+   against the shelves below). */
+body.pvfd-theme-active .Root__main-view .jTuahgNncRCCfJfiJwQi,
 body.pvfd-theme-active .Root__main-view .main-home-filterChipsSection,
 body.pvfd-theme-active .Root__main-view .main-home-filterChipsSectionActive,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] .main-home-content {
@@ -10975,6 +11055,19 @@ body.pvfd-theme-active .Root__main-view .main-home-filterChipsSection,
 body.pvfd-theme-active .Root__main-view .main-home-filterChipsSectionActive {
   margin-inline: 0 !important;
   padding: 12px 20px 8px !important;
+}
+
+/* Spotify 1.3.6 fades a colour band in behind the sticky chip bar as Home
+   scrolls: an absolute, inset-0 child of the wrapper painted with
+   --background-base (Spotify's hover/hero colour), opacity driven by
+   --top-bar-opacity. The wrapper above already carries the LCD ground, so
+   the band is pinned transparent and can never colour the bar, whatever
+   Spotify resolves the token to (owner, 2026-10-24: "home sticky header
+   changes colors"). Structural form first, hash second. */
+body.pvfd-theme-active .Root__main-view .jTuahgNncRCCfJfiJwQi > div:first-child:empty,
+body.pvfd-theme-active .Root__main-view .jTuahgNncRCCfJfiJwQi > .xCEkyVpabf3oVGmFQVej {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] .main-home-content {
@@ -11063,7 +11156,7 @@ body.pvfd-theme-active .Root__main-view
 
 body.pvfd-theme-active .Root__main-view
   :is(.view-homeShortcutsGrid-shortcut, .qqdeiPoFoM_sPX0pRHsT) :is(.view-homeShortcutsGrid-main, .kyJXPKlxWxJleoZlsuUa)
-  > :is(.view-homeShortcutsGrid-nameContainer, .Wx1XhxdlL8xtasjadXHh, .fG65W2vwRnbXMkrDfja3) {
+  > :is(.view-homeShortcutsGrid-nameContainer, .Wx1XhxdlL8xtasjadXHh, .fG65W2vwRnbXMkrDfja3, .view-homeShortcutsGrid-content) {
   grid-column: 1;
   grid-row: 1;
   min-inline-size: 0 !important;
@@ -11071,7 +11164,7 @@ body.pvfd-theme-active .Root__main-view
 
 body.pvfd-theme-active .Root__main-view
   :is(.view-homeShortcutsGrid-shortcut, .qqdeiPoFoM_sPX0pRHsT) :is(
-    :is(.view-homeShortcutsGrid-nameContainer, .Wx1XhxdlL8xtasjadXHh, .fG65W2vwRnbXMkrDfja3),
+    :is(.view-homeShortcutsGrid-nameContainer, .Wx1XhxdlL8xtasjadXHh, .fG65W2vwRnbXMkrDfja3, .view-homeShortcutsGrid-content),
     .view-homeShortcutsGrid-nameWrapper,
     .view-homeShortcutsGrid-nameWrapper > a,
     :is(.view-homeShortcutsGrid-name, .inPROcpr9gEShIW_XxcW)
@@ -11082,7 +11175,7 @@ body.pvfd-theme-active .Root__main-view
 
 body.pvfd-theme-active .Root__main-view
   :is(.view-homeShortcutsGrid-shortcut, .qqdeiPoFoM_sPX0pRHsT) :is(.view-homeShortcutsGrid-main, .kyJXPKlxWxJleoZlsuUa)
-  > :not(:is(.view-homeShortcutsGrid-nameContainer, .Wx1XhxdlL8xtasjadXHh, .fG65W2vwRnbXMkrDfja3)) {
+  > :not(:is(.view-homeShortcutsGrid-nameContainer, .Wx1XhxdlL8xtasjadXHh, .fG65W2vwRnbXMkrDfja3, .view-homeShortcutsGrid-content)) {
   grid-column: 2;
   grid-row: 1;
   align-self: stretch;
@@ -11105,11 +11198,14 @@ body.pvfd-theme-active .Root__main-view
    place an absolute child, so it stretched to the tile's full width, shrank
    to its content height and centred the glyph in that strip at the top of the
    tile. Same reset the indicator gets, so it fills the action gutter and its
-   own centring puts the glyph in the middle of it. Hash only: no 1.2 client
-   has this element. */
+   own centring puts the glyph in the middle of it. No 1.2 client has this
+   element. The ancestors carry both forms: 1.3.1 hashed them, 1.3.6 gives
+   them their readable names back, and with the hashes alone the overlay
+   stayed an 18px strip across the top of the tile with the glyph top-right
+   (owner, 2026-10-24). */
 body.pvfd-theme-active .Root__main-view
-  .qqdeiPoFoM_sPX0pRHsT .kyJXPKlxWxJleoZlsuUa
-  > .gHRmnzWv7_EhCyjcB5fg {
+  :is(.view-homeShortcutsGrid-shortcut, .qqdeiPoFoM_sPX0pRHsT) :is(.view-homeShortcutsGrid-main, .kyJXPKlxWxJleoZlsuUa)
+  > :is(.gHRmnzWv7_EhCyjcB5fg, .view-homeShortcutsGrid-trailingOverlay) {
   position: relative !important;
   inset: auto !important;
   width: auto !important;
@@ -11127,16 +11223,16 @@ body.pvfd-theme-active .Root__main-view
 body.pvfd-theme-active .Root__main-view
   :is(.view-homeShortcutsGrid-shortcut, .qqdeiPoFoM_sPX0pRHsT):is(:hover, :focus-within)
   :is(.view-homeShortcutsGrid-main, .kyJXPKlxWxJleoZlsuUa):has(> :is(.view-homeShortcutsGrid-trailingIndicator, .f_vQOQZZwIoA3uIUEknx, .O6l0stovRqzSnYxDqSei))
-  > :not(:is(.view-homeShortcutsGrid-nameContainer, .Wx1XhxdlL8xtasjadXHh, .fG65W2vwRnbXMkrDfja3)):not(:is(.view-homeShortcutsGrid-trailingIndicator, .f_vQOQZZwIoA3uIUEknx, .O6l0stovRqzSnYxDqSei)):not(.gHRmnzWv7_EhCyjcB5fg) {
+  > :not(:is(.view-homeShortcutsGrid-nameContainer, .Wx1XhxdlL8xtasjadXHh, .fG65W2vwRnbXMkrDfja3, .view-homeShortcutsGrid-content)):not(:is(.view-homeShortcutsGrid-trailingIndicator, .f_vQOQZZwIoA3uIUEknx, .O6l0stovRqzSnYxDqSei)):not(:is(.gHRmnzWv7_EhCyjcB5fg, .view-homeShortcutsGrid-trailingOverlay)) {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
 }
 
 body.pvfd-theme-active .Root__main-view
-  .qqdeiPoFoM_sPX0pRHsT:is(:hover, :focus-within)
-  .kyJXPKlxWxJleoZlsuUa:has(> .gHRmnzWv7_EhCyjcB5fg)
-  > :is(.f_vQOQZZwIoA3uIUEknx, .O6l0stovRqzSnYxDqSei) {
+  :is(.view-homeShortcutsGrid-shortcut, .qqdeiPoFoM_sPX0pRHsT):is(:hover, :focus-within)
+  :is(.view-homeShortcutsGrid-main, .kyJXPKlxWxJleoZlsuUa):has(> :is(.gHRmnzWv7_EhCyjcB5fg, .view-homeShortcutsGrid-trailingOverlay))
+  > :is(.view-homeShortcutsGrid-trailingIndicator, .f_vQOQZZwIoA3uIUEknx, .O6l0stovRqzSnYxDqSei) {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
@@ -11323,7 +11419,7 @@ body.pvfd-theme-active #main-view.Root__main-view
 }
 
 /* Kill Spotify's/PVFD's Home header hero wash. */
-body.pvfd-theme-active #main-view.Root__main-view :is(.main-home-homeHeader, .dqwQhIudKoD98eWJzj5E) {
+body.pvfd-theme-active #main-view.Root__main-view :is(:is(.main-home-homeHeader, .kMaYBahSBLOnErF7DLR2), .dqwQhIudKoD98eWJzj5E) {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
@@ -11823,7 +11919,7 @@ body.pvfd-theme-active :is(.main-contextMenu-findContainer, .jqhnQbDKfPIgu_NNKxJ
 
 /* Top filter tabs like Music / Podcast & Shows. */
 body.pvfd-theme-active .Root__main-view
-  .search-searchCategory-contentArea:has([role="listbox"][aria-label="Filter options"]) {
+  :is(.search-searchCategory-contentArea, .tPfod6L1Bt5VzxPtQjsx):has([role="listbox"][aria-label="Filter options"]) {
   min-height: 38px !important;
   padding-bottom: 3px !important;
   overflow-x: hidden !important;
@@ -11831,7 +11927,7 @@ body.pvfd-theme-active .Root__main-view
 }
 
 body.pvfd-theme-active .Root__main-view
-  .search-searchCategory-contentArea:has([role="listbox"][aria-label="Filter options"])
+  :is(.search-searchCategory-contentArea, .tPfod6L1Bt5VzxPtQjsx):has([role="listbox"][aria-label="Filter options"])
   [data-encore-id="chip"] {
   box-shadow:
     inset 0 0 0 1px rgba(var(--pvfd-accent-rgb), 0.42) !important;
@@ -11920,11 +12016,11 @@ body.pvfd-theme-active:is(
   [data-pvfd-route="profile"],
   [data-pvfd-route="artist"]
 ) .Root__main-view :is(
-  :is(.main-entityHeader-backgroundColor, .kMUtWcOMOZmCWTMAc_gu),
-  :is(.main-actionBarBackground-background, .M7ECcaA17LC8UqL2GKVD),
+  :is(.main-entityHeader-backgroundColor, .hbNOZbHD3bPL3OcHQWNn, .kMUtWcOMOZmCWTMAc_gu, .uP1rcUSIWCFaOZaoH0ZG),
+  :is(:is(.main-actionBarBackground-background, .r8bczAWCEgb9_L0iyIcc, .IfBZ5VdI_2nwDMl4H6Yh), .M7ECcaA17LC8UqL2GKVD),
   .playlist-playlist-actionBarBackground-background,
-  :is(.main-entityHeader-backgroundColor, .kMUtWcOMOZmCWTMAc_gu),
-  :is(:is(.main-actionBarBackground-background, .M7ECcaA17LC8UqL2GKVD), .playlist-playlist-actionBarBackground-background)
+  :is(.main-entityHeader-backgroundColor, .hbNOZbHD3bPL3OcHQWNn, .kMUtWcOMOZmCWTMAc_gu, .uP1rcUSIWCFaOZaoH0ZG),
+  :is(:is(:is(.main-actionBarBackground-background, .r8bczAWCEgb9_L0iyIcc, .IfBZ5VdI_2nwDMl4H6Yh), .M7ECcaA17LC8UqL2GKVD), .playlist-playlist-actionBarBackground-background)
 ) {
   background:
     radial-gradient(
@@ -12243,13 +12339,13 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__globalNav .main-globalN
 }
 
 /* Search input interior — black ink on the white input surface. */
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer input,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer .main-globalNav-searchInputText,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer :is(.e-10451-form-input-icon__icon, .e-10860-form-input-icon__icon) svg,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer :is(.e-10451-form-input-icon__icon, .e-10860-form-input-icon__icon) path,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputContainer kbd,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputSection :is(.x-searchInput-searchInputClearButton, .gSZQDbdbff_qjezDSaC7) svg,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputSection :is(.x-searchInput-searchInputClearButton, .gSZQDbdbff_qjezDSaC7) path {
+html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) input,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) :is(.main-globalNav-searchInputText, .CuJVJfCsjqfRa4x0iXiz),
+html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) :is(.e-10451-form-input-icon__icon, .e-10860-form-input-icon__icon) svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) :is(.e-10451-form-input-icon__icon, .e-10860-form-input-icon__icon) path,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) kbd,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.main-globalNav-searchInputSection, .UmbvWivEpyn9EExmm6oQ) :is(.x-searchInput-searchInputClearButton, .gSZQDbdbff_qjezDSaC7) svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.main-globalNav-searchInputSection, .UmbvWivEpyn9EExmm6oQ) :is(.x-searchInput-searchInputClearButton, .gSZQDbdbff_qjezDSaC7) path {
   color: #0c0c0c !important;
   fill: currentColor !important;
 }
@@ -12260,23 +12356,23 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active .main-globalNav-searchInputSec
    the same selectors and force white so chrome reads correctly.
    Scoped to album/playlist header capsules and album cards only;
    quicklink shortcuts have a different class path and stay simple. */
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label],
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label],
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label],
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label],
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label],
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] ,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label],
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] ,
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"],
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"]{
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] *,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] *,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] *,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] *,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] *,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] * ,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] * ,
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] *,
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] *{
   color: #ffffff !important;
@@ -12289,12 +12385,12 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__main-view [data-testid=
    chrome key-cap rule colors the glyph var(--pvfd-accent), which resolves to
    black ink in B-ON-W — invisible on the dark chrome housing. Mirror the
    main-view override above so BOW reads like WOB here too. */
-html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playButton-PlayButton
+html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR)
   button[aria-label] {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
-html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playButton-PlayButton
+html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR)
   button[aria-label] * {
   color: #ffffff !important;
   fill: #ffffff !important;
@@ -12304,16 +12400,16 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-l
 
 /* Universal play-FAB glyph emboss: keep the fill tint-aware/white, but draw a
    dark stroke behind it so the icon survives the chrome cap's white glare. */
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] svg :is(path, polygon, rect),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] svg :is(path, polygon, rect),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] svg :is(path, polygon, rect),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] svg :is(path, polygon, rect),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] svg :is(path, polygon, rect),
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] svg :is(path, polygon, rect),
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] svg :is(path, polygon, rect),
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] svg :is(path, polygon, rect),
-body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] svg :is(path, polygon, rect),
-body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) .main-playButton-PlayButton
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] svg :is(path, polygon, rect),
+body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] svg :is(path, polygon, rect),
+body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR)
   button[aria-label] svg :is(path, polygon, rect) ,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] svg :is(path, polygon, rect){
   fill: currentColor !important;
@@ -12344,8 +12440,8 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-now
 }
 
 /* COVER ART + FLOATING ACTION BUTTONS */
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArt,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArt *,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar :is(.main-nowPlayingView-coverArt, .NVWh8UPr5cdJCOqxaW9c),
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar :is(.main-nowPlayingView-coverArt, .NVWh8UPr5cdJCOqxaW9c) *,
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArtContainer,
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-coverArtContainer *,
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar [class*="nowPlayingView-actionButton" i],
@@ -12377,8 +12473,8 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-now
 
 /* LOWER CONTENT SECTIONS: RELATED MUSIC VIDEOS / ABOUT ARTIST / ETC.
    Reset them back to dark text because they sit on white panels. */
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-section,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-section * {
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar :is(.main-nowPlayingView-section, .yUjdM2oRRn7kw8tR1rqV),
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar :is(.main-nowPlayingView-section, .yUjdM2oRRn7kw8tR1rqV) * {
     color: #111111 !important;
     -webkit-text-fill-color: #111111 !important;
     fill: currentColor !important;
@@ -12387,8 +12483,8 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-now
 }
 
 /* Section SVGs should stay dark too */
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-section svg,
-html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-section svg path {
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar :is(.main-nowPlayingView-section, .yUjdM2oRRn7kw8tR1rqV) svg,
+html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar :is(.main-nowPlayingView-section, .yUjdM2oRRn7kw8tR1rqV) svg path {
     color: #111111 !important;
     fill: currentColor !important;
     filter: none !important;
@@ -12599,12 +12695,12 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar :is(
    and Switch-to-video icons. Tightened to direct text-bearing elements
    only: the link itself, the encore text spans, and the anchor children. */
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget :is(
-    .main-trackInfo-name,
-    .main-trackInfo-name [data-encore-id="text"],
-    .main-trackInfo-name a,
-    .main-trackInfo-artists,
-    .main-trackInfo-artists [data-encore-id="text"],
-    .main-trackInfo-artists a
+    :is(.main-trackInfo-name, .d3jICfEdIPzHv0kyDFHZ),
+    :is(.main-trackInfo-name, .d3jICfEdIPzHv0kyDFHZ) [data-encore-id="text"],
+    :is(.main-trackInfo-name, .d3jICfEdIPzHv0kyDFHZ) a,
+    :is(.main-trackInfo-artists, .pJWbyyFi7zAnwrlWlNr8),
+    :is(.main-trackInfo-artists, .pJWbyyFi7zAnwrlWlNr8) [data-encore-id="text"],
+    :is(.main-trackInfo-artists, .pJWbyyFi7zAnwrlWlNr8) a
 ) {
     color: #000000 !important;
     -webkit-text-fill-color: #000000 !important;
@@ -12641,13 +12737,13 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active {
 html[data-pvfd-tint="bow"] body.pvfd-theme-active
 :is(
     button:is(.x-searchInput-searchInputClearButton, .gSZQDbdbff_qjezDSaC7)[data-encore-id="buttonTertiary"],
-    .main-globalNav-browseButtonWrapper:not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
+    :is(.main-globalNav-browseButtonWrapper, .hKGrv76fVnkXp_d_8Bhs):not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
     button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f)
 ),
 html[data-pvfd-tint="bow"] body.pvfd-theme-active
 :is(
     button:is(.x-searchInput-searchInputClearButton, .gSZQDbdbff_qjezDSaC7)[data-encore-id="buttonTertiary"],
-    .main-globalNav-browseButtonWrapper:not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
+    :is(.main-globalNav-browseButtonWrapper, .hKGrv76fVnkXp_d_8Bhs):not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
     button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f)
 )
 :is(.e-10451-button__icon-wrapper, .e-10860-button__icon-wrapper) {
@@ -12673,7 +12769,7 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active
 html[data-pvfd-tint="bow"] body.pvfd-theme-active
 :is(
     button:is(.x-searchInput-searchInputClearButton, .gSZQDbdbff_qjezDSaC7)[data-encore-id="buttonTertiary"],
-    .main-globalNav-browseButtonWrapper:not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
+    :is(.main-globalNav-browseButtonWrapper, .hKGrv76fVnkXp_d_8Bhs):not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
     button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f)
 )
 svg[data-encore-id="icon"] {
@@ -12693,7 +12789,7 @@ svg[data-encore-id="icon"] {
 html[data-pvfd-tint="bow"] body.pvfd-theme-active
 :is(
     button:is(.x-searchInput-searchInputClearButton, .gSZQDbdbff_qjezDSaC7)[data-encore-id="buttonTertiary"],
-    .main-globalNav-browseButtonWrapper:not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
+    :is(.main-globalNav-browseButtonWrapper, .hKGrv76fVnkXp_d_8Bhs):not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
     button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f)
 )
 svg[data-encore-id="icon"] path {
@@ -12834,7 +12930,7 @@ body[data-pvfd-lcd="dseg14"] .pvfd-side-readout b {
    the few hundred under the artist main-view, evaluated only on artist
    pages. Bow/wob mirrors below kept the same scoping. */
 body[data-pvfd-route="artist"] .Root__main-view
-  :where(section, div):has(> figure.main-image-image):has(> span[data-encore-id="text"]) {
+  :where(section, div):has(> figure:is(.main-image-image, .P3H1cp8ZcZljPZPDe8Pw)):has(> span[data-encore-id="text"]) {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
@@ -12846,7 +12942,7 @@ body[data-pvfd-route="artist"] .Root__main-view
    (BOW intent preserved). */
 html[data-pvfd-tint="bow"] body.pvfd-theme-active.pvfd-theme-active[data-pvfd-route="artist"]
   .Root__main-view
-  :where(section, div):has(> figure.main-image-image):has(> span[data-encore-id="text"])
+  :where(section, div):has(> figure:is(.main-image-image, .P3H1cp8ZcZljPZPDe8Pw)):has(> span[data-encore-id="text"])
   > span[data-encore-id="text"] {
   text-shadow:
     -1px -1px 0 #ffffff,
@@ -12865,7 +12961,7 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active.pvfd-theme-active[data-pvfd-ro
 /* WOB mirror — dark halo around white text in case the artist hero is light. */
 html[data-pvfd-tint="wob"] body.pvfd-theme-active.pvfd-theme-active[data-pvfd-route="artist"]
   .Root__main-view
-  :where(section, div):has(> figure.main-image-image):has(> span[data-encore-id="text"])
+  :where(section, div):has(> figure:is(.main-image-image, .P3H1cp8ZcZljPZPDe8Pw)):has(> span[data-encore-id="text"])
   > span[data-encore-id="text"] {
   text-shadow:
     -1px -1px 0 #000000,
@@ -13611,10 +13707,10 @@ body[data-pvfd-route="lyrics"][data-pvfd-fsdtab="on"] .Root__main-view .os-scrol
    image-rendering: pixelated does the chunking, against the 64px rendition
    paintNpvArt selects. If that URL is ever unrecognised the property simply
    holds the full-size image and this degrades to a clean tint. */
-body.pvfd-theme-active[data-pvfd-art-px="on"] .Root__right-sidebar .main-nowPlayingView-coverArt {
+body.pvfd-theme-active[data-pvfd-art-px="on"] .Root__right-sidebar :is(.main-nowPlayingView-coverArt, .NVWh8UPr5cdJCOqxaW9c) {
   position: relative;
 }
-body.pvfd-theme-active[data-pvfd-art-px="on"] .Root__right-sidebar .main-nowPlayingView-coverArt[style*="--pvfd-npv-art"]::after {
+body.pvfd-theme-active[data-pvfd-art-px="on"] .Root__right-sidebar :is(.main-nowPlayingView-coverArt, .NVWh8UPr5cdJCOqxaW9c)[style*="--pvfd-npv-art"]::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -14486,6 +14582,11 @@ body[data-pvfd-logo-glow="on"] .pvfd-cinema-rail-key[data-pvfd-cinema-rail="puls
   top: var(--pvfd-mv-top, 0px);
   height: var(--pvfd-mv-height, 100%);
   z-index: 20;
+  /* Inert while off: visibility leaves on a delayed transition, and a
+     window Chromium is not painting (occluded, minimised) never runs that
+     transition, so the box would otherwise keep catching clicks over the
+     main view long after the attribute came off. */
+  pointer-events: none;
   background: var(--pvfd-lcd-void);
   /* visibility, not display, so the LEAVING transition can run. */
   opacity: 0;
@@ -14500,6 +14601,7 @@ body[data-pvfd-nolyrics] .pvfd-nolyrics {
   opacity: 1;
   visibility: visible;
   transition: none;
+  pointer-events: auto;
 }
 /* The display covers this anyway; do not leave it live underneath a takeover. */
 body.pvfd-cinema-active .pvfd-nolyrics { display: none !important; }
@@ -15408,7 +15510,7 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active.pvfd-theme-active
 /* Colored tints: tint-aware glow. Same recipe as the entity-header
    colored-tint block above. */
 body.pvfd-theme-active:not([data-pvfd-tint="bow"]):not([data-pvfd-tint="wob"])
-  .Root__right-sidebar .main-nowPlayingView-section
+  .Root__right-sidebar :is(.main-nowPlayingView-section, .yUjdM2oRRn7kw8tR1rqV)
   .main-nowPlayingView-sectionHeaderText {
   text-shadow:
     0 0 4px rgba(var(--pvfd-light-rgb), 0.85),
@@ -15422,7 +15524,7 @@ body.pvfd-theme-active:not([data-pvfd-tint="bow"]):not([data-pvfd-tint="wob"])
    beats both Encore defaults AND the section * { color:#111 } rule
    above. */
 html[data-pvfd-tint="bow"] body.pvfd-theme-active.pvfd-theme-active
-  .Root__right-sidebar .main-nowPlayingView-section
+  .Root__right-sidebar :is(.main-nowPlayingView-section, .yUjdM2oRRn7kw8tR1rqV)
   .main-nowPlayingView-sectionHeaderText.main-nowPlayingView-sectionHeaderText {
   text-shadow:
     -1px -1px 0 #ffffff,
@@ -15440,7 +15542,7 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active.pvfd-theme-active
 
 /* WOB: dark halo so white text holds against light/pastel art. */
 html[data-pvfd-tint="wob"] body.pvfd-theme-active.pvfd-theme-active
-  .Root__right-sidebar .main-nowPlayingView-section
+  .Root__right-sidebar :is(.main-nowPlayingView-section, .yUjdM2oRRn7kw8tR1rqV)
   .main-nowPlayingView-sectionHeaderText.main-nowPlayingView-sectionHeaderText {
   text-shadow:
     -1px -1px 0 #000000,
@@ -15557,7 +15659,7 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active.pvfd-theme-active
    blur) so the halo reads as a clean radial bloom on the rounded play icon.
    overflow:visible lets the bloom render past the SVG's bounding box. */
 html[data-pvfd-tint="bow"] body.pvfd-theme-active.pvfd-theme-active
-  .main-topBar-container .main-playButton-PlayButton svg:is(.e-10451-icon, .e-10860-icon) {
+  .main-topBar-container :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) svg:is(.e-10451-icon, .e-10860-icon) {
   overflow: visible !important;
   filter:
     drop-shadow(0 0 3px rgba(255, 255, 255, 0.90))
@@ -15580,7 +15682,7 @@ html[data-pvfd-tint="wob"] body.pvfd-theme-active.pvfd-theme-active
 
 /* WOB — play button SVG dark halo. */
 html[data-pvfd-tint="wob"] body.pvfd-theme-active.pvfd-theme-active
-  .main-topBar-container .main-playButton-PlayButton svg:is(.e-10451-icon, .e-10860-icon) {
+  .main-topBar-container :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) svg:is(.e-10451-icon, .e-10860-icon) {
   overflow: visible !important;
   filter:
     drop-shadow(0 0 3px rgba(0, 0, 0, 0.90))
@@ -15602,13 +15704,13 @@ html[data-pvfd-tint="wob"] body.pvfd-theme-active.pvfd-theme-active
 
 /* Hide the decorative green ring/glow graphic that reads as a big button. */
 body.pvfd-theme-active .main-topBar-container
-  .main-actionBar-ActionBarPlayButtonContainer > [aria-hidden="true"] {
+  :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) > [aria-hidden="true"] {
   display: none !important;
 }
 
 /* Keep the container from reserving the 48px footprint. */
 body.pvfd-theme-active .main-topBar-container
-  .main-actionBar-ActionBarPlayButtonContainer {
+  :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) {
   aspect-ratio: auto !important;
   min-width: 0 !important;
   min-height: 0 !important;
@@ -15617,7 +15719,7 @@ body.pvfd-theme-active .main-topBar-container
 /* Strip the encore button to a quiet 30px transparent hit area (out-specifies
    the chrome key-cap rule by adding .main-topBar-container). */
 body.pvfd-theme-active .Root__main-view .main-topBar-container
-  .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton
+  :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR)
   button[aria-label] {
   --pvfd-play-control-size: 30px !important;
   aspect-ratio: auto !important;
@@ -15638,7 +15740,7 @@ body.pvfd-theme-active .Root__main-view .main-topBar-container
 /* Bare glyph: cyan, no chrome emboss/stroke/drop-shadow. The cap rule already
    sizes the svg to ~58% of the button (~17px at 30px), which is what we want. */
 body.pvfd-theme-active .Root__main-view .main-topBar-container
-  .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton
+  :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR)
   button[aria-label] :is(svg, path) {
   color: var(--pvfd-cyan) !important;
   fill: currentColor !important;
