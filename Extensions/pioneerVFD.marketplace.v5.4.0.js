@@ -12714,6 +12714,18 @@
     hydrateCustomOelClipBlob();
     hydrateCustomFont();
     updateRouteState(true);
+    // Navigation reaches the route state here first. Spotify's History fires
+    // the moment a route is pushed, before the main view has mutated and well
+    // before the 320ms slow lane samples; without it the route attribute, and
+    // everything armed on a route transition (the no-lyrics curtain above
+    // all), trailed the page by one to three seconds on 1.3.6 (measured
+    // 2026-10-24: "/" still read "artist" 1.8s after leaving an artist page).
+    // The detector is path-first for every route that matters, so running it
+    // this early is exact, not early.
+    safe(() => {
+      const hist = Spicetify.Platform && Spicetify.Platform.History;
+      if (hist && typeof hist.listen === "function") hist.listen(() => safe(() => updateRouteState(true)));
+    });
     reconcileLibrarySearchBoxes();
     reconcileLyricsSyncButtons();
     syncGlobalSearchFocus();

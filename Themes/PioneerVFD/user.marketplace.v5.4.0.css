@@ -512,7 +512,7 @@ h1, h2, h3,
 
 
 .main-card-card,
-:is(.main-trackList-trackList, .ZrkGftJ5OAeqoZdnTENo) {
+:is(.main-trackList-trackList, .CZ8iCvJmvbL4HX68y0KW) {
   background:
     linear-gradient(
       180deg,
@@ -566,7 +566,7 @@ h1, h2, h3,
    2026-06-11: row had --index-column-width: 5ch yet template said 16px).
    Spotify never sets --index-column-width itself on this surface; the
    !important is just insurance against future inline writes. */
-body.pvfd-theme-active :is(.main-trackList-trackList, .ZrkGftJ5OAeqoZdnTENo),
+body.pvfd-theme-active :is(.main-trackList-trackList, .CZ8iCvJmvbL4HX68y0KW),
 body.pvfd-theme-active :is(.main-trackList-trackListRowGrid, .Jkul2hYwJZhZQGymDO5p) {
   --index-column-width: 5ch !important;
   --tracklist-index-column-width: 5ch !important;
@@ -8350,6 +8350,18 @@ body.pvfd-theme-active .Root__main-view :is(.artist-artistDiscography-tracklist,
 }
 
 
+/* The host wrappers Spotify mounts each panel's app into paint an opaque
+   --background-base of their own. Through 1.3.1 the library's was
+   .main-yourLibraryX-entryPoints.main-yourLibraryX-library and the
+   [class*="yourLibrary"] form below caught it; 1.3.6 names it with two bare
+   hashes (and the right sidebar's likewise), so the void sat over the LCD skin
+   and the dot matrix vanished from both side panels (owner, 2026-10-24).
+   Named structurally - the first child of the nav and of the sidebar - so the
+   next hash rotation cannot bring the void back; the hashes ride along. */
+.Root__nav-bar > nav > div:first-child,
+.Root__nav-bar > nav > .u3xv0vOK9EJmOplXOrhG,
+.Root__right-sidebar > div:first-child,
+.Root__right-sidebar > .xyTYq7imng71iO6y2eGQ,
 .Root__nav-bar :is(:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf), [class*="yourLibrary" i], [class*="YourLibrary" i], [data-testid*="library" i]),
 .Root__right-sidebar :is(section, aside, [class*="nowPlaying" i], [class*="NowPlaying" i], [data-testid*="now-playing" i]) {
   background-color: transparent !important;
@@ -9511,6 +9523,39 @@ body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlU
   text-shadow: none !important;
 }
 
+/* Spotify 1.3.6 dropped .x-explicit-label: the badge is an Encore tag now
+   (span[role="img"][aria-label="Explicit"] with the e-*-tag-icon classes)
+   inside the row's badges slot, and the "E" is the span's own text. Same box
+   as above, drawn on the tag itself. Keyed on the aria-label first (exact,
+   English client) with the tag-icon class as the fallback for other locales. */
+body.pvfd-theme-active .Root__main-view :is(.main-trackList-trackListRow, .xwwlUJUZLpjPnZByq04Y)
+  :is([role="img"][aria-label="Explicit" i], [class*="-tag-icon"]) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 13px !important;
+  height: 11px !important;
+  min-width: 13px !important;
+  max-width: 13px !important;
+  margin-right: 5px !important;
+  padding: 0 !important;
+  border: 1px solid rgba(var(--pvfd-light-mid-rgb), 0.78) !important;
+  border-radius: 2px !important;
+  background: rgba(0, 0, 0, 0.52) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--pvfd-light-mid-rgb), 0.16),
+    0 0 4px rgba(var(--pvfd-light-mid-rgb), 0.22) !important;
+  overflow: hidden !important;
+  vertical-align: -1px !important;
+  color: var(--pvfd-cyan) !important;
+  -webkit-text-fill-color: var(--pvfd-cyan) !important;
+  font-family: var(--pvfd-font-pixel, "VT323", monospace) !important;
+  font-size: 8px !important;
+  font-weight: 700 !important;
+  line-height: 11px !important;
+  text-shadow: none !important;
+}
+
 /* Search result explicit badge.
    Style Spotify's real explicit node, but draw only ONE clean E. */
 body.pvfd-theme-active #global-nav-bar
@@ -10296,7 +10341,7 @@ body.pvfd-theme-active .Root__globalNav input::placeholder {
 /* Exact search-category carousel arrows. The SVG inherits
    --encore-icon-fill from --text-base, so keep the tint local instead of
    globally recoloring every .e-10451-icon. */
-body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton {
+body.pvfd-theme-active .Root__main-view :is(.search-searchCategory-carouselButton, .gDqORSCbwbcSWQcVpGi_) {
   --text-base: var(--pvfd-accent) !important;
   --text-subdued: var(--pvfd-accent) !important;
   --essential-base: var(--pvfd-accent) !important;
@@ -10325,7 +10370,7 @@ body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton {
   -webkit-text-fill-color: var(--pvfd-accent) !important;
 }
 
-body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton:is(:hover, :focus-visible) {
+body.pvfd-theme-active .Root__main-view :is(.search-searchCategory-carouselButton, .gDqORSCbwbcSWQcVpGi_):is(:hover, :focus-visible) {
   background:
     radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.82), transparent 24%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.20) 33%, transparent 47%),
@@ -10337,8 +10382,8 @@ body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton:is
     0 0 7px rgba(var(--pvfd-accent-rgb), 0.18) !important;
 }
 
-body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton :is(.e-10451-icon, .e-10860-icon),
-body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton svg {
+body.pvfd-theme-active .Root__main-view :is(.search-searchCategory-carouselButton, .gDqORSCbwbcSWQcVpGi_) :is(.e-10451-icon, .e-10860-icon),
+body.pvfd-theme-active .Root__main-view :is(.search-searchCategory-carouselButton, .gDqORSCbwbcSWQcVpGi_) svg {
   --encore-icon-fill: currentColor !important;
   block-size: 16px !important;
   color: var(--pvfd-accent) !important;
@@ -10352,7 +10397,7 @@ body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton sv
   width: 16px !important;
 }
 
-body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton path {
+body.pvfd-theme-active .Root__main-view :is(.search-searchCategory-carouselButton, .gDqORSCbwbcSWQcVpGi_) path {
   fill: currentColor !important;
   stroke: none !important;
 }
@@ -10367,6 +10412,13 @@ body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton pa
    right chevron to land on top of them. Translate the button up by 37px (3px
    margin + 34px button height) so it clears the play buttons. Mirrored on
    the left chevron by virtue of the shared class. */
+/* Readable name only, on purpose: on Spotify 1.3.6 the same carousel arrow
+   (.gDqORSCbwbcSWQcVpGi_, paired in the chrome rules above, shared by Home
+   shelves, chip rows and search categories) is a div Spotify keeps at
+   opacity 0 and pointer-events none until a scroll-timeline animation shows
+   it, and its overlay already centres it on the row. Forcing pointer-events
+   on would make the invisible left arrow swallow clicks on the first card;
+   the 37px lift was for the 1.2 search layout and would float it off the row. */
 body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton {
   pointer-events: auto !important;
   transform: translateY(-37px) !important;
@@ -10931,6 +10983,15 @@ body.pvfd-theme-active .Root__main-view [data-testid="home-page"] {
   min-block-size: 100% !important;
 }
 
+/* .jTuahgNncRCCfJfiJwQi is Spotify 1.3.6's sticky chip-bar wrapper on Home
+   (position: sticky; top: 0). The readable chip-section names below have not
+   been in a bundle since before 1.2.92, so the bar was sitting on the page
+   ground by accident; 1.3.6 also put a colour band inside the wrapper (see
+   the rule after the padding block), which made the accident visible. The
+   wrapper takes the ground here; its padding is NOT touched (the chips sit
+   in a contentSpacing child on 1.3.6, so extra padding would misalign them
+   against the shelves below). */
+body.pvfd-theme-active .Root__main-view .jTuahgNncRCCfJfiJwQi,
 body.pvfd-theme-active .Root__main-view .main-home-filterChipsSection,
 body.pvfd-theme-active .Root__main-view .main-home-filterChipsSectionActive,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] .main-home-content {
@@ -10975,6 +11036,19 @@ body.pvfd-theme-active .Root__main-view .main-home-filterChipsSection,
 body.pvfd-theme-active .Root__main-view .main-home-filterChipsSectionActive {
   margin-inline: 0 !important;
   padding: 12px 20px 8px !important;
+}
+
+/* Spotify 1.3.6 fades a colour band in behind the sticky chip bar as Home
+   scrolls: an absolute, inset-0 child of the wrapper painted with
+   --background-base (Spotify's hover/hero colour), opacity driven by
+   --top-bar-opacity. The wrapper above already carries the LCD ground, so
+   the band is pinned transparent and can never colour the bar, whatever
+   Spotify resolves the token to (owner, 2026-10-24: "home sticky header
+   changes colors"). Structural form first, hash second. */
+body.pvfd-theme-active .Root__main-view .jTuahgNncRCCfJfiJwQi > div:first-child:empty,
+body.pvfd-theme-active .Root__main-view .jTuahgNncRCCfJfiJwQi > .xCEkyVpabf3oVGmFQVej {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] .main-home-content {
@@ -11105,10 +11179,13 @@ body.pvfd-theme-active .Root__main-view
    place an absolute child, so it stretched to the tile's full width, shrank
    to its content height and centred the glyph in that strip at the top of the
    tile. Same reset the indicator gets, so it fills the action gutter and its
-   own centring puts the glyph in the middle of it. Hash only: no 1.2 client
-   has this element. */
+   own centring puts the glyph in the middle of it. No 1.2 client has this
+   element. The ancestors carry both forms: 1.3.1 hashed them, 1.3.6 gives
+   them their readable names back, and with the hashes alone the overlay
+   stayed an 18px strip across the top of the tile with the glyph top-right
+   (owner, 2026-10-24). */
 body.pvfd-theme-active .Root__main-view
-  .qqdeiPoFoM_sPX0pRHsT .kyJXPKlxWxJleoZlsuUa
+  :is(.view-homeShortcutsGrid-shortcut, .qqdeiPoFoM_sPX0pRHsT) :is(.view-homeShortcutsGrid-main, .kyJXPKlxWxJleoZlsuUa)
   > :is(.gHRmnzWv7_EhCyjcB5fg, .view-homeShortcutsGrid-trailingOverlay) {
   position: relative !important;
   inset: auto !important;
@@ -11134,9 +11211,9 @@ body.pvfd-theme-active .Root__main-view
 }
 
 body.pvfd-theme-active .Root__main-view
-  .qqdeiPoFoM_sPX0pRHsT:is(:hover, :focus-within)
-  .kyJXPKlxWxJleoZlsuUa:has(> :is(.gHRmnzWv7_EhCyjcB5fg, .view-homeShortcutsGrid-trailingOverlay))
-  > :is(.f_vQOQZZwIoA3uIUEknx, .O6l0stovRqzSnYxDqSei) {
+  :is(.view-homeShortcutsGrid-shortcut, .qqdeiPoFoM_sPX0pRHsT):is(:hover, :focus-within)
+  :is(.view-homeShortcutsGrid-main, .kyJXPKlxWxJleoZlsuUa):has(> :is(.gHRmnzWv7_EhCyjcB5fg, .view-homeShortcutsGrid-trailingOverlay))
+  > :is(.view-homeShortcutsGrid-trailingIndicator, .f_vQOQZZwIoA3uIUEknx, .O6l0stovRqzSnYxDqSei) {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
@@ -12599,12 +12676,12 @@ html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar :is(
    and Switch-to-video icons. Tightened to direct text-bearing elements
    only: the link itself, the encore text spans, and the anchor children. */
 html[data-pvfd-tint="bow"] body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-nowPlayingWidget :is(
-    .main-trackInfo-name,
-    .main-trackInfo-name [data-encore-id="text"],
-    .main-trackInfo-name a,
-    .main-trackInfo-artists,
-    .main-trackInfo-artists [data-encore-id="text"],
-    .main-trackInfo-artists a
+    :is(.main-trackInfo-name, .d3jICfEdIPzHv0kyDFHZ),
+    :is(.main-trackInfo-name, .d3jICfEdIPzHv0kyDFHZ) [data-encore-id="text"],
+    :is(.main-trackInfo-name, .d3jICfEdIPzHv0kyDFHZ) a,
+    :is(.main-trackInfo-artists, .pJWbyyFi7zAnwrlWlNr8),
+    :is(.main-trackInfo-artists, .pJWbyyFi7zAnwrlWlNr8) [data-encore-id="text"],
+    :is(.main-trackInfo-artists, .pJWbyyFi7zAnwrlWlNr8) a
 ) {
     color: #000000 !important;
     -webkit-text-fill-color: #000000 !important;
