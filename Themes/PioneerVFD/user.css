@@ -8375,6 +8375,12 @@ body.pvfd-theme-active .Root__main-view :is(.artist-artistDiscography-tracklist,
 .Root__nav-bar > nav > .u3xv0vOK9EJmOplXOrhG,
 .Root__right-sidebar > div:first-child,
 .Root__right-sidebar > .xyTYq7imng71iO6y2eGQ,
+/* Spotify 1.3.6's Now Playing root (first child of the aside) paints the same
+   opaque --background-base with its own 8px rounding; on 1.3.1 the widget had
+   layout only and the skin showed through, as it still does in the library
+   bar. The panel's own cards keep their elevated ground (owner, 2026-10-24). */
+.Root__right-sidebar aside > div:first-child,
+.Root__right-sidebar .vVF0gCDG9l8RCOK3_2kw,
 .Root__nav-bar :is(:is(.main-yourLibraryX-library, .qB0QkhexXi3Wx0P1k0Rf), [class*="yourLibrary" i], [class*="YourLibrary" i], [data-testid*="library" i]),
 .Root__right-sidebar :is(section, aside, [class*="nowPlaying" i], [class*="NowPlaying" i], [data-testid*="now-playing" i]) {
   background-color: transparent !important;

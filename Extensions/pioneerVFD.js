@@ -1692,6 +1692,19 @@
     // rule - the shortcut and card hover treatment among them - went dead
     // (seen live on 1.3.6, 2026-10-24). "/" is Home and nothing else.
     if (path === "/" || path === "/home") return "home";
+    // The same applies to every route whose path says it all. The hint scan
+    // below reads the main view, and since the History listener runs this
+    // detector the instant a route is pushed, the main view is still the
+    // PREVIOUS page at that moment: leaving Liked Songs for /lyrics read
+    // "playlist" for the first 800ms (stale playlist hints), which is exactly
+    // the window the no-lyrics curtain has to be down in. Album, playlist and
+    // artist keep the hint scan: Liked Songs lives under /collection and is
+    // a playlist to the stylesheet only because its header says so.
+    if (path.includes("/beautifullyrics") || path.includes("/spicylyrics")) return "external-lyrics";
+    if (path.includes("/lyrics")) return "lyrics";
+    if (path.includes("/user/")) return "profile";
+    if (path.includes("/search")) return "search";
+    if (path.includes("/queue")) return "queue";
 
     const allRouteHints = mainView
       ? Array.from(mainView.querySelectorAll("[data-test-uri], [data-uri], a[href]"))
