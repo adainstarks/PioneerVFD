@@ -675,6 +675,13 @@
   let sideVuEnergy = 0;
   let pvfdPlaylistScrollStressUntil = -Infinity;
   let pvfdPlaylistScrollStressInstalled = false;
+  // Scroll hover freeze (see installPvfdPlaylistScrollStressDetector).
+  let pvfdScrollFreezeEl = null;
+  let pvfdScrollFreezePrev = "";
+  let pvfdScrollFreezeLastAt = -Infinity;
+  let pvfdScrollFreezeTimer = 0;
+  let pvfdScrollFreezeDragging = false;
+  const PVFD_SCROLL_FREEZE_HOLD_MS = 160;
 
   let lastScrollStressLogoDemandAt = -Infinity;
   let lastScrollStressKnobLedAt = -Infinity;
@@ -1509,15 +1516,60 @@
   function applyRouteStateToDom() {
     const route = pvfdRouteState.route || "other";
     const churn = performance.now() < pvfdRouteState.churnUntil ? "1" : "0";
+    // Write-if-changed, and nothing else. This runs on every slow-lane tick
+    // (320ms) and on every mutation flush, and an attribute set on <html>,
+    // <body> or the chassis root is a document-wide style invalidation
+    // against every rule keyed on that attribute, even when the value is the
+    // same. Measured 2026-11-02 on 1.3.6: nine such writes per three seconds
+    // of scrolling, each a ~100ms recalc with this stylesheet, about two
+    // thirds of the theme's style time while scrolling.
     const roots = [document.documentElement, document.body, chassis].filter(Boolean);
     for (const root of roots) {
-      if (root.dataset) {
-        root.dataset.pvfdRoute = route;
-        root.dataset.pvfdRouteChurn = churn;
-      } else {
-        root.setAttribute("data-pvfd-route", route);
-        root.setAttribute("data-pvfd-route-churn", churn);
+      if (root.getAttribute("data-pvfd-route") !== route) root.setAttribute("data-pvfd-route", route);
+      if (root.getAttribute("data-pvfd-route-churn") !== churn) root.setAttribute("data-pvfd-route-churn", churn);
+    }
+  }
+
+  // ----- Gate classes ----------------------------------------------------
+  // The stylesheet gates whole families on state attributes of <html>, <body>
+  // and the chassis root (tint, performance mode, route, lyrics pass, ...).
+  // An attribute in an ancestor compound cannot be used by Blink's ancestor
+  // filter, so every rule in an inactive family (BOW tints on a red client,
+  // eco twins on a full client, lyrics rules on Home) is still walked for
+  // every candidate element; a class can be rejected before the walk. Each
+  // data-pvfd-<name>="<value>" on those three roots is therefore mirrored as
+  // the class pvfd-<name>-<value>, kept in step by an attribute observer
+  // (filtered to the gate names, so the class writes here never re-trigger
+  // it), and the stylesheet keys its gates on the classes. Measured
+  // 2026-11-02: a forced whole-page recalc on Home went from 142ms to 84ms
+  // with the classes in place and the list subjects distributed.
+  const PVFD_GATE_ATTRS = ["tint", "performance", "route", "lyrics-pass", "playing", "chrome", "mono", "scroll", "type", "lcd", "state", "art-px", "logo-glow", "led-glow", "knob-glow", "eeq-tint", "logo-style", "scope", "nolyrics", "fsdtab", "lyrics-panel", "global-search-focused", "route-churn"];
+  const PVFD_GATE_ATTR_NAMES = PVFD_GATE_ATTRS.map((n) => "data-pvfd-" + n);
+  const pvfdGateObservers = new WeakMap();
+  function syncGateClasses(el, names) {
+    if (!el || !el.classList) return;
+    for (const name of names || PVFD_GATE_ATTRS) {
+      const value = el.getAttribute("data-pvfd-" + name);
+      const want = value === null ? null : "pvfd-" + name + "-" + String(value).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+      const prefix = "pvfd-" + name + "-";
+      for (const cls of Array.from(el.classList)) {
+        if (cls.startsWith(prefix) && cls !== want && /^pvfd-[a-z-]+-[a-z0-9_-]+$/.test(cls)) el.classList.remove(cls);
       }
+      if (want && !el.classList.contains(want)) el.classList.add(want);
+    }
+  }
+  function installGateClassMirror() {
+    const roots = [document.documentElement, document.body, chassis].filter(Boolean);
+    for (const el of roots) {
+      syncGateClasses(el);
+      if (pvfdGateObservers.has(el) || typeof MutationObserver !== "function") continue;
+      const obs = new MutationObserver((records) => safe(() => {
+        const names = new Set();
+        for (const r of records) if (r.attributeName && r.attributeName.startsWith("data-pvfd-")) names.add(r.attributeName.slice(10));
+        if (names.size) syncGateClasses(el, Array.from(names));
+      }));
+      obs.observe(el, { attributes: true, attributeFilter: PVFD_GATE_ATTR_NAMES });
+      pvfdGateObservers.set(el, obs);
     }
   }
 
@@ -2800,10 +2852,58 @@
     return now < pvfdPlaylistScrollStressUntil;
   }
 
+  // ----- SCROLL HOVER FREEZE ----------------------------------------------
+  // While the main view scrolls, the content moving under a resting pointer
+  // changes :hover on whatever passes beneath it, and Spotify 1.3.6 answers
+  // every crossing by restyling the whole carousel row or section under the
+  // pointer (measured 2026-11-02 on Home: 1,600-2,600 elements per crossing,
+  // five or six crossings per three seconds of wheel scrolling, 25ms each on
+  // the stock client and 100ms with the theme), mounting the card's play
+  // button and tearing down its tooltip. pointer-events: none on the
+  // scroller's content for the duration of the scroll parks the hover on the
+  // scroller itself. Blink propagates pointer-events to the subtree as an
+  // independent inherited property, so the write costs a copy per element
+  // and no selector matching, and the wheel still targets the scroller, so
+  // scrolling is unaffected. The content is hit-testable again
+  // PVFD_SCROLL_FREEZE_HOLD_MS after the last scroll event. Off while a drag
+  // is in progress: auto-scroll near the edge fires scroll events and the
+  // drop targets must stay under the pointer.
+  //     window.__pvfdDisableScrollFreeze = true;   // runtime A/B
+  function pvfdScrollFreezeRelease() {
+    pvfdScrollFreezeTimer = 0;
+    const el = pvfdScrollFreezeEl;
+    if (!el) return;
+    const since = performance.now() - pvfdScrollFreezeLastAt;
+    if (since < PVFD_SCROLL_FREEZE_HOLD_MS) {
+      pvfdScrollFreezeTimer = window.setTimeout(pvfdScrollFreezeRelease, PVFD_SCROLL_FREEZE_HOLD_MS - since);
+      return;
+    }
+    pvfdScrollFreezeEl = null;
+    if (pvfdScrollFreezePrev) el.style.setProperty("pointer-events", pvfdScrollFreezePrev);
+    else el.style.removeProperty("pointer-events");
+    pvfdScrollFreezePrev = "";
+  }
+
+  function pvfdScrollFreezeHold(scroller, now) {
+    pvfdScrollFreezeLastAt = now;
+    if (pvfdScrollFreezeEl) return;
+    const content = scroller.firstElementChild;
+    if (!content) return;
+    pvfdScrollFreezeEl = content;
+    pvfdScrollFreezePrev = content.style.getPropertyValue("pointer-events");
+    content.style.setProperty("pointer-events", "none", "important");
+    pvfdDiag.scrollFreezes = (pvfdDiag.scrollFreezes || 0) + 1;
+    if (!pvfdScrollFreezeTimer) pvfdScrollFreezeTimer = window.setTimeout(pvfdScrollFreezeRelease, PVFD_SCROLL_FREEZE_HOLD_MS);
+  }
+
   function installPvfdPlaylistScrollStressDetector() {
     if (pvfdPlaylistScrollStressInstalled) return;
 
     pvfdPlaylistScrollStressInstalled = true;
+
+    document.addEventListener("dragstart", () => { pvfdScrollFreezeDragging = true; }, true);
+    document.addEventListener("dragend", () => { pvfdScrollFreezeDragging = false; }, true);
+    document.addEventListener("drop", () => { pvfdScrollFreezeDragging = false; }, true);
 
     document.addEventListener(
       "scroll",
@@ -2818,7 +2918,23 @@
             target.closest?.(".main-view-container__scroll-node, [data-overlayscrollbars-viewport]")
           )
         ) {
-          pvfdPlaylistScrollStressUntil = performance.now() + 240;
+          const now = performance.now();
+          pvfdPlaylistScrollStressUntil = now + 240;
+          // Only the main view's own scroller: the library list and the
+          // carousels' horizontal scrollers keep their hover. On 1.3.6 the
+          // element that scrolls is OverlayScrollbars' viewport div inside
+          // .main-view-container__scroll-node (the node itself is
+          // overflow: hidden and holds the viewport plus two .os-scrollbar
+          // children); on 1.2 the node scrolled by itself. Either way the
+          // scroller's first child is .main-view-container__scroll-node-child,
+          // which is what gets frozen.
+          if (
+            !window.__pvfdDisableScrollFreeze &&
+            !pvfdScrollFreezeDragging &&
+            target.matches?.(".main-view-container__scroll-node, .main-view-container__scroll-node [data-overlayscrollbars-viewport]")
+          ) {
+            pvfdScrollFreezeHold(target, now);
+          }
         }
       },
       true
@@ -11373,14 +11489,17 @@
       setDataIfChanged(side.status, "label", "ECO");
       setTextIfChanged(side.playbadge, playerState.playing ? "RUN" : "IDLE");
       updateSideBadgeLamps(side);
-      if (side.ecoModel) side.ecoModel.hidden = false;
+      if (side.ecoModel && !side.ecoModel.hidden) side.ecoModel.hidden = false;
       disableSideVuReadout("0.14");
       return;
     }
     const activeClipLabel = activeClipName(10);
     const source = SOURCE_TARGETS[sourceIdx] || SOURCE_TARGETS[0];
     const sourceFlash = performance.now() < sourceFlashUntil;
-    if (side.ecoModel) side.ecoModel.hidden = true;
+    // Same-value attribute writes still reach Blink's attribute invalidation
+    // (the [hidden] rules) and the mutation observers every static-readout
+    // tick, so only write on a change.
+    if (side.ecoModel && !side.ecoModel.hidden) side.ecoModel.hidden = true;
     setTextIfChanged(side.vol, attActive ? "ATTENUATOR" : (Math.round(getPlayerVolume() * 100) + "%"));
     setTextIfChanged(side.mode, demoAutoMode ? "DEMO" : playbackContextLabel());
     setTextIfChanged(side.tint, currentTintLabel());
@@ -12727,6 +12846,7 @@
     hydrateCustomOelClipBlob();
     hydrateCustomFont();
     updateRouteState(true);
+    safe(installGateClassMirror);
     // Navigation reaches the route state here first. Spotify's History fires
     // the moment a route is pushed, before the main view has mutated and well
     // before the 320ms slow lane samples; without it the route attribute, and
