@@ -681,7 +681,12 @@
   let pvfdScrollFreezeLastAt = -Infinity;
   let pvfdScrollFreezeTimer = 0;
   let pvfdScrollFreezeDragging = false;
+  let pvfdScrollFreezeScroller = null;
+  let pvfdScrollFreezeLastTop = 0;
+  let pvfdScrollFreezeEnded = false;
   const PVFD_SCROLL_FREEZE_HOLD_MS = 160;
+  const PVFD_SCROLL_FREEZE_MAX_MS = 1500;
+  const PVFD_SCROLLEND_SUPPORTED = typeof window !== "undefined" && "onscrollend" in window;
 
   let lastScrollStressLogoDemandAt = -Infinity;
   let lastScrollStressKnobLedAt = -Infinity;
@@ -2865,35 +2870,73 @@
   // independent inherited property, so the write costs a copy per element
   // and no selector matching, and the wheel still targets the scroller, so
   // scrolling is unaffected. The content is hit-testable again
-  // PVFD_SCROLL_FREEZE_HOLD_MS after the last scroll event. Off while a drag
+  // PVFD_SCROLL_FREEZE_HOLD_MS after the scroll has ended. Off while a drag
   // is in progress: auto-scroll near the edge fires scroll events and the
   // drop targets must stay under the pointer.
+  //
+  // Each hold or release restyles the whole content subtree (measured
+  // 2026-11-02 on Liked Songs: ~1,400 elements, 33ms with the theme, 11ms
+  // stock; Blink does not take its cheap inherited-property path here), so
+  // the hold must not flap. The first version released 160ms after the last
+  // scroll EVENT, and on a slow page a single long frame delayed the next
+  // scroll event past that, so the hold released and re-held every few
+  // hundred milliseconds of one continuous wheel scroll (five times a second
+  // on the tracklist, each cycle two full restyles). The release now also
+  // waits for the scroller's scrollend event and for its scrollTop to stop
+  // moving between checks, capped at PVFD_SCROLL_FREEZE_MAX_MS after the last
+  // scroll event in case scrollend never comes.
   //     window.__pvfdDisableScrollFreeze = true;   // runtime A/B
   function pvfdScrollFreezeRelease() {
     pvfdScrollFreezeTimer = 0;
     const el = pvfdScrollFreezeEl;
     if (!el) return;
-    const since = performance.now() - pvfdScrollFreezeLastAt;
-    if (since < PVFD_SCROLL_FREEZE_HOLD_MS) {
-      pvfdScrollFreezeTimer = window.setTimeout(pvfdScrollFreezeRelease, PVFD_SCROLL_FREEZE_HOLD_MS - since);
+    const now = performance.now();
+    const scroller = pvfdScrollFreezeScroller;
+    const moved = !!scroller && scroller.isConnected && scroller.scrollTop !== pvfdScrollFreezeLastTop;
+    if (moved) {
+      // The scroller moved since the last scroll event we saw: that event is
+      // still queued behind a long frame. Count it as a scroll now.
+      pvfdScrollFreezeLastAt = now;
+      pvfdScrollFreezeLastTop = scroller.scrollTop;
+      pvfdScrollFreezeEnded = false;
+    }
+    const since = now - pvfdScrollFreezeLastAt;
+    const waiting = since < PVFD_SCROLL_FREEZE_HOLD_MS || (PVFD_SCROLLEND_SUPPORTED && !pvfdScrollFreezeEnded);
+    if (waiting && since < PVFD_SCROLL_FREEZE_MAX_MS) {
+      pvfdScrollFreezeTimer = window.setTimeout(pvfdScrollFreezeRelease, Math.max(40, PVFD_SCROLL_FREEZE_HOLD_MS - since));
       return;
     }
     pvfdScrollFreezeEl = null;
+    pvfdScrollFreezeScroller = null;
     if (pvfdScrollFreezePrev) el.style.setProperty("pointer-events", pvfdScrollFreezePrev);
     else el.style.removeProperty("pointer-events");
     pvfdScrollFreezePrev = "";
+    pvfdDiag.scrollReleases = (pvfdDiag.scrollReleases || 0) + 1;
   }
 
   function pvfdScrollFreezeHold(scroller, now) {
     pvfdScrollFreezeLastAt = now;
+    pvfdScrollFreezeLastTop = scroller.scrollTop;
+    pvfdScrollFreezeEnded = false;
     if (pvfdScrollFreezeEl) return;
     const content = scroller.firstElementChild;
     if (!content) return;
     pvfdScrollFreezeEl = content;
+    pvfdScrollFreezeScroller = scroller;
     pvfdScrollFreezePrev = content.style.getPropertyValue("pointer-events");
     content.style.setProperty("pointer-events", "none", "important");
     pvfdDiag.scrollFreezes = (pvfdDiag.scrollFreezes || 0) + 1;
     if (!pvfdScrollFreezeTimer) pvfdScrollFreezeTimer = window.setTimeout(pvfdScrollFreezeRelease, PVFD_SCROLL_FREEZE_HOLD_MS);
+  }
+
+  function pvfdScrollFreezeOnScrollEnd(event) {
+    const target = event.target;
+    if (!pvfdScrollFreezeEl || !target || target !== pvfdScrollFreezeScroller) return;
+    pvfdScrollFreezeEnded = true;
+    if (!pvfdScrollFreezeTimer) {
+      const left = PVFD_SCROLL_FREEZE_HOLD_MS - (performance.now() - pvfdScrollFreezeLastAt);
+      pvfdScrollFreezeTimer = window.setTimeout(pvfdScrollFreezeRelease, Math.max(0, left));
+    }
   }
 
   function installPvfdPlaylistScrollStressDetector() {
@@ -2904,6 +2947,7 @@
     document.addEventListener("dragstart", () => { pvfdScrollFreezeDragging = true; }, true);
     document.addEventListener("dragend", () => { pvfdScrollFreezeDragging = false; }, true);
     document.addEventListener("drop", () => { pvfdScrollFreezeDragging = false; }, true);
+    if (PVFD_SCROLLEND_SUPPORTED) document.addEventListener("scrollend", pvfdScrollFreezeOnScrollEnd, true);
 
     document.addEventListener(
       "scroll",
@@ -11378,7 +11422,14 @@
       const bandOn = bandPresetIdx >= 0;
       const status = bandOn ? "FM" : (playerState.playing ? "PLAY" : "PAUSE");
       setLcdCornerTextIfChanged(dom.lcdStatus, status);
-      dom.lcdStatus.classList.toggle("paused", !bandOn && !playerState.playing);
+      const paused = !bandOn && !playerState.playing;
+      dom.lcdStatus.classList.toggle("paused", paused);
+      // PAUSE blinks from here, not from a CSS animation: Blink never ran
+      // that opacity animation on the compositor (will-change, linear timing
+      // and translateZ made no difference, measured 2026-11-02), so it cost
+      // a main-thread style recalc on every frame of every page while
+      // paused. Two class flips a second cost two one-element recalcs.
+      dom.lcdStatus.classList.toggle("pvfd-blink-dim", paused && Math.floor(ts / 500) % 2 === 1);
     }
     if (dom.lcdClock && ts - lastLcdClockReadoutAt >= LCD_CLOCK_READOUT_INTERVAL_MS) {
       lastLcdClockReadoutAt = ts;
