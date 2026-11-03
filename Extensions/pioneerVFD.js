@@ -193,6 +193,10 @@
   }
 
   function refreshPvfdCssPalette() {
+    // Gate attributes may have been written in this same task; the sheet keys
+    // on their mirrored classes, so bring the classes up to date before the
+    // inputs key and the computed-style reads below (see flushGateClasses).
+    if (typeof flushGateClasses === "function") flushGateClasses();
     const inputs = tintTransitionActive ? "" : pvfdPaletteInputs();
     if (inputs && inputs === pvfdPaletteInputsKey) return false;
     const nextPalette = {
@@ -675,6 +679,18 @@
   let sideVuEnergy = 0;
   let pvfdPlaylistScrollStressUntil = -Infinity;
   let pvfdPlaylistScrollStressInstalled = false;
+  // Scroll hover freeze (see installPvfdPlaylistScrollStressDetector).
+  let pvfdScrollFreezeEl = null;
+  let pvfdScrollFreezePrev = "";
+  let pvfdScrollFreezeLastAt = -Infinity;
+  let pvfdScrollFreezeTimer = 0;
+  let pvfdScrollFreezeDragging = false;
+  let pvfdScrollFreezeScroller = null;
+  let pvfdScrollFreezeLastTop = 0;
+  let pvfdScrollFreezeEnded = false;
+  const PVFD_SCROLL_FREEZE_HOLD_MS = 160;
+  const PVFD_SCROLL_FREEZE_MAX_MS = 1500;
+  const PVFD_SCROLLEND_SUPPORTED = typeof window !== "undefined" && "onscrollend" in window;
 
   let lastScrollStressLogoDemandAt = -Infinity;
   let lastScrollStressKnobLedAt = -Infinity;
@@ -839,6 +855,7 @@
   }
 
   function findPlayerBar() {
+    stampLayoutAliases();
     const root = document.querySelector(".Root__now-playing-bar");
     if (root) return root;
 
@@ -1359,6 +1376,10 @@
     chassis = buildChassis();
     chassis.dataset.pvfdInstance = String(pvfdDiag.injectChassisCalls);
     bar.appendChild(chassis);
+    // A rebuilt chassis is a new element: give it its own gate class mirror
+    // (idempotent per element), or its data-pvfd-state / chrome / logo-glow
+    // writes would never become the classes the stylesheet keys on.
+    installGateClassMirror();
     hideNativePlayerChildren(bar);
     ensureLogoSpectrumMarkup();
     ensureOelVideoMarkup();
@@ -1508,15 +1529,78 @@
   function applyRouteStateToDom() {
     const route = pvfdRouteState.route || "other";
     const churn = performance.now() < pvfdRouteState.churnUntil ? "1" : "0";
+    // Write-if-changed, and nothing else. This runs on every slow-lane tick
+    // (320ms) and on every mutation flush, and an attribute set on <html>,
+    // <body> or the chassis root is a document-wide style invalidation
+    // against every rule keyed on that attribute, even when the value is the
+    // same. Measured 2026-11-02 on 1.3.6: nine such writes per three seconds
+    // of scrolling, each a ~100ms recalc with this stylesheet, about two
+    // thirds of the theme's style time while scrolling.
     const roots = [document.documentElement, document.body, chassis].filter(Boolean);
     for (const root of roots) {
-      if (root.dataset) {
-        root.dataset.pvfdRoute = route;
-        root.dataset.pvfdRouteChurn = churn;
-      } else {
-        root.setAttribute("data-pvfd-route", route);
-        root.setAttribute("data-pvfd-route-churn", churn);
+      if (root.getAttribute("data-pvfd-route") !== route) root.setAttribute("data-pvfd-route", route);
+      if (root.getAttribute("data-pvfd-route-churn") !== churn) root.setAttribute("data-pvfd-route-churn", churn);
+    }
+  }
+
+  // ----- Gate classes ----------------------------------------------------
+  // The stylesheet gates whole families on state attributes of <html>, <body>
+  // and the chassis root (tint, performance mode, route, lyrics pass, ...).
+  // An attribute in an ancestor compound cannot be used by Blink's ancestor
+  // filter, so every rule in an inactive family (BOW tints on a red client,
+  // eco twins on a full client, lyrics rules on Home) is still walked for
+  // every candidate element; a class can be rejected before the walk. Each
+  // data-pvfd-<name>="<value>" on those three roots is therefore mirrored as
+  // the class pvfd-<name>-<value>, kept in step by an attribute observer
+  // (filtered to the gate names, so the class writes here never re-trigger
+  // it), and the stylesheet keys its gates on the classes. Measured
+  // 2026-11-02: a forced whole-page recalc on Home went from 142ms to 84ms
+  // with the classes in place and the list subjects distributed.
+  const PVFD_GATE_ATTRS = ["tint", "performance", "route", "lyrics-pass", "playing", "chrome", "mono", "scroll", "type", "lcd", "state", "art-px", "logo-glow", "led-glow", "knob-glow", "eeq-tint", "logo-style", "scope", "nolyrics", "fsdtab", "lyrics-panel", "global-search-focused", "route-churn"];
+  const PVFD_GATE_ATTR_NAMES = PVFD_GATE_ATTRS.map((n) => "data-pvfd-" + n);
+  const pvfdGateObservers = new WeakMap();
+  function syncGateClasses(el, names) {
+    if (!el || !el.classList) return;
+    for (const name of names || PVFD_GATE_ATTRS) {
+      const value = el.getAttribute("data-pvfd-" + name);
+      const want = value === null ? null : "pvfd-" + name + "-" + String(value).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+      const prefix = "pvfd-" + name + "-";
+      for (const cls of Array.from(el.classList)) {
+        if (!cls.startsWith(prefix) || cls === want || !/^pvfd-[a-z-]+-[a-z0-9_-]+$/.test(cls)) continue;
+        // A class that belongs to a LONGER gate name sharing this prefix
+        // (`route` vs `route-churn`: pvfd-route-churn-1 starts with
+        // pvfd-route-) is that gate's business, not this one's.
+        if (PVFD_GATE_ATTRS.some((other) => other !== name && other.startsWith(name + "-") && cls.startsWith("pvfd-" + other + "-"))) continue;
+        el.classList.remove(cls);
       }
+      if (want && !el.classList.contains(want)) el.classList.add(want);
+    }
+  }
+  // The mirror above runs as a MutationObserver, i.e. a microtask AFTER the
+  // task that wrote the attribute. The stylesheet keys its tint blocks on the
+  // mirrored classes, so any getComputedStyle read in the same task as a gate
+  // write (the tint palette sample, the glide primitives) still sees the
+  // previous tint. Measured 2026-11-03: the logo spectrum bars were always one
+  // tint behind (cyan under yellow, yellow under B on W, black under cyan).
+  // Callers that write a gate attribute and read styles right away flush the
+  // mirror by hand through this.
+  function flushGateClasses(names) {
+    syncGateClasses(document.documentElement, names);
+    syncGateClasses(document.body, names);
+    syncGateClasses(chassis, names);
+  }
+  function installGateClassMirror() {
+    const roots = [document.documentElement, document.body, chassis].filter(Boolean);
+    for (const el of roots) {
+      syncGateClasses(el);
+      if (pvfdGateObservers.has(el) || typeof MutationObserver !== "function") continue;
+      const obs = new MutationObserver((records) => safe(() => {
+        const names = new Set();
+        for (const r of records) if (r.attributeName && r.attributeName.startsWith("data-pvfd-")) names.add(r.attributeName.slice(10));
+        if (names.size) syncGateClasses(el, Array.from(names));
+      }));
+      obs.observe(el, { attributes: true, attributeFilter: PVFD_GATE_ATTR_NAMES });
+      pvfdGateObservers.set(el, obs);
     }
   }
 
@@ -1685,6 +1769,25 @@
     const entityHeader = mainView && mainView.querySelector(".main-entityHeader-container");
 
     const path = currentSpotifyPath();
+    // Home on the path alone, before the hint scan: Spotify 1.3 Home cards
+    // carry data-uri="spotify:album:..." (and playlist, artist), so the scan
+    // below read Home as an album page and every body[data-pvfd-route="home"]
+    // rule - the shortcut and card hover treatment among them - went dead
+    // (seen live on 1.3.6, 2026-10-24). "/" is Home and nothing else.
+    if (path === "/" || path === "/home") return "home";
+    // The same applies to every route whose path says it all. The hint scan
+    // below reads the main view, and since the History listener runs this
+    // detector the instant a route is pushed, the main view is still the
+    // PREVIOUS page at that moment: leaving Liked Songs for /lyrics read
+    // "playlist" for the first 800ms (stale playlist hints), which is exactly
+    // the window the no-lyrics curtain has to be down in. Album, playlist and
+    // artist keep the hint scan: Liked Songs lives under /collection and is
+    // a playlist to the stylesheet only because its header says so.
+    if (path.includes("/beautifullyrics") || path.includes("/spicylyrics")) return "external-lyrics";
+    if (path.includes("/lyrics")) return "lyrics";
+    if (path.includes("/user/")) return "profile";
+    if (path.includes("/search")) return "search";
+    if (path.includes("/queue")) return "queue";
 
     const allRouteHints = mainView
       ? Array.from(mainView.querySelectorAll("[data-test-uri], [data-uri], a[href]"))
@@ -1737,7 +1840,7 @@
       !entityHeader &&
       (
         document.fullscreenElement ||
-        document.querySelector("[data-testid*='fullscreen' i], [class*='fullscreenView' i]")
+        document.querySelector("[data-testid*='fullscreen' i]:not(button):not([role='button']), [class*='fullscreenView' i]") /* 1.3.x Settings has a fullscreen-mode-button */
       )
     ) {
       return "fullscreen";
@@ -1752,6 +1855,8 @@
       pvfdPerfEnd("routeStateUpdate", perfAt);
       return pvfdRouteState.route;
     }
+    // Before the detector: it and everything below read the layout classes.
+    stampLayoutAliases();
     const nextRoute = detectPvfdRoute();
     pvfdRouteState.at = ts;
     const prevRoute = pvfdRouteState.route;
@@ -2778,10 +2883,113 @@
     return now < pvfdPlaylistScrollStressUntil;
   }
 
+  // ----- SCROLL HOVER FREEZE ----------------------------------------------
+  // While the main view scrolls, the content moving under a resting pointer
+  // changes :hover on whatever passes beneath it, and Spotify 1.3.6 answers
+  // every crossing by restyling the whole carousel row or section under the
+  // pointer (measured 2026-11-02 on Home: 1,600-2,600 elements per crossing,
+  // five or six crossings per three seconds of wheel scrolling, 25ms each on
+  // the stock client and 100ms with the theme), mounting the card's play
+  // button and tearing down its tooltip. pointer-events: none on the
+  // scroller's content for the duration of the scroll parks the hover on the
+  // scroller itself. Blink propagates pointer-events to the subtree as an
+  // independent inherited property, so the write costs a copy per element
+  // and no selector matching, and the wheel still targets the scroller, so
+  // scrolling is unaffected. The content is hit-testable again
+  // PVFD_SCROLL_FREEZE_HOLD_MS after the scroll has ended. Off while a drag
+  // is in progress: auto-scroll near the edge fires scroll events and the
+  // drop targets must stay under the pointer.
+  //
+  // Each hold or release restyles the whole content subtree (measured
+  // 2026-11-02 on Liked Songs: ~1,400 elements, 33ms with the theme, 11ms
+  // stock; Blink does not take its cheap inherited-property path here), so
+  // the hold must not flap. The first version released 160ms after the last
+  // scroll EVENT, and on a slow page a single long frame delayed the next
+  // scroll event past that, so the hold released and re-held every few
+  // hundred milliseconds of one continuous wheel scroll (five times a second
+  // on the tracklist, each cycle two full restyles). The release now also
+  // waits for the scroller's scrollend event and for its scrollTop to stop
+  // moving between checks, capped at PVFD_SCROLL_FREEZE_MAX_MS after the last
+  // scroll event in case scrollend never comes.
+  //     window.__pvfdDisableScrollFreeze = true;   // runtime A/B
+  // force: release now regardless of scroll state (a drag started, or a new
+  // scroller took over from a stale hold).
+  function pvfdScrollFreezeRelease(force = false) {
+    if (pvfdScrollFreezeTimer) window.clearTimeout(pvfdScrollFreezeTimer);
+    pvfdScrollFreezeTimer = 0;
+    const el = pvfdScrollFreezeEl;
+    if (!el) return;
+    const now = performance.now();
+    const scroller = pvfdScrollFreezeScroller;
+    const moved = !force && !!scroller && scroller.isConnected && scroller.scrollTop !== pvfdScrollFreezeLastTop;
+    if (moved) {
+      // The scroller moved since the last scroll event we saw: that event is
+      // still queued behind a long frame. Count it as a scroll now.
+      pvfdScrollFreezeLastAt = now;
+      pvfdScrollFreezeLastTop = scroller.scrollTop;
+      pvfdScrollFreezeEnded = false;
+    }
+    const since = now - pvfdScrollFreezeLastAt;
+    const waiting = since < PVFD_SCROLL_FREEZE_HOLD_MS || (PVFD_SCROLLEND_SUPPORTED && !pvfdScrollFreezeEnded);
+    if (!force && waiting && since < PVFD_SCROLL_FREEZE_MAX_MS) {
+      pvfdScrollFreezeTimer = window.setTimeout(pvfdScrollFreezeRelease, Math.max(40, PVFD_SCROLL_FREEZE_HOLD_MS - since));
+      return;
+    }
+    pvfdScrollFreezeEl = null;
+    pvfdScrollFreezeScroller = null;
+    if (pvfdScrollFreezePrev) el.style.setProperty("pointer-events", pvfdScrollFreezePrev);
+    else el.style.removeProperty("pointer-events");
+    pvfdScrollFreezePrev = "";
+    pvfdDiag.scrollReleases = (pvfdDiag.scrollReleases || 0) + 1;
+  }
+
+  function pvfdScrollFreezeHold(scroller, now) {
+    // A hold still parked on another scroller (the previous route's, now
+    // detached) must not keep this one from being frozen, nor have its clock
+    // reset by this scroller's events.
+    if (pvfdScrollFreezeEl && pvfdScrollFreezeScroller !== scroller) pvfdScrollFreezeRelease(true);
+    pvfdScrollFreezeLastAt = now;
+    pvfdScrollFreezeLastTop = scroller.scrollTop;
+    pvfdScrollFreezeEnded = false;
+    if (pvfdScrollFreezeEl) return;
+    const content = scroller.firstElementChild;
+    if (!content) return;
+    pvfdScrollFreezeEl = content;
+    pvfdScrollFreezeScroller = scroller;
+    pvfdScrollFreezePrev = content.style.getPropertyValue("pointer-events");
+    content.style.setProperty("pointer-events", "none", "important");
+    pvfdDiag.scrollFreezes = (pvfdDiag.scrollFreezes || 0) + 1;
+    if (!pvfdScrollFreezeTimer) pvfdScrollFreezeTimer = window.setTimeout(pvfdScrollFreezeRelease, PVFD_SCROLL_FREEZE_HOLD_MS);
+  }
+
+  function pvfdScrollFreezeOnScrollEnd(event) {
+    const target = event.target;
+    if (!pvfdScrollFreezeEl || !target || target !== pvfdScrollFreezeScroller) return;
+    pvfdScrollFreezeEnded = true;
+    if (!pvfdScrollFreezeTimer) {
+      const left = PVFD_SCROLL_FREEZE_HOLD_MS - (performance.now() - pvfdScrollFreezeLastAt);
+      pvfdScrollFreezeTimer = window.setTimeout(pvfdScrollFreezeRelease, Math.max(0, left));
+    }
+  }
+
   function installPvfdPlaylistScrollStressDetector() {
     if (pvfdPlaylistScrollStressInstalled) return;
 
     pvfdPlaylistScrollStressInstalled = true;
+
+    // A drag that starts inside a hold window would find the drop targets
+    // under the pointer unreachable: release at once, and hold nothing until
+    // the drag is over.
+    document.addEventListener("dragstart", () => { pvfdScrollFreezeDragging = true; pvfdScrollFreezeRelease(true); }, true);
+    document.addEventListener("dragend", () => { pvfdScrollFreezeDragging = false; }, true);
+    document.addEventListener("drop", () => { pvfdScrollFreezeDragging = false; }, true);
+    // dragend is dispatched on the drag source; when React unmounts that row
+    // mid-drag (virtualised tracklist, auto-scroll) it never reaches the
+    // document, and the flag would stay up for the session. No pointer
+    // events are delivered during a native drag, so the first mouse move
+    // with no button held means the drag is over.
+    document.addEventListener("mousemove", (event) => { if (pvfdScrollFreezeDragging && event.buttons === 0) pvfdScrollFreezeDragging = false; }, true);
+    if (PVFD_SCROLLEND_SUPPORTED) document.addEventListener("scrollend", pvfdScrollFreezeOnScrollEnd, true);
 
     document.addEventListener(
       "scroll",
@@ -2796,7 +3004,23 @@
             target.closest?.(".main-view-container__scroll-node, [data-overlayscrollbars-viewport]")
           )
         ) {
-          pvfdPlaylistScrollStressUntil = performance.now() + 240;
+          const now = performance.now();
+          pvfdPlaylistScrollStressUntil = now + 240;
+          // Only the main view's own scroller: the library list and the
+          // carousels' horizontal scrollers keep their hover. On 1.3.6 the
+          // element that scrolls is OverlayScrollbars' viewport div inside
+          // .main-view-container__scroll-node (the node itself is
+          // overflow: hidden and holds the viewport plus two .os-scrollbar
+          // children); on 1.2 the node scrolled by itself. Either way the
+          // scroller's first child is .main-view-container__scroll-node-child,
+          // which is what gets frozen.
+          if (
+            !window.__pvfdDisableScrollFreeze &&
+            !pvfdScrollFreezeDragging &&
+            target.matches?.(".main-view-container__scroll-node, .main-view-container__scroll-node > [data-overlayscrollbars-viewport]")
+          ) {
+            pvfdScrollFreezeHold(target, now);
+          }
         }
       },
       true
@@ -4173,6 +4397,25 @@
       // Shared with the Spicy branch above — same job, same restore.
       preLyricsPath = currentSpotifyPathRaw();
     }
+    // Drive the route, not Spotify's button. Spotify serves /lyrics for every
+    // track; its own control is the thing that varies. On a track with no
+    // lyrics the control is rendered but declines, so a click "succeeds" while
+    // nothing happens (the LYRICS key looked dead on exactly the tracks users
+    // asked about). On Spotify 1.3.6 the control no longer goes to /lyrics at
+    // all: it opens the full-window lyrics panel over a collapsed main view,
+    // so clicking it first and then pushing the route on the 260ms verdict
+    // showed Spotify's blue panel, in Spotify's face and colours, for about a
+    // second before the page took over (#50, Discord 2026-10-24: "full-screens
+    // the no lyrics screen"). The route is the one surface that behaves the
+    // same on every client, and it is where the page stamps, the DSEG14 lines
+    // and the no-lyrics cover live. The control is only a fallback for a
+    // client with no History API.
+    const drive = () =>
+      safeReturn(() => pushSpotifyPath(wasOpen ? (preLyricsPath || "/") : "/lyrics"), false);
+    if (drive()) {
+      scheduleLyricsLampSync(); // lamp reflects actual open/closed state
+      return true;
+    }
     const clicked = clickFirstOutsideChassis([
       "button[data-testid='lyrics-button']",
       "button[data-testid='control-button-lyrics']",
@@ -4185,34 +4428,9 @@
       "button[aria-label*='Lyrics' i]",
       "[role='button'][aria-label*='Lyrics' i]"
     ]);
-
-    // Drive the route ourselves whenever the click did not actually change the
-    // surface. The old code only fell back when the click FAILED, which missed
-    // the case that matters: on a track with no lyrics Spotify still renders a
-    // lyrics control, so .click() succeeds and returns true while nothing
-    // happens — the LYRICS key looked dead on exactly the tracks users then
-    // asked about. Spotify does serve /lyrics for those tracks; only its button
-    // declines. Checking the OUTCOME rather than the click also covers a
-    // renamed testid or an aria-label we matched too eagerly, without needing
-    // to know which went wrong.
-    const drive = () =>
-      safeReturn(() => pushSpotifyPath(wasOpen ? (preLyricsPath || "/") : "/lyrics"), false);
-
-    if (!clicked) {
-      const ok = drive();
-      scheduleLyricsLampSync();
-      if (!ok) console.warn("[PVFD] lyrics control unavailable");
-      return ok;
-    }
-    // A route change is not synchronous, so the verdict has to wait a beat.
-    setTimeout(() => safe(() => {
-      if (nativeLyricsSurfaceOpen() === wasOpen) {
-        drive();
-        scheduleLyricsLampSync();
-      }
-    }), 260);
-    scheduleLyricsLampSync(); // lamp reflects actual open/closed state
-    return true;
+    scheduleLyricsLampSync();
+    if (!clicked) console.warn("[PVFD] lyrics control unavailable");
+    return clicked;
   }
 
   const NPV_TOGGLE_SELECTORS = [
@@ -4305,7 +4523,9 @@
   function setTintMenuOpen(next) {
     tintMenuOpen = !!next;
     if (!chassis) return;
-    chassis.classList.toggle("pvfd-tint-menu-open", tintMenuOpen);
+    // Not pvfd-tint-menu-open: that sits in the `tint` gate's class prefix
+    // and the gate class mirror would strip it on the next tint write.
+    chassis.classList.toggle("pvfd-tintmenu-open", tintMenuOpen);
     const panel = chassis.querySelector("[data-pvfd='tint-menu-panel']");
     if (panel) panel.setAttribute("aria-hidden", tintMenuOpen ? "false" : "true");
     if (tintMenuOpen && menuOpen) setMenuOpen(false);
@@ -7113,6 +7333,9 @@
     if (document.body) {
       if (preset.bodyAttr) document.body.setAttribute("data-pvfd-lcd", preset.bodyAttr);
       else document.body.removeAttribute("data-pvfd-lcd");
+      // The meta-track re-measure below runs in this same task and the font
+      // rules key on body.pvfd-lcd-*, so the class must be there already.
+      flushGateClasses(["lcd"]);
     }
     if (persist) safe(() => window.localStorage.setItem(LCD_FONT_STORAGE_KEY, preset.label));
     updateMenuPanel();
@@ -7207,6 +7430,67 @@
   // data-pvfd-fsdtab and the CSS keeps the tab out entirely: an unmeasured tab
   // must be absent, never parked against the WINDOW edge, where its grip would
   // land on top of the Now Playing View as an invisible hover strip.
+  // ----- Layout aliases ---------------------------------------------------
+  // Spotify 1.3.6 hashed the four root layout classes the stylesheet scopes
+  // on (.Root__main-view carries 288 selectors alone, .Root__nav-bar 57,
+  // .Root__right-sidebar 62, .Root__now-playing-bar 15), and Spicetify's class
+  // map had not caught up, so every one of those rules went dead at once: flat
+  // chassis, Spotify's Home gradient back, stock play buttons, stock carousel
+  // arrows (owner, 2026-10-24; renzzuu in #50). The layout itself is named by
+  // Spotify's own grid contract - the nodes sit in grid areas called
+  // main-view, left-sidebar, right-sidebar and now-playing-bar, and the main
+  // view also carries id="main-view" - which is the stable thing, so the
+  // readable class is put back onto whichever node occupies each area. Only
+  // added when missing: once the map restores the names this is a no-op. Runs
+  // at boot, on every sampled route tick (the right sidebar and the lyrics
+  // cinema remount their nodes) and before the chassis mounts. Cheap: four
+  // :scope queries per tick, and a style read only when an alias is absent.
+  const PVFD_LAYOUT_ALIASES = [
+    ["main-view", "Root__main-view"],
+    ["left-sidebar", "Root__nav-bar"],
+    ["right-sidebar", "Root__right-sidebar"],
+    ["now-playing-bar", "Root__now-playing-bar"],
+  ];
+  function pvfdGridAreaIs(el, name) {
+    const t = String(getComputedStyle(el).gridArea || "").split("/").map((s) => s.trim());
+    // "main-view", or the four-slot form whose first three slots are the
+    // area ("main-view / main-view / main-view / right-sidebar" when the
+    // sidebar is hidden and the view spans across).
+    return t[0] === name && (t.length === 1 || (t[1] === name && t[2] === name));
+  }
+  let pvfdLayoutAliasObserver = null;
+  let pvfdLayoutAliasHost = null;
+  function stampLayoutAliases() {
+    const tc = document.querySelector(".Root__top-container") || document.querySelector(".Root > div");
+    if (!tc) return 0;
+    // React REPLACES these nodes rather than updating them: the right sidebar
+    // is remounted every time the lyrics panel closes, the main view when it
+    // opens. A replacement arrives with no alias, and until the next sampled
+    // tick (up to 1200ms) every rule scoped on it was dead - Spotify's own
+    // sidebar, in its own colours, for a second after leaving lyrics (seen
+    // live 2026-10-24). Direct children of the grid change only on those
+    // remounts and on sidebar toggles, so a child-list observer there is all
+    // but idle, and its callback runs before the next paint.
+    if (pvfdLayoutAliasHost !== tc && typeof MutationObserver === "function") {
+      if (pvfdLayoutAliasObserver) pvfdLayoutAliasObserver.disconnect();
+      pvfdLayoutAliasHost = tc;
+      pvfdLayoutAliasObserver = new MutationObserver(() => safe(stampLayoutAliases));
+      pvfdLayoutAliasObserver.observe(tc, { childList: true });
+    }
+    const need = PVFD_LAYOUT_ALIASES.filter(([, cls]) => !tc.querySelector(":scope > ." + cls));
+    if (!need.length) return 0;
+    let n = 0;
+    const mv = document.getElementById("main-view");
+    if (mv && mv.parentElement === tc && !mv.classList.contains("Root__main-view")) { mv.classList.add("Root__main-view"); n++; }
+    for (const el of tc.children) {
+      for (const [area, cls] of need) {
+        if (el.classList.contains(cls)) continue;
+        if (pvfdGridAreaIs(el, area)) { el.classList.add(cls); n++; }
+      }
+    }
+    return n;
+  }
+
   function syncFsdTabEdge() {
     const main = safeReturn(() => document.querySelector(".Root__main-view"), null);
     if (!main || !document.body) return false;
@@ -7287,12 +7571,16 @@
     if (document.body.classList.contains("pvfd-cinema-active")) return;
     if (pvfdRouteState.route !== "lyrics") return;
     getNoLyricsEl();
-    // Attribute BEFORE the measurement. syncFsdTabEdge reads a bounding rect,
-    // which flushes style, and anything resolved in that flush is resolved
-    // against the state we have not set yet.
     noLyricsEmptySince = 0;
+    // Measure FIRST, and no curtain at all if the main view cannot be found:
+    // the cover is positioned from the measured box, and with the box unset
+    // its CSS defaults are the whole window - which on Spotify 1.3.6, where
+    // the main view's class was hashed, put a black panel over the console
+    // and every control with it (#50: "can only exit through the title bar").
+    // The panel under the curtain is hidden by default, so resolving style in
+    // this measurement before the attribute lands cannot flash it.
+    if (!syncFsdTabEdge()) return;    // the box is positioned from those vars
     document.body.setAttribute("data-pvfd-nolyrics", "wait");
-    syncFsdTabEdge();                 // the box is positioned from those vars
   }
 
   function syncNoLyricsPanel() {
@@ -7316,7 +7604,8 @@
       if (uri !== noLyricsUri) {
         noLyricsUri = uri;
         noLyricsEmptySince = 0;
-        if (!hasLines && !spicy) document.body.setAttribute("data-pvfd-nolyrics", "wait");
+        // Same rule as armNoLyricsCover: only over a measured main view.
+        if (!hasLines && !spicy && syncFsdTabEdge()) document.body.setAttribute("data-pvfd-nolyrics", "wait");
       }
       if (spicy || hasLines) {
         noLyricsEmptySince = 0;
@@ -7339,6 +7628,9 @@
 
     const current = document.body.getAttribute("data-pvfd-nolyrics");
     if (state === current) return;
+    // A verdict only lands over a measured main view (see armNoLyricsCover);
+    // unmeasured, the cover comes off rather than defaulting to the window.
+    if (state && !syncFsdTabEdge()) state = null;
     if (state === "on") {
       const el = getNoLyricsEl();
       const title = el.querySelector("[data-pvfd='nolyrics-title']");
@@ -7347,11 +7639,10 @@
         title.textContent =
           (item && (item.name || (item.metadata && item.metadata.title))) || "—";
       }
-      syncFsdTabEdge();
       document.body.setAttribute("data-pvfd-nolyrics", "on");
     } else if (state === "wait") {
       document.body.setAttribute("data-pvfd-nolyrics", "wait");
-    } else {
+    } else if (current) {
       document.body.removeAttribute("data-pvfd-nolyrics");
     }
   }
@@ -7367,7 +7658,7 @@
   // 64px one. If that convention ever changes the replace simply no-ops and the
   // full-size URL is used — the art still gets tinted, it just stops being
   // chunky, which is a far better failure than a blank panel.
-  const PVFD_NPV_ART_HOST = ".Root__right-sidebar .main-nowPlayingView-coverArt";
+  const PVFD_NPV_ART_HOST = ".Root__right-sidebar :is(.main-nowPlayingView-coverArt, .NVWh8UPr5cdJCOqxaW9c)"; // 1.3.6 hash paired live 2026-10-24
 
   function paintNpvArt() {
     const host = safeReturn(() => document.querySelector(PVFD_NPV_ART_HOST), null);
@@ -8012,6 +8303,7 @@
   // Read the primitives as they currently render off `el` (inline vars if a glide
   // or adaptive is live, otherwise the active CSS tint block). Defaults to <html>.
   function readTintPrimitives(el) {
+    flushGateClasses(["tint", "mono"]);   // same-task gate writes must be visible to this read
     const cs = getComputedStyle(el || document.documentElement);
     return ADAPTIVE_VARS.map((v) => pvfdParseCssRgb(cs.getPropertyValue(v.name)) || v.rgb.slice());
   }
@@ -8052,9 +8344,11 @@
     const prevAttr = root.getAttribute("data-pvfd-tint");
     ADAPTIVE_VAR_NAMES.forEach((n) => { root.style.removeProperty(n); if (chassis) chassis.style.removeProperty(n); });
     root.setAttribute("data-pvfd-tint", cssTintName);
+    syncGateClasses(root, ["tint"]);   // the sheet keys on the class, not the attribute
     const target = readTintPrimitives();
     if (prevAttr) root.setAttribute("data-pvfd-tint", prevAttr);
     else root.removeAttribute("data-pvfd-tint");
+    syncGateClasses(root, ["tint"]);
     return target;
   }
 
@@ -11010,6 +11304,9 @@
         chassis.removeAttribute("data-pvfd-mono");
         document.documentElement.removeAttribute("data-pvfd-mono");
       }
+      // The stylesheet keys the tint on the mirrored classes; the palette
+      // sample below reads computed styles in this same task.
+      flushGateClasses(["tint", "mono"]);
     }
     refreshPvfdCssPalette();
 
@@ -11178,7 +11475,14 @@
       const bandOn = bandPresetIdx >= 0;
       const status = bandOn ? "FM" : (playerState.playing ? "PLAY" : "PAUSE");
       setLcdCornerTextIfChanged(dom.lcdStatus, status);
-      dom.lcdStatus.classList.toggle("paused", !bandOn && !playerState.playing);
+      const paused = !bandOn && !playerState.playing;
+      dom.lcdStatus.classList.toggle("paused", paused);
+      // PAUSE blinks from here, not from a CSS animation: Blink never ran
+      // that opacity animation on the compositor (will-change, linear timing
+      // and translateZ made no difference, measured 2026-11-02), so it cost
+      // a main-thread style recalc on every frame of every page while
+      // paused. Two class flips a second cost two one-element recalcs.
+      dom.lcdStatus.classList.toggle("pvfd-blink-dim", paused && Math.floor(ts / 500) % 2 === 1);
     }
     if (dom.lcdClock && ts - lastLcdClockReadoutAt >= LCD_CLOCK_READOUT_INTERVAL_MS) {
       lastLcdClockReadoutAt = ts;
@@ -11289,14 +11593,17 @@
       setDataIfChanged(side.status, "label", "ECO");
       setTextIfChanged(side.playbadge, playerState.playing ? "RUN" : "IDLE");
       updateSideBadgeLamps(side);
-      if (side.ecoModel) side.ecoModel.hidden = false;
+      if (side.ecoModel && side.ecoModel.hidden) side.ecoModel.hidden = false;
       disableSideVuReadout("0.14");
       return;
     }
     const activeClipLabel = activeClipName(10);
     const source = SOURCE_TARGETS[sourceIdx] || SOURCE_TARGETS[0];
     const sourceFlash = performance.now() < sourceFlashUntil;
-    if (side.ecoModel) side.ecoModel.hidden = true;
+    // Same-value attribute writes still reach Blink's attribute invalidation
+    // (the [hidden] rules) and the mutation observers every static-readout
+    // tick, so only write on a change.
+    if (side.ecoModel && !side.ecoModel.hidden) side.ecoModel.hidden = true;
     setTextIfChanged(side.vol, attActive ? "ATTENUATOR" : (Math.round(getPlayerVolume() * 100) + "%"));
     setTextIfChanged(side.mode, demoAutoMode ? "DEMO" : playbackContextLabel());
     setTextIfChanged(side.tint, currentTintLabel());
@@ -11678,8 +11985,8 @@
   function collectLibrarySearchBoxes(root = document) {
     const scope = root && root.querySelectorAll ? root : document;
     const boxes = [];
-    if (scope.matches && scope.matches(".x-filterBox-filterInputContainer")) boxes.push(scope);
-    if (scope.querySelectorAll) scope.querySelectorAll(".x-filterBox-filterInputContainer").forEach((container) => boxes.push(container));
+    if (scope.matches && scope.matches(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)")) boxes.push(scope);
+    if (scope.querySelectorAll) scope.querySelectorAll(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)").forEach((container) => boxes.push(container));
     return boxes;
   }
 
@@ -11753,7 +12060,7 @@
         container.classList.remove("pvfd-library-search-box", "pvfd-filter-has-text");
         return;
       }
-      const input = container.querySelector(".x-filterBox-filterInput");
+      const input = container.querySelector(":is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9)");
       if (!input) return;
 
       if (!patchedLibrarySearchContainers.has(container)) {
@@ -11795,10 +12102,10 @@
 
   function findLibrarySearchBox(el, includeDescendants = false) {
     if (!el || !el.matches) return null;
-    if (el.matches(".x-filterBox-filterInputContainer")) return el;
-    const closestBox = el.closest && el.closest(".x-filterBox-filterInputContainer");
+    if (el.matches(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)")) return el;
+    const closestBox = el.closest && el.closest(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)");
     if (closestBox) return closestBox;
-    if (includeDescendants && el.querySelector) return el.querySelector(".x-filterBox-filterInputContainer");
+    if (includeDescendants && el.querySelector) return el.querySelector(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)");
     return null;
   }
 
@@ -11813,8 +12120,8 @@
 
   function isLibrarySearchMutationScope(el) {
     if (!el || !el.matches) return false;
-    if (el.matches(".x-filterBox-filterInputContainer, .x-filterBox-filterInput")) return true;
-    if (el.closest && el.closest(".x-filterBox-filterInputContainer")) return true;
+    if (el.matches(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g), :is(.x-filterBox-filterInput, .KyfxT44MoC8R8jyhXuT9)")) return true;
+    if (el.closest && el.closest(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)")) return true;
     return el.matches(LIBRARY_SEARCH_SCOPE_SELECTOR) || !!(el.closest && el.closest(LIBRARY_SEARCH_SCOPE_SELECTOR));
   }
 
@@ -12046,6 +12353,12 @@
   // surface costs a handful of reads.
   function tagNpvLyricsCard() {
     if (!document.body) return;
+    // The split below is "inside the main view / inside the right sidebar /
+    // elsewhere (the full-window panel)". Without either landmark every root
+    // reads as the panel, which flagged the sidebar card on every page once
+    // Spotify 1.3.6 hashed the layout classes. Landmarks come from
+    // stampLayoutAliases; if neither is there yet, leave the flag as it is.
+    if (!document.querySelector(".Root__main-view") && !document.querySelector(".Root__right-sidebar")) return;
     const roots = document.querySelectorAll("[style*='--lyrics-color-active']");
     let panel = false;
     for (let i = 0; i < roots.length; i++) {
@@ -12637,6 +12950,19 @@
     hydrateCustomOelClipBlob();
     hydrateCustomFont();
     updateRouteState(true);
+    safe(installGateClassMirror);
+    // Navigation reaches the route state here first. Spotify's History fires
+    // the moment a route is pushed, before the main view has mutated and well
+    // before the 320ms slow lane samples; without it the route attribute, and
+    // everything armed on a route transition (the no-lyrics curtain above
+    // all), trailed the page by one to three seconds on 1.3.6 (measured
+    // 2026-10-24: "/" still read "artist" 1.8s after leaving an artist page).
+    // The detector is path-first for every route that matters, so running it
+    // this early is exact, not early.
+    safe(() => {
+      const hist = Spicetify.Platform && Spicetify.Platform.History;
+      if (hist && typeof hist.listen === "function") hist.listen(() => safe(() => updateRouteState(true)));
+    });
     reconcileLibrarySearchBoxes();
     reconcileLyricsSyncButtons();
     syncGlobalSearchFocus();
@@ -12661,7 +12987,7 @@
     installLibraryFullscreenObserver();
 
     document.addEventListener("focusin", (e) => {
-      const box = e.target && e.target.closest && e.target.closest(".x-filterBox-filterInputContainer");
+      const box = e.target && e.target.closest && e.target.closest(":is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)");
       if (box) scheduleLibrarySearchReconcile(box, 0);
       scheduleGlobalSearchFocusSync(e.target, 0);
     }, true);
