@@ -9107,7 +9107,7 @@ body.pvfd-performance-eco
 .Root__nav-bar div:has(> :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)),
 .Root__nav-bar section:has(> :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)),
 nav[aria-label="Main"] div:has(> :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)),
-nav[aria-label="Main"] section:has(> :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)),
+nav[aria-label="Main"] section:has(> :is(.x-filterBox-filterInputContainer, .yggokuwXvexOfGR0TG1g)) {
   display: flex !important;
   align-items: center !important;
   gap: 8px !important;
@@ -15458,14 +15458,18 @@ span[data-encore-id="text"]:is(.e-10451-text, .e-10860-text).encore-text-margina
    --pvfd-light-rgb is redefined per [data-pvfd-tint] so the glow
    color follows the active theme automatically. Two-stop shadow
    gives a tight ring + soft bloom that survives over busy hero art. */
-body.pvfd-theme-active:not(.pvfd-tint-bow):not(.pvfd-tint-wob) .Root__main-view .main-entityHeader-container .main-entityHeader-title:not([data-pvfd-nevermatch]),
-body.pvfd-theme-active:not(.pvfd-tint-bow):not(.pvfd-tint-wob) .Root__main-view .main-entityHeader-container .main-entityHeader-title [data-encore-id="adaptiveTitle"],
-body.pvfd-theme-active:not(.pvfd-tint-bow):not(.pvfd-tint-wob) .Root__main-view .main-entityHeader-container .main-entityHeader-subtitle:not([data-pvfd-nevermatch]),
-body.pvfd-theme-active:not(.pvfd-tint-bow):not(.pvfd-tint-wob) .Root__main-view .main-entityHeader-container .XEDEWfpIxuuYsidcGy9i:not([data-pvfd-nevermatch]),
-body.pvfd-theme-active:not(.pvfd-tint-bow):not(.pvfd-tint-wob) .Root__main-view .main-entityHeader-container .main-entityHeader-subtitle.main-entityHeader-subtitle,
-body.pvfd-theme-active:not(.pvfd-tint-bow):not(.pvfd-tint-wob) .Root__main-view .main-entityHeader-container .XEDEWfpIxuuYsidcGy9i.main-entityHeader-subtitle,
-body.pvfd-theme-active:not(.pvfd-tint-bow):not(.pvfd-tint-wob) .Root__main-view .main-entityHeader-container .main-entityHeader-subtitle.XEDEWfpIxuuYsidcGy9i,
-body.pvfd-theme-active:not(.pvfd-tint-bow):not(.pvfd-tint-wob) .Root__main-view .main-entityHeader-container .XEDEWfpIxuuYsidcGy9i.XEDEWfpIxuuYsidcGy9i {
+/* Colored tints only. The tint gate lives on html and the chassis, never on
+   body, so the :not() pair has to sit on html (found 2026-11-03: as
+   body:not(.pvfd-tint-bow) it was always true and these halos ran under
+   B on W / W on B too). :where(html) keeps the old specificity. */
+:where(html):not(.pvfd-tint-bow):not(.pvfd-tint-wob) body.pvfd-theme-active .Root__main-view .main-entityHeader-container .main-entityHeader-title:not([data-pvfd-nevermatch]),
+:where(html):not(.pvfd-tint-bow):not(.pvfd-tint-wob) body.pvfd-theme-active .Root__main-view .main-entityHeader-container .main-entityHeader-title [data-encore-id="adaptiveTitle"],
+:where(html):not(.pvfd-tint-bow):not(.pvfd-tint-wob) body.pvfd-theme-active .Root__main-view .main-entityHeader-container .main-entityHeader-subtitle:not([data-pvfd-nevermatch]),
+:where(html):not(.pvfd-tint-bow):not(.pvfd-tint-wob) body.pvfd-theme-active .Root__main-view .main-entityHeader-container .XEDEWfpIxuuYsidcGy9i:not([data-pvfd-nevermatch]),
+:where(html):not(.pvfd-tint-bow):not(.pvfd-tint-wob) body.pvfd-theme-active .Root__main-view .main-entityHeader-container .main-entityHeader-subtitle.main-entityHeader-subtitle,
+:where(html):not(.pvfd-tint-bow):not(.pvfd-tint-wob) body.pvfd-theme-active .Root__main-view .main-entityHeader-container .XEDEWfpIxuuYsidcGy9i.main-entityHeader-subtitle,
+:where(html):not(.pvfd-tint-bow):not(.pvfd-tint-wob) body.pvfd-theme-active .Root__main-view .main-entityHeader-container .main-entityHeader-subtitle.XEDEWfpIxuuYsidcGy9i,
+:where(html):not(.pvfd-tint-bow):not(.pvfd-tint-wob) body.pvfd-theme-active .Root__main-view .main-entityHeader-container .XEDEWfpIxuuYsidcGy9i.XEDEWfpIxuuYsidcGy9i {
   text-shadow:
     0 0 4px rgba(var(--pvfd-light-rgb), 0.85),
     0 0 12px rgba(var(--pvfd-light-deep-rgb), 0.55),
@@ -15487,8 +15491,8 @@ body.pvfd-theme-active.pvfd-route-artist main button.qLRCOUHINaVfhHXdVtNi.rYVDSu
   background-image: none !important;
 }
 /* "Verified by Spotify" pill text + badge glyph on colored tints. */
-body.pvfd-theme-active:not(.pvfd-tint-bow):not(.pvfd-tint-wob) .Root__main-view .main-entityHeader-container button[aria-label="Verified by Spotify"] span[data-encore-id="text"],
-body.pvfd-theme-active:not(.pvfd-tint-bow):not(.pvfd-tint-wob) .Root__main-view .main-entityHeader-container button[aria-label="Verified by Spotify"] svg[data-encore-id="verifiedBadge"] {
+:where(html):not(.pvfd-tint-bow):not(.pvfd-tint-wob) body.pvfd-theme-active .Root__main-view .main-entityHeader-container button[aria-label="Verified by Spotify"] span[data-encore-id="text"],
+:where(html):not(.pvfd-tint-bow):not(.pvfd-tint-wob) body.pvfd-theme-active .Root__main-view .main-entityHeader-container button[aria-label="Verified by Spotify"] svg[data-encore-id="verifiedBadge"] {
   text-shadow:
     0 0 4px rgba(var(--pvfd-light-rgb), 0.85),
     0 0 10px rgba(var(--pvfd-light-deep-rgb), 0.50),
@@ -15616,7 +15620,7 @@ html.pvfd-tint-bow body.pvfd-theme-active.pvfd-theme-active
    ============================================================ */
 /* Colored tints: tint-aware glow. Same recipe as the entity-header
    colored-tint block above. */
-body.pvfd-theme-active:not(.pvfd-tint-bow):not(.pvfd-tint-wob)
+:where(html):not(.pvfd-tint-bow):not(.pvfd-tint-wob) body.pvfd-theme-active
   .Root__right-sidebar :is(.main-nowPlayingView-section, .yUjdM2oRRn7kw8tR1rqV)
   .main-nowPlayingView-sectionHeaderText {
   text-shadow:

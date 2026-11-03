@@ -1376,6 +1376,10 @@
     chassis = buildChassis();
     chassis.dataset.pvfdInstance = String(pvfdDiag.injectChassisCalls);
     bar.appendChild(chassis);
+    // A rebuilt chassis is a new element: give it its own gate class mirror
+    // (idempotent per element), or its data-pvfd-state / chrome / logo-glow
+    // writes would never become the classes the stylesheet keys on.
+    installGateClassMirror();
     hideNativePlayerChildren(bar);
     ensureLogoSpectrumMarkup();
     ensureOelVideoMarkup();
@@ -1562,7 +1566,12 @@
       const want = value === null ? null : "pvfd-" + name + "-" + String(value).toLowerCase().replace(/[^a-z0-9_-]/g, "_");
       const prefix = "pvfd-" + name + "-";
       for (const cls of Array.from(el.classList)) {
-        if (cls.startsWith(prefix) && cls !== want && /^pvfd-[a-z-]+-[a-z0-9_-]+$/.test(cls)) el.classList.remove(cls);
+        if (!cls.startsWith(prefix) || cls === want || !/^pvfd-[a-z-]+-[a-z0-9_-]+$/.test(cls)) continue;
+        // A class that belongs to a LONGER gate name sharing this prefix
+        // (`route` vs `route-churn`: pvfd-route-churn-1 starts with
+        // pvfd-route-) is that gate's business, not this one's.
+        if (PVFD_GATE_ATTRS.some((other) => other !== name && other.startsWith(name + "-") && cls.startsWith("pvfd-" + other + "-"))) continue;
+        el.classList.remove(cls);
       }
       if (want && !el.classList.contains(want)) el.classList.add(want);
     }
@@ -2903,13 +2912,16 @@
   // moving between checks, capped at PVFD_SCROLL_FREEZE_MAX_MS after the last
   // scroll event in case scrollend never comes.
   //     window.__pvfdDisableScrollFreeze = true;   // runtime A/B
-  function pvfdScrollFreezeRelease() {
+  // force: release now regardless of scroll state (a drag started, or a new
+  // scroller took over from a stale hold).
+  function pvfdScrollFreezeRelease(force = false) {
+    if (pvfdScrollFreezeTimer) window.clearTimeout(pvfdScrollFreezeTimer);
     pvfdScrollFreezeTimer = 0;
     const el = pvfdScrollFreezeEl;
     if (!el) return;
     const now = performance.now();
     const scroller = pvfdScrollFreezeScroller;
-    const moved = !!scroller && scroller.isConnected && scroller.scrollTop !== pvfdScrollFreezeLastTop;
+    const moved = !force && !!scroller && scroller.isConnected && scroller.scrollTop !== pvfdScrollFreezeLastTop;
     if (moved) {
       // The scroller moved since the last scroll event we saw: that event is
       // still queued behind a long frame. Count it as a scroll now.
@@ -2919,7 +2931,7 @@
     }
     const since = now - pvfdScrollFreezeLastAt;
     const waiting = since < PVFD_SCROLL_FREEZE_HOLD_MS || (PVFD_SCROLLEND_SUPPORTED && !pvfdScrollFreezeEnded);
-    if (waiting && since < PVFD_SCROLL_FREEZE_MAX_MS) {
+    if (!force && waiting && since < PVFD_SCROLL_FREEZE_MAX_MS) {
       pvfdScrollFreezeTimer = window.setTimeout(pvfdScrollFreezeRelease, Math.max(40, PVFD_SCROLL_FREEZE_HOLD_MS - since));
       return;
     }
@@ -2932,6 +2944,10 @@
   }
 
   function pvfdScrollFreezeHold(scroller, now) {
+    // A hold still parked on another scroller (the previous route's, now
+    // detached) must not keep this one from being frozen, nor have its clock
+    // reset by this scroller's events.
+    if (pvfdScrollFreezeEl && pvfdScrollFreezeScroller !== scroller) pvfdScrollFreezeRelease(true);
     pvfdScrollFreezeLastAt = now;
     pvfdScrollFreezeLastTop = scroller.scrollTop;
     pvfdScrollFreezeEnded = false;
@@ -2961,9 +2977,18 @@
 
     pvfdPlaylistScrollStressInstalled = true;
 
-    document.addEventListener("dragstart", () => { pvfdScrollFreezeDragging = true; }, true);
+    // A drag that starts inside a hold window would find the drop targets
+    // under the pointer unreachable: release at once, and hold nothing until
+    // the drag is over.
+    document.addEventListener("dragstart", () => { pvfdScrollFreezeDragging = true; pvfdScrollFreezeRelease(true); }, true);
     document.addEventListener("dragend", () => { pvfdScrollFreezeDragging = false; }, true);
     document.addEventListener("drop", () => { pvfdScrollFreezeDragging = false; }, true);
+    // dragend is dispatched on the drag source; when React unmounts that row
+    // mid-drag (virtualised tracklist, auto-scroll) it never reaches the
+    // document, and the flag would stay up for the session. No pointer
+    // events are delivered during a native drag, so the first mouse move
+    // with no button held means the drag is over.
+    document.addEventListener("mousemove", (event) => { if (pvfdScrollFreezeDragging && event.buttons === 0) pvfdScrollFreezeDragging = false; }, true);
     if (PVFD_SCROLLEND_SUPPORTED) document.addEventListener("scrollend", pvfdScrollFreezeOnScrollEnd, true);
 
     document.addEventListener(
@@ -2992,7 +3017,7 @@
           if (
             !window.__pvfdDisableScrollFreeze &&
             !pvfdScrollFreezeDragging &&
-            target.matches?.(".main-view-container__scroll-node, .main-view-container__scroll-node [data-overlayscrollbars-viewport]")
+            target.matches?.(".main-view-container__scroll-node, .main-view-container__scroll-node > [data-overlayscrollbars-viewport]")
           ) {
             pvfdScrollFreezeHold(target, now);
           }
@@ -4498,7 +4523,9 @@
   function setTintMenuOpen(next) {
     tintMenuOpen = !!next;
     if (!chassis) return;
-    chassis.classList.toggle("pvfd-tint-menu-open", tintMenuOpen);
+    // Not pvfd-tint-menu-open: that sits in the `tint` gate's class prefix
+    // and the gate class mirror would strip it on the next tint write.
+    chassis.classList.toggle("pvfd-tintmenu-open", tintMenuOpen);
     const panel = chassis.querySelector("[data-pvfd='tint-menu-panel']");
     if (panel) panel.setAttribute("aria-hidden", tintMenuOpen ? "false" : "true");
     if (tintMenuOpen && menuOpen) setMenuOpen(false);
@@ -7306,6 +7333,9 @@
     if (document.body) {
       if (preset.bodyAttr) document.body.setAttribute("data-pvfd-lcd", preset.bodyAttr);
       else document.body.removeAttribute("data-pvfd-lcd");
+      // The meta-track re-measure below runs in this same task and the font
+      // rules key on body.pvfd-lcd-*, so the class must be there already.
+      flushGateClasses(["lcd"]);
     }
     if (persist) safe(() => window.localStorage.setItem(LCD_FONT_STORAGE_KEY, preset.label));
     updateMenuPanel();
@@ -11563,7 +11593,7 @@
       setDataIfChanged(side.status, "label", "ECO");
       setTextIfChanged(side.playbadge, playerState.playing ? "RUN" : "IDLE");
       updateSideBadgeLamps(side);
-      if (side.ecoModel && !side.ecoModel.hidden) side.ecoModel.hidden = false;
+      if (side.ecoModel && side.ecoModel.hidden) side.ecoModel.hidden = false;
       disableSideVuReadout("0.14");
       return;
     }
