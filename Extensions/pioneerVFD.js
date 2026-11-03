@@ -193,6 +193,10 @@
   }
 
   function refreshPvfdCssPalette() {
+    // Gate attributes may have been written in this same task; the sheet keys
+    // on their mirrored classes, so bring the classes up to date before the
+    // inputs key and the computed-style reads below (see flushGateClasses).
+    if (typeof flushGateClasses === "function") flushGateClasses();
     const inputs = tintTransitionActive ? "" : pvfdPaletteInputs();
     if (inputs && inputs === pvfdPaletteInputsKey) return false;
     const nextPalette = {
@@ -1562,6 +1566,19 @@
       }
       if (want && !el.classList.contains(want)) el.classList.add(want);
     }
+  }
+  // The mirror above runs as a MutationObserver, i.e. a microtask AFTER the
+  // task that wrote the attribute. The stylesheet keys its tint blocks on the
+  // mirrored classes, so any getComputedStyle read in the same task as a gate
+  // write (the tint palette sample, the glide primitives) still sees the
+  // previous tint. Measured 2026-11-03: the logo spectrum bars were always one
+  // tint behind (cyan under yellow, yellow under B on W, black under cyan).
+  // Callers that write a gate attribute and read styles right away flush the
+  // mirror by hand through this.
+  function flushGateClasses(names) {
+    syncGateClasses(document.documentElement, names);
+    syncGateClasses(document.body, names);
+    syncGateClasses(chassis, names);
   }
   function installGateClassMirror() {
     const roots = [document.documentElement, document.body, chassis].filter(Boolean);
@@ -8256,6 +8273,7 @@
   // Read the primitives as they currently render off `el` (inline vars if a glide
   // or adaptive is live, otherwise the active CSS tint block). Defaults to <html>.
   function readTintPrimitives(el) {
+    flushGateClasses(["tint", "mono"]);   // same-task gate writes must be visible to this read
     const cs = getComputedStyle(el || document.documentElement);
     return ADAPTIVE_VARS.map((v) => pvfdParseCssRgb(cs.getPropertyValue(v.name)) || v.rgb.slice());
   }
@@ -8296,9 +8314,11 @@
     const prevAttr = root.getAttribute("data-pvfd-tint");
     ADAPTIVE_VAR_NAMES.forEach((n) => { root.style.removeProperty(n); if (chassis) chassis.style.removeProperty(n); });
     root.setAttribute("data-pvfd-tint", cssTintName);
+    syncGateClasses(root, ["tint"]);   // the sheet keys on the class, not the attribute
     const target = readTintPrimitives();
     if (prevAttr) root.setAttribute("data-pvfd-tint", prevAttr);
     else root.removeAttribute("data-pvfd-tint");
+    syncGateClasses(root, ["tint"]);
     return target;
   }
 
@@ -11254,6 +11274,9 @@
         chassis.removeAttribute("data-pvfd-mono");
         document.documentElement.removeAttribute("data-pvfd-mono");
       }
+      // The stylesheet keys the tint on the mirrored classes; the palette
+      // sample below reads computed styles in this same task.
+      flushGateClasses(["tint", "mono"]);
     }
     refreshPvfdCssPalette();
 
