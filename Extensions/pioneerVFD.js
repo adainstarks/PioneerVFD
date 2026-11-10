@@ -716,6 +716,9 @@
   const patchedLibraryRecentsControls = new WeakSet();
   const patchedLyricsSyncButtons = new WeakSet();
   const pvfdRouteState = { route: "other", at: -Infinity, churnUntil: 0 };
+  // The last page that was not a lyrics page: where ESC on the no-lyrics cover
+  // returns to, however lyrics was entered (the key, a link, a pushed route).
+  let pvfdLastOffLyricsPath = "";
   const pvfdMutationWork = {
     chassisRecheck: false,
     mainViewChurn: false,
@@ -1858,6 +1861,7 @@
     // Before the detector: it and everything below read the layout classes.
     stampLayoutAliases();
     const nextRoute = detectPvfdRoute();
+    if (nextRoute !== "lyrics" && nextRoute !== "external-lyrics") pvfdLastOffLyricsPath = currentSpotifyPathRaw();
     pvfdRouteState.at = ts;
     const prevRoute = pvfdRouteState.route;
     if (prevRoute !== nextRoute) {
@@ -7474,12 +7478,23 @@
     if (pvfdLayoutAliasHost !== tc && typeof MutationObserver === "function") {
       if (pvfdLayoutAliasObserver) pvfdLayoutAliasObserver.disconnect();
       pvfdLayoutAliasHost = tc;
-      pvfdLayoutAliasObserver = new MutationObserver(() => safe(stampLayoutAliases));
+      // The same replacement takes the no-lyrics cover out with the old main
+      // view node; put it back in the new one before that paint too.
+      pvfdLayoutAliasObserver = new MutationObserver(() => { safe(stampLayoutAliases); safe(remountNoLyricsCover); });
       pvfdLayoutAliasObserver.observe(tc, { childList: true });
     }
-    const need = PVFD_LAYOUT_ALIASES.filter(([, cls]) => !tc.querySelector(":scope > ." + cls));
-    if (!need.length) return 0;
     let n = 0;
+    // Spotify 1.3.8 hashed the two shell names that are not grid areas:
+    // the grid container itself (Root__top-container) and the global nav bar
+    // (Root__globalNav, the same element as #global-nav-bar). Spicetify's
+    // class map restores them once it knows the hashes; until then the
+    // stylesheet's rules on them are dead, so put the names back here from
+    // structure: tc is the grid (it holds #main-view), the nav bar has its id.
+    if (!tc.classList.contains("Root__top-container") && document.getElementById("main-view") && document.getElementById("main-view").parentElement === tc) { tc.classList.add("Root__top-container"); n++; }
+    const gnb = document.getElementById("global-nav-bar");
+    if (gnb && !gnb.classList.contains("Root__globalNav")) { gnb.classList.add("Root__globalNav"); n++; }
+    const need = PVFD_LAYOUT_ALIASES.filter(([, cls]) => !tc.querySelector(":scope > ." + cls));
+    if (!need.length) return n;
     const mv = document.getElementById("main-view");
     if (mv && mv.parentElement === tc && !mv.classList.contains("Root__main-view")) { mv.classList.add("Root__main-view"); n++; }
     for (const el of tc.children) {
@@ -7498,8 +7513,10 @@
     if (!rect.width) return false;
     const fromRight = Math.max(0, Math.round(window.innerWidth - rect.right));
     setStyleIfChanged(document.body, "--pvfd-fsdtab-right", fromRight + "px");
-    // The no-lyrics panel covers the same box, so it rides the one rect we
-    // already have rather than measuring again.
+    // The main view's box. The current stylesheet does not read these (the
+    // no-lyrics cover is mounted in the main view and needs no measurement);
+    // a v5.4.0 stylesheet still in a client's cache positions the cover from
+    // them, so they keep being written until the next versioned file name.
     setStyleIfChanged(document.body, "--pvfd-mv-left", Math.round(rect.left) + "px");
     setStyleIfChanged(document.body, "--pvfd-mv-top", Math.round(rect.top) + "px");
     setStyleIfChanged(document.body, "--pvfd-mv-height", Math.round(rect.height) + "px");
@@ -7509,18 +7526,23 @@
     return true;
   }
 
-  // Safe to call repeatedly: it re-measures, and re-attempts the observer if
-  // the main view was not mounted the first time round. Route entry calls it,
-  // so a cold start that misses here is corrected on the way into lyrics.
+  // Safe to call repeatedly: it re-measures, and follows the main view node.
+  // React replaces that node when the lyrics page mounts, and an observer left
+  // on the old one never fires again (the tab's edge then trailed the layout
+  // until the next route entry). Route entry calls it, so a cold start that
+  // misses here is corrected on the way into lyrics.
+  let fsdTabObserved = null;
   function ensureFsdTab() {
     if (!document.body) return;
     getFsdTabEl();
     syncFsdTabEdge();
-    if (fsdTabObserver) return;
     const main = safeReturn(() => document.querySelector(".Root__main-view"), null);
     if (!main || typeof ResizeObserver !== "function") return;
+    if (fsdTabObserver && fsdTabObserved === main) return;
+    if (fsdTabObserver) fsdTabObserver.disconnect();
     fsdTabObserver = new ResizeObserver(() => safe(syncFsdTabEdge));
     fsdTabObserver.observe(main);
+    fsdTabObserved = main;
   }
 
   // Spotify's own answer for a track with no lyrics is a randomised apology
@@ -7555,8 +7577,41 @@
           "<span></span>".repeat(15) +
         "</div>" +
       "</div>";
-    document.body.appendChild(noLyricsEl);
     return noLyricsEl;
+  }
+
+  // The cover is a child of the main view, positioned absolutely inside it, so
+  // the only box it can ever fill is the main view's own: not the console, not
+  // the nav, not the sidebars. v5.4.0 kept it on body and sized it from a
+  // measurement of the main view; on one client that measurement did not
+  // describe what was on screen and the black panel took the whole window,
+  // console included, with nothing left to click (#52, and #50 before it on a
+  // hashed main view). Mounting inside takes the measurement out of the
+  // question. React replaces the main view node when the lyrics page mounts,
+  // which takes the cover out with it: the alias observer on the grid
+  // (stampLayoutAliases) and the sampled tick both put it back, the observer
+  // before the next paint.
+  function noLyricsHost() {
+    return safeReturn(
+      () => document.getElementById("main-view") || document.querySelector(".Root__main-view"), null);
+  }
+  function mountNoLyricsCover() {
+    const main = noLyricsHost();
+    if (!main) return false;
+    const el = getNoLyricsEl();
+    if (el.parentElement !== main) {
+      main.appendChild(el);
+      // Absolute positioning resolves against the nearest positioned ancestor.
+      // Spotify's main view is position: relative on every build seen; should
+      // a build leave it static, this one class keeps the box from climbing to
+      // the grid, which is the whole window again.
+      if (safeReturn(() => getComputedStyle(main).position, "relative") === "static") main.classList.add("pvfd-mv-host");
+    }
+    return true;
+  }
+  function remountNoLyricsCover() {
+    if (!document.body || !document.body.getAttribute("data-pvfd-nolyrics")) return;
+    mountNoLyricsCover();
   }
 
   // Drop the curtain the instant the lyrics route is entered, BEFORE Spotify has
@@ -7570,16 +7625,15 @@
     if (!document.body) return;
     if (document.body.classList.contains("pvfd-cinema-active")) return;
     if (pvfdRouteState.route !== "lyrics") return;
-    getNoLyricsEl();
     noLyricsEmptySince = 0;
-    // Measure FIRST, and no curtain at all if the main view cannot be found:
-    // the cover is positioned from the measured box, and with the box unset
-    // its CSS defaults are the whole window - which on Spotify 1.3.6, where
-    // the main view's class was hashed, put a black panel over the console
-    // and every control with it (#50: "can only exit through the title bar").
-    // The panel under the curtain is hidden by default, so resolving style in
+    // No cover without a main view that is on screen (found, and with a
+    // width): there is nothing to cover otherwise. That measurement also
+    // feeds the tab's edge and the box variables a cached v5.4.0 stylesheet
+    // still reads (see syncFsdTabEdge). The cover's own box no longer comes
+    // from it: mounted in the main view, it cannot be anything else. The
+    // panel under the curtain is hidden by default, so resolving style in
     // this measurement before the attribute lands cannot flash it.
-    if (!syncFsdTabEdge()) return;    // the box is positioned from those vars
+    if (!syncFsdTabEdge() || !mountNoLyricsCover()) return;
     document.body.setAttribute("data-pvfd-nolyrics", "wait");
   }
 
@@ -7604,8 +7658,8 @@
       if (uri !== noLyricsUri) {
         noLyricsUri = uri;
         noLyricsEmptySince = 0;
-        // Same rule as armNoLyricsCover: only over a measured main view.
-        if (!hasLines && !spicy && syncFsdTabEdge()) document.body.setAttribute("data-pvfd-nolyrics", "wait");
+        // Same rule as armNoLyricsCover: a main view on screen, the cover in it.
+        if (!hasLines && !spicy && syncFsdTabEdge() && mountNoLyricsCover()) document.body.setAttribute("data-pvfd-nolyrics", "wait");
       }
       if (spicy || hasLines) {
         noLyricsEmptySince = 0;
@@ -7627,9 +7681,12 @@
     }
 
     const current = document.body.getAttribute("data-pvfd-nolyrics");
+    // The host node is React's and can be replaced: a cover that is up is kept
+    // in the live node, one parent check per tick. Without a host it comes off.
+    if (state && !mountNoLyricsCover()) state = null;
     if (state === current) return;
-    // A verdict only lands over a measured main view (see armNoLyricsCover);
-    // unmeasured, the cover comes off rather than defaulting to the window.
+    // A verdict only lands over a main view that is on screen (see
+    // armNoLyricsCover). That is a layout read, so on a state change only.
     if (state && !syncFsdTabEdge()) state = null;
     if (state === "on") {
       const el = getNoLyricsEl();
@@ -7646,6 +7703,40 @@
       document.body.removeAttribute("data-pvfd-nolyrics");
     }
   }
+
+  // ESC leaves the lyrics page while the cover is up. The cover has no control
+  // of its own (a head unit's screen has nothing on it to click) and the LYRICS
+  // key is the way back, but the client in #52 had the cover over the console
+  // and so no key to press. Narrow on purpose: only while the cover is showing
+  // on the lyrics route; not in the display, not while the window is
+  // fullscreen (that ESC is Chrome's), not from a field (the search box clears
+  // on ESC), and not over an open dialog, context menu or chassis menu (those
+  // own ESC). It goes back to the last page that was not lyrics.
+  //
+  // "Open" has to mean rendered: Spotify keeps empty role=dialog shells
+  // mounted on every page and the M.C. menu always exists inside the chassis,
+  // so a bare presence test is true all the time and the key would be dead.
+  function pvfdOverlayOpen() {
+    const els = document.querySelectorAll("[role='dialog'], [role='alertdialog'], [role='menu']");
+    for (let i = 0; i < els.length; i++) {
+      if (els[i].getClientRects().length && getComputedStyle(els[i]).visibility !== "hidden") return true;
+    }
+    return false;
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || e.defaultPrevented) return;
+    if (!document.body || !document.body.getAttribute("data-pvfd-nolyrics")) return;
+    if (pvfdCinemaOpen || menuOpen || tintMenuOpen || document.fullscreenElement) return;
+    if (pvfdRouteState.route !== "lyrics") return;
+    const t = e.target;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ""))) return;
+    if (safeReturn(pvfdOverlayOpen, false)) return;
+    e.preventDefault();
+    const back = pvfdLastOffLyricsPath ||
+      (preLyricsPath && !/\/lyrics/i.test(preLyricsPath) ? preLyricsPath : "") || "/";
+    safe(() => pushSpotifyPath(back));
+    scheduleLyricsLampSync();
+  });
 
   // The same dithering on the Now Playing View's cover art. That art belongs to
   // Spotify's DOM, so nothing here modifies it: the treatment is painted by a

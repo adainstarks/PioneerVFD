@@ -9383,9 +9383,13 @@ body.pvfd-theme-active #global-nav-bar .JT_lB7XtA2AhQHSejYKH,
 body.pvfd-theme-active #global-nav-bar .x-searchInput-searchInputInput,
 body.pvfd-theme-active #global-nav-bar .llXIo5k34oirOybWOAyl,
 body.pvfd-theme-active #global-nav-bar .e-10451-form-input-icon__icon--leading,
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon--leading,
 body.pvfd-theme-active #global-nav-bar .e-10860-form-input-icon__icon--leading,
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon--leading,
 body.pvfd-theme-active #global-nav-bar .e-10451-form-input-icon__icon--trailing,
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon--trailing,
 body.pvfd-theme-active #global-nav-bar .e-10860-form-input-icon__icon--trailing,
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon--trailing,
 body.pvfd-theme-active #global-nav-bar [class*="form-input-icon__icon" i] {
   border-color: transparent !important;
   outline: 0 !important;
@@ -9520,15 +9524,25 @@ body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] [c
 }
 /* Keep the search/trailing icons tinted, but do not box them. */
 body.pvfd-theme-active #global-nav-bar .e-10451-form-input-icon__icon--leading,
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon--leading,
 body.pvfd-theme-active #global-nav-bar .e-10860-form-input-icon__icon--leading,
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon--leading,
 body.pvfd-theme-active #global-nav-bar .e-10451-form-input-icon__icon--trailing,
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon--trailing,
 body.pvfd-theme-active #global-nav-bar .e-10860-form-input-icon__icon--trailing,
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon--trailing,
 body.pvfd-theme-active #global-nav-bar [class*="form-input-icon__icon" i],
 body.pvfd-theme-active #global-nav-bar .e-10451-form-input-icon__icon--leading svg,
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon--leading svg,
 body.pvfd-theme-active #global-nav-bar .e-10860-form-input-icon__icon--leading svg,
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon--leading svg,
 body.pvfd-theme-active #global-nav-bar .e-10451-form-input-icon__icon--trailing svg,
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon--trailing svg,
 body.pvfd-theme-active #global-nav-bar .e-10860-form-input-icon__icon--trailing svg,
-body.pvfd-theme-active #global-nav-bar :is(.e-10451-form-input-icon__icon, .e-10860-form-input-icon__icon) svg {
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon--trailing svg,
+body.pvfd-theme-active #global-nav-bar .e-10451-form-input-icon__icon svg,
+body.pvfd-theme-active #global-nav-bar .e-10860-form-input-icon__icon svg,
+body.pvfd-theme-active #global-nav-bar .e-101040-form-input-icon__icon svg {
   color: rgb(var(--pvfd-light-mid-rgb)) !important;
   fill: currentColor !important;
   stroke: currentColor !important;
@@ -9537,10 +9551,16 @@ body.pvfd-theme-active #global-nav-bar :is(.e-10451-form-input-icon__icon, .e-10
 /* Search suggestion/result icon lane. Keep this tight to the snapshot-backed
    global-nav subtree so we don't re-style every popover/list row in the app. */
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side,
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side,
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex,
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex,
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) {
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side {
   --text-base: var(--pvfd-cyan) !important;
   --text-subdued: var(--pvfd-cyan) !important;
   --essential-base: var(--pvfd-cyan) !important;
@@ -9565,13 +9585,39 @@ body.pvfd-theme-active #global-nav-bar :is(.e-10451-form-input-icon__icon, .e-10
   -webkit-text-fill-color: var(--pvfd-cyan) !important;
   text-shadow: none !important;
 }
-#global-nav-bar [data-encore-id="listRow"][role="row"]:is(:hover, :focus-within, [aria-selected="true"]) > .e-10451-legacy-list-row__header-side,
-#global-nav-bar [data-encore-id="listRow"][role="row"]:is(:hover, :focus-within, [aria-selected="true"]) > .e-10860-legacy-list-row__header-side,
-#global-nav-bar [data-encore-id="listRow"][role="row"]:is(:hover, :focus-within, [aria-selected="true"]) > .e-10451-legacy-list-row__header-side-flex,
-#global-nav-bar [data-encore-id="listRow"][role="row"]:is(:hover, :focus-within, [aria-selected="true"]) > .e-10860-legacy-list-row__header-side-flex,
-#global-nav-bar :hover[data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side),
-#global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side),
-#global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) {
+#global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side,
+#global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side,
+#global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side,
+#global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side,
+#global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side,
+#global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side,
+#global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side,
+#global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side,
+#global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side,
+#global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side,
+#global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side,
+#global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side,
+#global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex,
+#global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex,
+#global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex,
+#global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex,
+#global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex,
+#global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex,
+#global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex,
+#global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex,
+#global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex,
+#global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex,
+#global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex,
+#global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex,
+#global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side,
+#global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side,
+#global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side,
+#global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side,
+#global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side,
+#global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side,
+#global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side,
+#global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side,
+#global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side {
   color: var(--pvfd-text-bright) !important;
   -webkit-text-fill-color: var(--pvfd-text-bright) !important;
 }
@@ -9591,25 +9637,49 @@ body.pvfd-theme-active #global-nav-bar :is(.e-10451-form-input-icon__icon, .e-10
   text-shadow: none !important;
 }
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side button,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side button,
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side button,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side button,
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex button,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex button,
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex button,
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) button,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex button,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side button,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side button,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side button,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side a,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side a,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side a,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side a,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex a,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex a,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex a,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex a,
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side a,
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side a,
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex a,
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex a,
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) a,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side a,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side span,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side span,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side span,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side span,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex span,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex span,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex span,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex span,
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side span,
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side span,
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex span,
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex span,
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) span,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side span,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side div,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side div,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side div,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side div,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex div,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex div,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex div,
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex div,
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side div,
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side div,
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex div,
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex div,
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) div {
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side div {
   --background-base: transparent !important;
   --background-highlight: transparent !important;
   --background-press: transparent !important;
@@ -9630,45 +9700,93 @@ body.pvfd-theme-active #global-nav-bar :is(.e-10451-form-input-icon__icon, .e-10
   -webkit-text-fill-color: inherit !important;
 }
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(svg):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(svg):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(svg):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(svg):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(svg):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(svg):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(svg):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) :where(svg):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(svg):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(svg):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(svg):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(svg):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(path):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(path):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(path):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(path):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(path):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(path):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(path):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(path):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(path):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(path):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(path):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(path):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) :where(path):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(path):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(circle):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(circle):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(circle):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(circle):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(circle):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(circle):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(circle):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(circle):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(circle):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(circle):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(circle):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(circle):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) :where(circle):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(circle):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(rect):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(rect):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(rect):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(rect):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(rect):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(rect):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(rect):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(rect):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(rect):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(rect):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(rect):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(rect):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) :where(rect):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(rect):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(line):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(line):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(line):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(line):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(line):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(line):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(line):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(line):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(line):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(line):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(line):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(line):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) :where(line):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(line):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(polyline):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(polyline):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(polyline):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(polyline):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(polyline):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(polyline):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(polyline):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(polyline):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(polyline):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(polyline):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(polyline):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(polyline):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) :where(polyline):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(polyline):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(polygon):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(polygon):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(polygon):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(polygon):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(polygon):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(polygon):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(polygon):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex :where(polygon):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side :where(polygon):not([data-pvfd-nevermatch]),
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side :where(polygon):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex :where(polygon):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex :where(polygon):not([data-pvfd-nevermatch]),
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) :where(polygon):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side :where(polygon):not([data-pvfd-nevermatch]),
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side [data-encore-id="icon"],
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side [data-encore-id="icon"],
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side [data-encore-id="icon"],
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side [data-encore-id="icon"],
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex [data-encore-id="icon"],
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex [data-encore-id="icon"],
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex [data-encore-id="icon"],
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex [data-encore-id="icon"],
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side [data-encore-id="icon"],
 #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side [data-encore-id="icon"],
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex [data-encore-id="icon"],
-#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex [data-encore-id="icon"],
-#global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) [data-encore-id="icon"] {
+#global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side [data-encore-id="icon"] {
   color: currentColor !important;
   fill: none !important;
   stroke: currentColor !important;
@@ -9676,10 +9794,16 @@ body.pvfd-theme-active #global-nav-bar :is(.e-10451-form-input-icon__icon, .e-10
 }
 /* Search result album art: dim the cover image when the row is hovered. */
 body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side img,
 body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side img,
 body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex img,
+body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex img,
 body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex img,
-body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) img {
+body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex img,
+body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side img {
   transition:
     filter 140ms ease,
     opacity 140ms ease !important;
@@ -9688,20 +9812,38 @@ body.pvfd-theme-active #global-nav-bar [data-encore-id="listRow"][role="row"] > 
   opacity: 1 !important;
 }
 body.pvfd-theme-active #global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side img,
 body.pvfd-theme-active #global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side img,
 body.pvfd-theme-active #global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side img,
 body.pvfd-theme-active #global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side img,
 body.pvfd-theme-active #global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side img,
 body.pvfd-theme-active #global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side img,
 body.pvfd-theme-active #global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex img,
+body.pvfd-theme-active #global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex img,
 body.pvfd-theme-active #global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex img,
+body.pvfd-theme-active #global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex img,
 body.pvfd-theme-active #global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side-flex img,
+body.pvfd-theme-active #global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex img,
 body.pvfd-theme-active #global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex img,
+body.pvfd-theme-active #global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex img,
 body.pvfd-theme-active #global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex img,
+body.pvfd-theme-active #global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex img,
 body.pvfd-theme-active #global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side-flex img,
-body.pvfd-theme-active #global-nav-bar :hover[data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) img,
-body.pvfd-theme-active #global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) img,
-body.pvfd-theme-active #global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > :is(.e-10451-legacy-list-row__header-side, .e-10860-legacy-list-row__header-side) img {
+body.pvfd-theme-active #global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side-flex img,
+body.pvfd-theme-active #global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar :hover[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar :focus-within[data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-10451-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-10860-legacy-list-row__header-side img,
+body.pvfd-theme-active #global-nav-bar [aria-selected="true"][data-encore-id="listRow"][role="row"] > .e-101040-legacy-list-row__header-side img {
   filter: brightness(0.42) contrast(1.06) saturate(0.78) !important;
   opacity: 0.82 !important;
 }
@@ -9822,15 +9964,29 @@ body.pvfd-theme-active [role="dialog"] {
     inset 0 0 0 1px rgba(0, 0, 0, 0.78),
     0 0 8px rgba(var(--pvfd-accent-rgb), 0.26) !important;
 }
-#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) .e-10451-form-input-icon--leading,
-#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) .e-10860-form-input-icon--leading,
+#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer .e-10451-form-input-icon--leading,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.main-globalNav-searchInputContainer .e-10451-form-input-icon--leading,
+#global-nav-bar .main-globalNav-searchSection form.omD8s8p6eZSUsYOOzg1S .e-10451-form-input-icon--leading,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.omD8s8p6eZSUsYOOzg1S .e-10451-form-input-icon--leading,
+#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer .e-101040-form-input-icon--leading,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.main-globalNav-searchInputContainer .e-101040-form-input-icon--leading,
+#global-nav-bar .main-globalNav-searchSection form.omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon--leading,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon--leading,
+#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer .e-10860-form-input-icon--leading,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.main-globalNav-searchInputContainer .e-10860-form-input-icon--leading,
+#global-nav-bar .main-globalNav-searchSection form.omD8s8p6eZSUsYOOzg1S .e-10860-form-input-icon--leading,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.omD8s8p6eZSUsYOOzg1S .e-10860-form-input-icon--leading,
+#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer .e-101040-form-input-icon--leading,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.main-globalNav-searchInputContainer .e-101040-form-input-icon--leading,
+#global-nav-bar .main-globalNav-searchSection form.omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon--leading,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon--leading,
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) .x-filterBox-searchIcon,
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) .DQFXnLANJVkrr5vuFOg9,
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) .Om_p8hB47p7vkd2bKfGN,
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) .x-filterBox-searchIconContainer,
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) .vzE1QA11hRvpSy0vMr8a,
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S)
-  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(:is(.x-filterBox-searchIcon, .DQFXnLANJVkrr5vuFOg9), .Om_p8hB47p7vkd2bKfGN), :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a))
+  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading, .e-101040-form-input-icon--leading), :is(:is(.x-filterBox-searchIcon, .DQFXnLANJVkrr5vuFOg9), .Om_p8hB47p7vkd2bKfGN), :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a))
   :is(button, [role="button"], span, div) {
   --text-base: var(--pvfd-accent) !important;
   --text-subdued: var(--pvfd-accent) !important;
@@ -9854,7 +10010,7 @@ body.pvfd-theme-active [role="dialog"] {
   -webkit-text-fill-color: var(--pvfd-accent) !important;
 }
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S)
-  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(:is(.x-filterBox-searchIcon, .DQFXnLANJVkrr5vuFOg9), .Om_p8hB47p7vkd2bKfGN), :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a))
+  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading, .e-101040-form-input-icon--leading), :is(:is(.x-filterBox-searchIcon, .DQFXnLANJVkrr5vuFOg9), .Om_p8hB47p7vkd2bKfGN), :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a))
   :is(svg, path, circle, rect, line, polyline, polygon, [data-encore-id="icon"]) {
   color: currentColor !important;
   fill: none !important;
@@ -9863,10 +10019,38 @@ body.pvfd-theme-active [role="dialog"] {
   filter: none !important;
   transition: none !important;
 }
-#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) :hover.e-10451-form-input-icon--leading,
-#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) :focus-within.e-10451-form-input-icon--leading,
-#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) :hover.e-10860-form-input-icon--leading,
-#global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) :focus-within.e-10860-form-input-icon--leading,
+#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer .e-10451-form-input-icon--leading:hover,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.main-globalNav-searchInputContainer .e-10451-form-input-icon--leading:hover,
+#global-nav-bar .main-globalNav-searchSection form.omD8s8p6eZSUsYOOzg1S .e-10451-form-input-icon--leading:hover,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.omD8s8p6eZSUsYOOzg1S .e-10451-form-input-icon--leading:hover,
+#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer .e-101040-form-input-icon--leading:hover,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.main-globalNav-searchInputContainer .e-101040-form-input-icon--leading:hover,
+#global-nav-bar .main-globalNav-searchSection form.omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon--leading:hover,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon--leading:hover,
+#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer .e-10451-form-input-icon--leading:focus-within,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.main-globalNav-searchInputContainer .e-10451-form-input-icon--leading:focus-within,
+#global-nav-bar .main-globalNav-searchSection form.omD8s8p6eZSUsYOOzg1S .e-10451-form-input-icon--leading:focus-within,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.omD8s8p6eZSUsYOOzg1S .e-10451-form-input-icon--leading:focus-within,
+#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer .e-101040-form-input-icon--leading:focus-within,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.main-globalNav-searchInputContainer .e-101040-form-input-icon--leading:focus-within,
+#global-nav-bar .main-globalNav-searchSection form.omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon--leading:focus-within,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon--leading:focus-within,
+#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer .e-10860-form-input-icon--leading:hover,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.main-globalNav-searchInputContainer .e-10860-form-input-icon--leading:hover,
+#global-nav-bar .main-globalNav-searchSection form.omD8s8p6eZSUsYOOzg1S .e-10860-form-input-icon--leading:hover,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.omD8s8p6eZSUsYOOzg1S .e-10860-form-input-icon--leading:hover,
+#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer .e-101040-form-input-icon--leading:hover,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.main-globalNav-searchInputContainer .e-101040-form-input-icon--leading:hover,
+#global-nav-bar .main-globalNav-searchSection form.omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon--leading:hover,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon--leading:hover,
+#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer .e-10860-form-input-icon--leading:focus-within,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.main-globalNav-searchInputContainer .e-10860-form-input-icon--leading:focus-within,
+#global-nav-bar .main-globalNav-searchSection form.omD8s8p6eZSUsYOOzg1S .e-10860-form-input-icon--leading:focus-within,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.omD8s8p6eZSUsYOOzg1S .e-10860-form-input-icon--leading:focus-within,
+#global-nav-bar .main-globalNav-searchSection form.main-globalNav-searchInputContainer .e-101040-form-input-icon--leading:focus-within,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.main-globalNav-searchInputContainer .e-101040-form-input-icon--leading:focus-within,
+#global-nav-bar .main-globalNav-searchSection form.omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon--leading:focus-within,
+#global-nav-bar .vM_aAVOOPNf7b7qHyFxl form.omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon--leading:focus-within,
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) :hover.x-filterBox-searchIcon,
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) :focus-within.x-filterBox-searchIcon,
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) :hover.DQFXnLANJVkrr5vuFOg9,
@@ -9878,7 +10062,7 @@ body.pvfd-theme-active [role="dialog"] {
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) :hover.vzE1QA11hRvpSy0vMr8a,
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) :focus-within.vzE1QA11hRvpSy0vMr8a,
 #global-nav-bar :is(.main-globalNav-searchSection, .vM_aAVOOPNf7b7qHyFxl) form:is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S)
-  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading), :is(:is(.x-filterBox-searchIcon, .DQFXnLANJVkrr5vuFOg9), .Om_p8hB47p7vkd2bKfGN), :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a))
+  :is(:is(.e-10451-form-input-icon--leading, .e-10860-form-input-icon--leading, .e-101040-form-input-icon--leading), :is(:is(.x-filterBox-searchIcon, .DQFXnLANJVkrr5vuFOg9), .Om_p8hB47p7vkd2bKfGN), :is(.x-filterBox-searchIconContainer, .vzE1QA11hRvpSy0vMr8a))
   :is(button, [role="button"]):is(:hover, :focus-visible) {
   background: transparent !important;
   background-color: transparent !important;
@@ -10168,11 +10352,17 @@ body.pvfd-theme-active #global-nav-bar button[data-encore-id="buttonTertiary"],
 body.pvfd-theme-active .Root__top-bar button[data-encore-id="buttonTertiary"],
 body.pvfd-theme-active .Root__globalNav button[data-encore-id="buttonTertiary"],
 body.pvfd-theme-active #global-nav-bar .e-10451-button-tertiary--text-subdued,
+body.pvfd-theme-active #global-nav-bar .e-101040-button-tertiary--text-subdued,
 body.pvfd-theme-active #global-nav-bar .e-10860-button-tertiary--text-subdued,
+body.pvfd-theme-active #global-nav-bar .e-101040-button-tertiary--text-subdued,
 body.pvfd-theme-active .Root__top-bar .e-10451-button-tertiary--text-subdued,
+body.pvfd-theme-active .Root__top-bar .e-101040-button-tertiary--text-subdued,
 body.pvfd-theme-active .Root__top-bar .e-10860-button-tertiary--text-subdued,
+body.pvfd-theme-active .Root__top-bar .e-101040-button-tertiary--text-subdued,
 body.pvfd-theme-active .Root__globalNav .e-10451-button-tertiary--text-subdued,
-body.pvfd-theme-active .Root__globalNav .e-10860-button-tertiary--text-subdued {
+body.pvfd-theme-active .Root__globalNav .e-101040-button-tertiary--text-subdued,
+body.pvfd-theme-active .Root__globalNav .e-10860-button-tertiary--text-subdued,
+body.pvfd-theme-active .Root__globalNav .e-101040-button-tertiary--text-subdued {
   --text-base: var(--pvfd-text-main) !important;
   --text-subdued: var(--pvfd-text-muted) !important;
   --essential-base: var(--pvfd-text-main) !important;
@@ -10195,12 +10385,16 @@ body.pvfd-theme-active .Root__globalNav button[data-encore-id="buttonTertiary"] 
 /* Exact Encore accent controls. These are the inner spans DevTools reported;
    setting the parent variables/background fixes icon text without descendant
    tracklist sweeps. */
-body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *),
-body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *),
+body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *) .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *) .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *) .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *) .e-101040-button-primary__inner,
 body.pvfd-theme-active [data-encore-id="popover"] button[data-encore-id="buttonPrimary"],
 body.pvfd-theme-active [data-encore-id="popover"] button[data-encore-id="buttonPrimary"] .e-10451-button-primary__inner,
+body.pvfd-theme-active [data-encore-id="popover"] button[data-encore-id="buttonPrimary"] .e-101040-button-primary__inner,
 body.pvfd-theme-active [data-encore-id="popover"] button[data-encore-id="buttonPrimary"] .e-10860-button-primary__inner,
+body.pvfd-theme-active [data-encore-id="popover"] button[data-encore-id="buttonPrimary"] .e-101040-button-primary__inner,
 body.pvfd-theme-active [role="dialog"] button[data-encore-id="buttonPrimary"] {
   --text-base: var(--pvfd-lcd-void) !important;
   --text-subdued: rgba(var(--pvfd-lcd-void-rgb), 0.78) !important;
@@ -10217,8 +10411,8 @@ body.pvfd-theme-active [role="dialog"] button[data-encore-id="buttonPrimary"] {
     inset 0 0 0 1px rgba(var(--pvfd-lcd-void-rgb), 0.24),
     0 0 8px rgba(var(--pvfd-accent-rgb), 0.22) !important;
 }
-body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) svg,
-body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) path,
+body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *) svg,
+body.pvfd-theme-active .Root__main-view button[data-encore-id="buttonPrimary"]:not(.pvfd-lyrics-sync-button):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *) path,
 body.pvfd-theme-active [data-encore-id="popover"] button[data-encore-id="buttonPrimary"] svg,
 body.pvfd-theme-active [data-encore-id="popover"] button[data-encore-id="buttonPrimary"] path,
 body.pvfd-theme-active [role="dialog"] button[data-encore-id="buttonPrimary"] svg,
@@ -10290,8 +10484,14 @@ body.pvfd-theme-active .Root__main-view :focus-visible.gDqORSCbwbcSWQcVpGi_ {
     inset 0 -2px 3px rgba(0, 0, 0, 0.48),
     0 0 7px rgba(var(--pvfd-accent-rgb), 0.18) !important;
 }
-body.pvfd-theme-active .Root__main-view :is(.search-searchCategory-carouselButton, .gDqORSCbwbcSWQcVpGi_) .e-10451-icon,
-body.pvfd-theme-active .Root__main-view :is(.search-searchCategory-carouselButton, .gDqORSCbwbcSWQcVpGi_) .e-10860-icon,
+body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton .e-10451-icon,
+body.pvfd-theme-active .Root__main-view .gDqORSCbwbcSWQcVpGi_ .e-10451-icon,
+body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton .e-101040-icon,
+body.pvfd-theme-active .Root__main-view .gDqORSCbwbcSWQcVpGi_ .e-101040-icon,
+body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton .e-10860-icon,
+body.pvfd-theme-active .Root__main-view .gDqORSCbwbcSWQcVpGi_ .e-10860-icon,
+body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton .e-101040-icon,
+body.pvfd-theme-active .Root__main-view .gDqORSCbwbcSWQcVpGi_ .e-101040-icon,
 body.pvfd-theme-active .Root__main-view .search-searchCategory-carouselButton svg,
 body.pvfd-theme-active .Root__main-view .gDqORSCbwbcSWQcVpGi_ svg {
   --encore-icon-fill: currentColor !important;
@@ -10385,17 +10585,17 @@ body.pvfd-theme-active .Root__main-view .main-card-card p {
   color: var(--pvfd-text-main) !important;
   -webkit-text-fill-color: currentColor !important;
 }
-body.pvfd-theme-active .Root__main-view [data-encore-id="card"] button:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *),
-body.pvfd-theme-active .Root__main-view [data-encore-id="card"] [role="button"]:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) {
+body.pvfd-theme-active .Root__main-view [data-encore-id="card"] button:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *),
+body.pvfd-theme-active .Root__main-view [data-encore-id="card"] [role="button"]:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *) {
   color: var(--pvfd-text-main) !important;
   background-color: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
 }
-body.pvfd-theme-active .Root__main-view [data-encore-id="card"] button:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) svg,
-body.pvfd-theme-active .Root__main-view [data-encore-id="card"] button:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) path,
-body.pvfd-theme-active .Root__main-view [data-encore-id="card"] [role="button"]:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) svg,
-body.pvfd-theme-active .Root__main-view [data-encore-id="card"] [role="button"]:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link) *) path {
+body.pvfd-theme-active .Root__main-view [data-encore-id="card"] button:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *) svg,
+body.pvfd-theme-active .Root__main-view [data-encore-id="card"] button:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *) path,
+body.pvfd-theme-active .Root__main-view [data-encore-id="card"] [role="button"]:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *) svg,
+body.pvfd-theme-active .Root__main-view [data-encore-id="card"] [role="button"]:not([data-encore-id="buttonPrimary"]):not(:is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) *):not(:is(.main-trackList-rowImagePlayButton, .l9kmLysnmcseyWh8xf0E) *):not(:is(:is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm), .e-10451-legacy-box--as-link, .e-10860-legacy-box--as-link, .e-101040-legacy-box--as-link) *) path {
   color: currentColor !important;
   fill: currentColor !important;
   stroke: currentColor !important;
@@ -10424,9 +10624,13 @@ body.pvfd-theme-active .Root__main-view [data-encore-id="chip"][aria-selected="t
 body.pvfd-theme-active .Root__main-view [data-encore-id="chip"][aria-pressed="true"],
 body.pvfd-theme-active .Root__main-view [data-encore-id="chip"][aria-checked="true"],
 body.pvfd-theme-active .Root__main-view [data-encore-id="chip"][aria-checked="true"] .e-10451-legacy-chip__inner,
+body.pvfd-theme-active .Root__main-view [data-encore-id="chip"][aria-checked="true"] .e-101040-legacy-chip__inner,
 body.pvfd-theme-active .Root__main-view [data-encore-id="chip"][aria-checked="true"] .e-10860-legacy-chip__inner,
+body.pvfd-theme-active .Root__main-view [data-encore-id="chip"][aria-checked="true"] .e-101040-legacy-chip__inner,
 body.pvfd-theme-active .Root__main-view .e-10451-legacy-chip__inner--selected,
-body.pvfd-theme-active .Root__main-view .e-10860-legacy-chip__inner--selected {
+body.pvfd-theme-active .Root__main-view .e-101040-legacy-chip__inner--selected,
+body.pvfd-theme-active .Root__main-view .e-10860-legacy-chip__inner--selected,
+body.pvfd-theme-active .Root__main-view .e-101040-legacy-chip__inner--selected {
   --text-base: var(--pvfd-lcd-void) !important;
   --text-subdued: rgba(var(--pvfd-lcd-void-rgb), 0.78) !important;
   --essential-base: var(--pvfd-lcd-void) !important;
@@ -10445,9 +10649,13 @@ body.pvfd-theme-active .Root__main-view [data-encore-id="chip"][aria-pressed="tr
 body.pvfd-theme-active .Root__main-view [data-encore-id="chip"][aria-checked="true"] svg,
 body.pvfd-theme-active .Root__main-view [data-encore-id="chip"][aria-checked="true"] path,
 body.pvfd-theme-active .Root__main-view .e-10451-legacy-chip__inner--selected svg,
+body.pvfd-theme-active .Root__main-view .e-101040-legacy-chip__inner--selected svg,
 body.pvfd-theme-active .Root__main-view .e-10860-legacy-chip__inner--selected svg,
+body.pvfd-theme-active .Root__main-view .e-101040-legacy-chip__inner--selected svg,
 body.pvfd-theme-active .Root__main-view .e-10451-legacy-chip__inner--selected path,
-body.pvfd-theme-active .Root__main-view .e-10860-legacy-chip__inner--selected path {
+body.pvfd-theme-active .Root__main-view .e-101040-legacy-chip__inner--selected path,
+body.pvfd-theme-active .Root__main-view .e-10860-legacy-chip__inner--selected path,
+body.pvfd-theme-active .Root__main-view .e-101040-legacy-chip__inner--selected path {
   color: currentColor !important;
   fill: currentColor !important;
   stroke: currentColor !important;
@@ -10494,8 +10702,14 @@ body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [data-encore-id="chip"] {
   box-shadow: inset 0 0 0 1px rgba(var(--pvfd-accent-rgb), 0.24) !important;
   -webkit-text-fill-color: var(--pvfd-text-main) !important;
 }
-body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) [data-encore-id="chip"] .e-10451-legacy-chip__inner,
-body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) [data-encore-id="chip"] .e-10860-legacy-chip__inner {
+body.pvfd-theme-active .main-yourLibraryX-filterArea [data-encore-id="chip"] .e-10451-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [data-encore-id="chip"] .e-10451-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [data-encore-id="chip"] .e-10860-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [data-encore-id="chip"] .e-10860-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [data-encore-id="chip"] .e-101040-legacy-chip__inner {
   --text-base: inherit !important;
   --text-subdued: var(--pvfd-text-muted) !important;
   --essential-base: inherit !important;
@@ -10522,12 +10736,40 @@ body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-selected="true"][data
 body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-selected="true"][data-encore-id="chip"],
 body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-pressed="true"][data-encore-id="chip"],
 body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-pressed="true"][data-encore-id="chip"],
-body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) [data-encore-id="chip"]:is([aria-checked="true"], [aria-selected="true"], [aria-pressed="true"]) .e-10451-legacy-chip__inner,
-body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) [data-encore-id="chip"]:is([aria-checked="true"], [aria-selected="true"], [aria-pressed="true"]) .e-10860-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-checked="true"][data-encore-id="chip"] .e-10451-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-checked="true"][data-encore-id="chip"] .e-10451-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-selected="true"][data-encore-id="chip"] .e-10451-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-selected="true"][data-encore-id="chip"] .e-10451-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-pressed="true"][data-encore-id="chip"] .e-10451-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-pressed="true"][data-encore-id="chip"] .e-10451-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-checked="true"][data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-checked="true"][data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-selected="true"][data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-selected="true"][data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-pressed="true"][data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-pressed="true"][data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-checked="true"][data-encore-id="chip"] .e-10860-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-checked="true"][data-encore-id="chip"] .e-10860-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-selected="true"][data-encore-id="chip"] .e-10860-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-selected="true"][data-encore-id="chip"] .e-10860-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-pressed="true"][data-encore-id="chip"] .e-10860-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-pressed="true"][data-encore-id="chip"] .e-10860-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-checked="true"][data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-checked="true"][data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-selected="true"][data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-selected="true"][data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .main-yourLibraryX-filterArea [aria-pressed="true"][data-encore-id="chip"] .e-101040-legacy-chip__inner,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt [aria-pressed="true"][data-encore-id="chip"] .e-101040-legacy-chip__inner,
 body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) .e-10451-legacy-chip-selected,
 body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) .e-10860-legacy-chip-selected,
-body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) .e-10451-legacy-chip__inner--selected,
-body.pvfd-theme-active :is(.main-yourLibraryX-filterArea, .HfLUs3FrujQayRJaCQPt) .e-10860-legacy-chip__inner--selected {
+body.pvfd-theme-active .main-yourLibraryX-filterArea .e-10451-legacy-chip__inner--selected,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt .e-10451-legacy-chip__inner--selected,
+body.pvfd-theme-active .main-yourLibraryX-filterArea .e-101040-legacy-chip__inner--selected,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt .e-101040-legacy-chip__inner--selected,
+body.pvfd-theme-active .main-yourLibraryX-filterArea .e-10860-legacy-chip__inner--selected,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt .e-10860-legacy-chip__inner--selected,
+body.pvfd-theme-active .main-yourLibraryX-filterArea .e-101040-legacy-chip__inner--selected,
+body.pvfd-theme-active .HfLUs3FrujQayRJaCQPt .e-101040-legacy-chip__inner--selected {
   --text-base: var(--pvfd-lcd-void) !important;
   --text-subdued: rgba(var(--pvfd-lcd-void-rgb), 0.78) !important;
   --essential-base: var(--pvfd-lcd-void) !important;
@@ -10548,8 +10790,14 @@ body.pvfd-theme-active .Root__main-view .vy1uHzkYJkiik2zfKARA {
   color: var(--pvfd-text-main) !important;
   -webkit-text-fill-color: var(--pvfd-text-main) !important;
 }
-body.pvfd-theme-active .Root__main-view :is(.main-loadingPage-container, .vy1uHzkYJkiik2zfKARA) .e-10451-icon,
-body.pvfd-theme-active .Root__main-view :is(.main-loadingPage-container, .vy1uHzkYJkiik2zfKARA) .e-10860-icon,
+body.pvfd-theme-active .Root__main-view .main-loadingPage-container .e-10451-icon,
+body.pvfd-theme-active .Root__main-view .vy1uHzkYJkiik2zfKARA .e-10451-icon,
+body.pvfd-theme-active .Root__main-view .main-loadingPage-container .e-101040-icon,
+body.pvfd-theme-active .Root__main-view .vy1uHzkYJkiik2zfKARA .e-101040-icon,
+body.pvfd-theme-active .Root__main-view .main-loadingPage-container .e-10860-icon,
+body.pvfd-theme-active .Root__main-view .vy1uHzkYJkiik2zfKARA .e-10860-icon,
+body.pvfd-theme-active .Root__main-view .main-loadingPage-container .e-101040-icon,
+body.pvfd-theme-active .Root__main-view .vy1uHzkYJkiik2zfKARA .e-101040-icon,
 body.pvfd-theme-active .Root__main-view .main-loadingPage-container [data-encore-id="icon"],
 body.pvfd-theme-active .Root__main-view .vy1uHzkYJkiik2zfKARA [data-encore-id="icon"] {
   color: var(--pvfd-accent) !important;
@@ -10692,24 +10940,102 @@ body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-
     inset 0 -1px 0 rgba(0, 0, 0, 0.48),
     0 0 6px rgba(var(--pvfd-accent-rgb), 0.16) !important;
 }
-body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10860-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10860-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10860-button-primary__inner,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10860-button-primary__inner,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10860-button-primary__inner,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10860-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] .e-10860-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] .e-10860-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .main-playButton-PlayButton button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .K5NmqI4oLModgvm43dgR button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .K5NmqI4oLModgvm43dgR button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .main-playButton-PlayButton button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .K5NmqI4oLModgvm43dgR button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .K5NmqI4oLModgvm43dgR button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .main-playButton-PlayButton button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .K5NmqI4oLModgvm43dgR button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .K5NmqI4oLModgvm43dgR button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .main-playButton-PlayButton button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .K5NmqI4oLModgvm43dgR button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .K5NmqI4oLModgvm43dgR button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .main-playButton-PlayButton button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .K5NmqI4oLModgvm43dgR button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .K5NmqI4oLModgvm43dgR button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .main-playButton-PlayButton button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .K5NmqI4oLModgvm43dgR button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .K5NmqI4oLModgvm43dgR button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarPlayButtonContainer .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .BowGXmrv97DQDLKM3Zm0 .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .K5NmqI4oLModgvm43dgR button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .K5NmqI4oLModgvm43dgR button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .K5NmqI4oLModgvm43dgR button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .K5NmqI4oLModgvm43dgR button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .K5NmqI4oLModgvm43dgR button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .K5NmqI4oLModgvm43dgR button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-actionBar-ActionBarRow .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .gFwQKjIgLpQmNF0YUpUm button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .gFwQKjIgLpQmNF0YUpUm button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .gFwQKjIgLpQmNF0YUpUm button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .gFwQKjIgLpQmNF0YUpUm button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .gFwQKjIgLpQmNF0YUpUm button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .gFwQKjIgLpQmNF0YUpUm button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .gFwQKjIgLpQmNF0YUpUm button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .gFwQKjIgLpQmNF0YUpUm button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .gFwQKjIgLpQmNF0YUpUm button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .gFwQKjIgLpQmNF0YUpUm button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .gFwQKjIgLpQmNF0YUpUm button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .main-card-PlayButtonContainer button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .gFwQKjIgLpQmNF0YUpUm button[aria-label] .e-101040-button-primary__inner,
 body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .encore-bright-accent-set,
 body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .encore-bright-accent-set,
 body.pvfd-theme-active .Root__main-view :is(.main-actionBar-ActionBarPlayButtonContainer, .BowGXmrv97DQDLKM3Zm0) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .encore-bright-accent-set,
@@ -10720,7 +11046,9 @@ body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFw
 body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] .encore-bright-accent-set,
 body.pvfd-theme-active .Root__main-view :is(.main-card-PlayButtonContainer, .gFwQKjIgLpQmNF0YUpUm) button[aria-label] .encore-bright-accent-set,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] .e-101040-button-primary__inner,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] .e-101040-button-primary__inner,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] .encore-bright-accent-set,
 body.pvfd-theme-active .Root__main-view [data-testid="home-page"] a[data-encore-id="box"] button[data-encore-id="buttonPrimary"] .encore-bright-accent-set {
   background: transparent !important;
@@ -10904,8 +11232,22 @@ body.pvfd-theme-active nav[aria-label="Main"] .K5NmqI4oLModgvm43dgR button:focus
     inset 0 -1px 0 rgba(0, 0, 0, 0.48),
     0 0 6px rgba(var(--pvfd-accent-rgb), 0.16) !important;
 }
-body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__nav-bar:not(pvfd-never) .main-playButton-PlayButton button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active nav[aria-label="Main"] .main-playButton-PlayButton button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__nav-bar:not(pvfd-never) .K5NmqI4oLModgvm43dgR button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active nav[aria-label="Main"] .K5NmqI4oLModgvm43dgR button[aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__nav-bar:not(pvfd-never) .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active nav[aria-label="Main"] .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__nav-bar:not(pvfd-never) .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active nav[aria-label="Main"] .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__nav-bar:not(pvfd-never) .main-playButton-PlayButton button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active nav[aria-label="Main"] .main-playButton-PlayButton button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__nav-bar:not(pvfd-never) .K5NmqI4oLModgvm43dgR button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active nav[aria-label="Main"] .K5NmqI4oLModgvm43dgR button[aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__nav-bar:not(pvfd-never) .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active nav[aria-label="Main"] .main-playButton-PlayButton button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__nav-bar:not(pvfd-never) .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active nav[aria-label="Main"] .K5NmqI4oLModgvm43dgR button[aria-label] .e-101040-button-primary__inner,
 body.pvfd-theme-active :is(.Root__nav-bar, nav[aria-label="Main"]) :is(.main-playButton-PlayButton, .K5NmqI4oLModgvm43dgR) button[aria-label] .encore-bright-accent-set {
   background: transparent !important;
   background-color: transparent !important;
@@ -11322,12 +11664,30 @@ body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContai
 body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label],
 body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label],
 body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label],
-body.pvfd-theme-active .Root__main-view :is(.view-homeShortcutsGrid-PlayButtonContainer, .SydbRAmFUdPUwVFV47xp) button[data-encore-id="buttonPrimary"][aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.view-homeShortcutsGrid-PlayButtonContainer, .SydbRAmFUdPUwVFV47xp) button[data-encore-id="buttonPrimary"][aria-label] .e-10860-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.view-homeShortcutsGrid-PlayButtonContainer, .SydbRAmFUdPUwVFV47xp) button[data-encore-id="buttonPrimary"][aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.view-homeShortcutsGrid-PlayButtonContainer, .SydbRAmFUdPUwVFV47xp) button[data-encore-id="buttonPrimary"][aria-label] .e-10860-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.view-homeShortcutsGrid-PlayButtonContainer, .SydbRAmFUdPUwVFV47xp) button[data-encore-id="buttonPrimary"][aria-label] .e-10451-button-primary__inner,
-body.pvfd-theme-active .Root__main-view :is(.view-homeShortcutsGrid-PlayButtonContainer, .SydbRAmFUdPUwVFV47xp) button[data-encore-id="buttonPrimary"][aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label] .e-10451-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label] .e-10860-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-PlayButtonContainer button[data-encore-id="buttonPrimary"][aria-label] .e-101040-button-primary__inner,
+body.pvfd-theme-active .Root__main-view .SydbRAmFUdPUwVFV47xp button[data-encore-id="buttonPrimary"][aria-label] .e-101040-button-primary__inner,
 body.pvfd-theme-active .Root__main-view .view-homeShortcutsGrid-playButton,
 body.pvfd-theme-active .Root__main-view .EDAZ1BEWzfhU0hb12rze {
   background: transparent !important;
@@ -11780,9 +12140,13 @@ body.pvfd-theme-active .Root__main-view :focus-visible[class*="marketplace-"][cl
 body.pvfd-theme-active .notistack-Snackbar .e-10451-box--elevated,
 body.pvfd-theme-active .notistack-Snackbar .e-10860-box--elevated,
 body.pvfd-theme-active .notistack-Snackbar .e-10451-legacy-box--elevated,
+body.pvfd-theme-active .notistack-Snackbar .e-101040-legacy-box--elevated,
 body.pvfd-theme-active .notistack-Snackbar .e-10860-legacy-box--elevated,
+body.pvfd-theme-active .notistack-Snackbar .e-101040-legacy-box--elevated,
 body.pvfd-theme-active .e-10451-snackbar,
+body.pvfd-theme-active .e-101040-snackbar,
 body.pvfd-theme-active .e-10860-snackbar,
+body.pvfd-theme-active .e-101040-snackbar,
 body.pvfd-theme-active [class*="snackbar" i][class*="--visible"],
 body.pvfd-theme-active [role="status"][class*="snackbar" i] {
   color: var(--pvfd-text-bright) !important;
@@ -11805,13 +12169,19 @@ body.pvfd-theme-active [role="status"][class*="snackbar" i] {
 body.pvfd-theme-active .notistack-Snackbar .e-10451-box--elevated > *,
 body.pvfd-theme-active .notistack-Snackbar .e-10860-box--elevated > *,
 body.pvfd-theme-active .notistack-Snackbar .e-10451-legacy-box--elevated > *,
+body.pvfd-theme-active .notistack-Snackbar .e-101040-legacy-box--elevated > *,
 body.pvfd-theme-active .notistack-Snackbar .e-10860-legacy-box--elevated > *,
+body.pvfd-theme-active .notistack-Snackbar .e-101040-legacy-box--elevated > *,
 body.pvfd-theme-active .notistack-Snackbar .e-10451-box--elevated > * *,
 body.pvfd-theme-active .notistack-Snackbar .e-10860-box--elevated > * *,
 body.pvfd-theme-active .notistack-Snackbar .e-10451-legacy-box--elevated > * *,
+body.pvfd-theme-active .notistack-Snackbar .e-101040-legacy-box--elevated > * *,
 body.pvfd-theme-active .notistack-Snackbar .e-10860-legacy-box--elevated > * *,
+body.pvfd-theme-active .notistack-Snackbar .e-101040-legacy-box--elevated > * *,
 body.pvfd-theme-active .e-10451-snackbar > *,
-body.pvfd-theme-active .e-10860-snackbar > * {
+body.pvfd-theme-active .e-101040-snackbar > *,
+body.pvfd-theme-active .e-10860-snackbar > *,
+body.pvfd-theme-active .e-101040-snackbar > * {
   background: transparent !important;
   background-image: none !important;
   border: 0 !important;
@@ -11832,10 +12202,10 @@ body.pvfd-theme-active :is(.GenericModal__overlay, .rRsq9GqsbH5_306EJGmc) [role=
 }
 /* class="e-10451-overflow-wrap-anywhere e-10451-button-primary__inner encore-bright-accent-set e-10451-legacy-button--medium"
 /* This is the class for "OK" button inside the cannot pin inside of folders modal. Needs improved visibility. */
-body.pvfd-theme-active :is(.GenericModal__overlay, .rRsq9GqsbH5_306EJGmc) [role="dialog"] .e-10451-legacy-button--medium.e-10451-button-primary__inner.encore-bright-accent-set,
-body.pvfd-theme-active :is(.GenericModal__overlay, .rRsq9GqsbH5_306EJGmc) [role="dialog"] .e-10860-legacy-button--medium.e-10451-button-primary__inner.encore-bright-accent-set,
-body.pvfd-theme-active :is(.GenericModal__overlay, .rRsq9GqsbH5_306EJGmc) [role="dialog"] .e-10451-legacy-button--medium.e-10860-button-primary__inner.encore-bright-accent-set,
-body.pvfd-theme-active :is(.GenericModal__overlay, .rRsq9GqsbH5_306EJGmc) [role="dialog"] .e-10860-legacy-button--medium.e-10860-button-primary__inner.encore-bright-accent-set {
+body.pvfd-theme-active :is(.GenericModal__overlay, .rRsq9GqsbH5_306EJGmc) [role="dialog"] :is(.e-10451-legacy-button--medium, .e-101040-legacy-button--medium):is(.e-10451-button-primary__inner, .e-101040-button-primary__inner).encore-bright-accent-set,
+body.pvfd-theme-active :is(.GenericModal__overlay, .rRsq9GqsbH5_306EJGmc) [role="dialog"] :is(.e-10860-legacy-button--medium, .e-101040-legacy-button--medium):is(.e-10451-button-primary__inner, .e-101040-button-primary__inner).encore-bright-accent-set,
+body.pvfd-theme-active :is(.GenericModal__overlay, .rRsq9GqsbH5_306EJGmc) [role="dialog"] :is(.e-10451-legacy-button--medium, .e-101040-legacy-button--medium):is(.e-10860-button-primary__inner, .e-101040-button-primary__inner).encore-bright-accent-set,
+body.pvfd-theme-active :is(.GenericModal__overlay, .rRsq9GqsbH5_306EJGmc) [role="dialog"] :is(.e-10860-legacy-button--medium, .e-101040-legacy-button--medium):is(.e-10860-button-primary__inner, .e-101040-button-primary__inner).encore-bright-accent-set {
   color: var(--pvfd-text-bright) !important;
   -webkit-text-fill-color: var(--pvfd-text-bright) !important;
   background: var(--pvfd-lcd-void) !important;
@@ -11845,8 +12215,22 @@ body.pvfd-theme-active :is(.GenericModal__overlay, .rRsq9GqsbH5_306EJGmc) [role=
     0 4px 14px rgba(0, 0, 0, 0.42),
     0 0 12px rgba(var(--pvfd-accent-rgb), 0.22) !important;
 }
-body.pvfd-theme-active :is(.GenericModal__overlay, .rRsq9GqsbH5_306EJGmc) :is(.main-playlistEditDetailsModal-save, .Sk1REN9P9CtKtDIN0Fgz) .e-10451-overflow-wrap-anywhere,
-body.pvfd-theme-active :is(.GenericModal__overlay, .rRsq9GqsbH5_306EJGmc) :is(.main-playlistEditDetailsModal-save, .Sk1REN9P9CtKtDIN0Fgz) .e-10860-overflow-wrap-anywhere {
+body.pvfd-theme-active .GenericModal__overlay .main-playlistEditDetailsModal-save .e-10451-overflow-wrap-anywhere,
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc .main-playlistEditDetailsModal-save .e-10451-overflow-wrap-anywhere,
+body.pvfd-theme-active .GenericModal__overlay .Sk1REN9P9CtKtDIN0Fgz .e-10451-overflow-wrap-anywhere,
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc .Sk1REN9P9CtKtDIN0Fgz .e-10451-overflow-wrap-anywhere,
+body.pvfd-theme-active .GenericModal__overlay .main-playlistEditDetailsModal-save .e-101040-overflow-wrap-anywhere,
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc .main-playlistEditDetailsModal-save .e-101040-overflow-wrap-anywhere,
+body.pvfd-theme-active .GenericModal__overlay .Sk1REN9P9CtKtDIN0Fgz .e-101040-overflow-wrap-anywhere,
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc .Sk1REN9P9CtKtDIN0Fgz .e-101040-overflow-wrap-anywhere,
+body.pvfd-theme-active .GenericModal__overlay .main-playlistEditDetailsModal-save .e-10860-overflow-wrap-anywhere,
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc .main-playlistEditDetailsModal-save .e-10860-overflow-wrap-anywhere,
+body.pvfd-theme-active .GenericModal__overlay .Sk1REN9P9CtKtDIN0Fgz .e-10860-overflow-wrap-anywhere,
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc .Sk1REN9P9CtKtDIN0Fgz .e-10860-overflow-wrap-anywhere,
+body.pvfd-theme-active .GenericModal__overlay .main-playlistEditDetailsModal-save .e-101040-overflow-wrap-anywhere,
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc .main-playlistEditDetailsModal-save .e-101040-overflow-wrap-anywhere,
+body.pvfd-theme-active .GenericModal__overlay .Sk1REN9P9CtKtDIN0Fgz .e-101040-overflow-wrap-anywhere,
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc .Sk1REN9P9CtKtDIN0Fgz .e-101040-overflow-wrap-anywhere {
   color: var(--pvfd-text-bright) !important;
   -webkit-text-fill-color: var(--pvfd-text-bright) !important;
   background: var(--pvfd-lcd-void) !important;
@@ -11895,11 +12279,17 @@ body.pvfd-theme-active .notistack-Snackbar [data-encore-id="text"],
 body.pvfd-theme-active .notistack-Snackbar :where(span):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .notistack-Snackbar :where(p):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10451-snackbar [data-encore-id="text"],
+body.pvfd-theme-active .e-101040-snackbar [data-encore-id="text"],
 body.pvfd-theme-active .e-10860-snackbar [data-encore-id="text"],
+body.pvfd-theme-active .e-101040-snackbar [data-encore-id="text"],
 body.pvfd-theme-active .e-10451-snackbar :where(span):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-snackbar :where(span):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10860-snackbar :where(span):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-snackbar :where(span):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10451-snackbar :where(p):not([data-pvfd-nevermatch]),
-body.pvfd-theme-active .e-10860-snackbar :where(p):not([data-pvfd-nevermatch]) {
+body.pvfd-theme-active .e-101040-snackbar :where(p):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-10860-snackbar :where(p):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-snackbar :where(p):not([data-pvfd-nevermatch]) {
   color: var(--pvfd-text-bright) !important;
   -webkit-text-fill-color: var(--pvfd-text-bright) !important;
 }
@@ -11928,18 +12318,18 @@ body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > div:first-child {
    so their primary/tertiary/negative styling stays intact. */
 body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme > *:not(button):not([role="button"]),
 body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme > *:not(button):not([role="button"]),
-body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme h1:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner)),
-body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme h1:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner)),
-body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme h2:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner)),
-body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme h2:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner)),
-body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme h3:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner)),
-body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme h3:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner)),
-body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme p:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner)),
-body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme p:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner)),
-body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme span:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner)),
-body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme span:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner)),
-body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme div:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner)),
-body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme div:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner)) {
+body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme h1:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner, .e-101040-button-primary__inner)),
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme h1:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner, .e-101040-button-primary__inner)),
+body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme h2:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner, .e-101040-button-primary__inner)),
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme h2:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner, .e-101040-button-primary__inner)),
+body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme h3:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner, .e-101040-button-primary__inner)),
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme h3:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner, .e-101040-button-primary__inner)),
+body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme p:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner, .e-101040-button-primary__inner)),
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme p:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner, .e-101040-button-primary__inner)),
+body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme span:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner, .e-101040-button-primary__inner)),
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme span:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner, .e-101040-button-primary__inner)),
+body.pvfd-theme-active .GenericModal__overlay [role="dialog"] > .encore-light-theme div:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner, .e-101040-button-primary__inner)),
+body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc [role="dialog"] > .encore-light-theme div:not(button):not([role="button"]):not(:is(.e-10451-button-primary__inner, .e-10860-button-primary__inner, .e-101040-button-primary__inner)) {
   background: transparent !important;
   background-image: none !important;
   border: 0 !important;
@@ -11972,17 +12362,29 @@ body.pvfd-theme-active .rRsq9GqsbH5_306EJGmc {
    screenshot — the unreadable one). Same chassis treatment, scaled up
    for the dialog shape. */
 body.pvfd-theme-active .e-10451-dialog-alert,
+body.pvfd-theme-active .e-101040-dialog-alert,
 body.pvfd-theme-active .e-10860-dialog-alert,
+body.pvfd-theme-active .e-101040-dialog-alert,
 body.pvfd-theme-active .e-10451-dialog-alert,
+body.pvfd-theme-active .e-101040-dialog-alert,
 body.pvfd-theme-active .e-10860-dialog-alert,
+body.pvfd-theme-active .e-101040-dialog-alert,
 body.pvfd-theme-active .e-10451-dialog-alert__body,
+body.pvfd-theme-active .e-101040-dialog-alert__body,
 body.pvfd-theme-active .e-10860-dialog-alert__body,
+body.pvfd-theme-active .e-101040-dialog-alert__body,
 body.pvfd-theme-active .e-10451-dialog-alert__footer,
+body.pvfd-theme-active .e-101040-dialog-alert__footer,
 body.pvfd-theme-active .e-10860-dialog-alert__footer,
+body.pvfd-theme-active .e-101040-dialog-alert__footer,
 body.pvfd-theme-active .e-10451-dialog-alert__title,
+body.pvfd-theme-active .e-101040-dialog-alert__title,
 body.pvfd-theme-active .e-10860-dialog-alert__title,
+body.pvfd-theme-active .e-101040-dialog-alert__title,
 body.pvfd-theme-active .e-10451-dialog-alert__title--has-border,
+body.pvfd-theme-active .e-101040-dialog-alert__title--has-border,
 body.pvfd-theme-active .e-10860-dialog-alert__title--has-border,
+body.pvfd-theme-active .e-101040-dialog-alert__title--has-border,
 body.pvfd-theme-active [role="alertdialog"] {
   color: var(--pvfd-text-bright) !important;
   -webkit-text-fill-color: var(--pvfd-text-bright) !important;
@@ -11998,26 +12400,62 @@ body.pvfd-theme-active [role="alertdialog"] {
     0 0 12px rgba(var(--pvfd-accent-rgb), 0.16) !important;
 }
 body.pvfd-theme-active .e-10451-dialog-alert .e-10451-dialog-alert__title,
+body.pvfd-theme-active .e-101040-dialog-alert .e-10451-dialog-alert__title,
+body.pvfd-theme-active .e-10451-dialog-alert .e-101040-dialog-alert__title,
+body.pvfd-theme-active .e-101040-dialog-alert .e-101040-dialog-alert__title,
 body.pvfd-theme-active .e-10860-dialog-alert .e-10451-dialog-alert__title,
+body.pvfd-theme-active .e-101040-dialog-alert .e-10451-dialog-alert__title,
+body.pvfd-theme-active .e-10860-dialog-alert .e-101040-dialog-alert__title,
+body.pvfd-theme-active .e-101040-dialog-alert .e-101040-dialog-alert__title,
 body.pvfd-theme-active .e-10451-dialog-alert .e-10860-dialog-alert__title,
+body.pvfd-theme-active .e-101040-dialog-alert .e-10860-dialog-alert__title,
+body.pvfd-theme-active .e-10451-dialog-alert .e-101040-dialog-alert__title,
+body.pvfd-theme-active .e-101040-dialog-alert .e-101040-dialog-alert__title,
 body.pvfd-theme-active .e-10860-dialog-alert .e-10860-dialog-alert__title,
+body.pvfd-theme-active .e-101040-dialog-alert .e-10860-dialog-alert__title,
+body.pvfd-theme-active .e-10860-dialog-alert .e-101040-dialog-alert__title,
+body.pvfd-theme-active .e-101040-dialog-alert .e-101040-dialog-alert__title,
 body.pvfd-theme-active .e-10451-dialog-alert .e-10451-dialog-alert__body,
+body.pvfd-theme-active .e-101040-dialog-alert .e-10451-dialog-alert__body,
+body.pvfd-theme-active .e-10451-dialog-alert .e-101040-dialog-alert__body,
+body.pvfd-theme-active .e-101040-dialog-alert .e-101040-dialog-alert__body,
 body.pvfd-theme-active .e-10860-dialog-alert .e-10451-dialog-alert__body,
+body.pvfd-theme-active .e-101040-dialog-alert .e-10451-dialog-alert__body,
+body.pvfd-theme-active .e-10860-dialog-alert .e-101040-dialog-alert__body,
+body.pvfd-theme-active .e-101040-dialog-alert .e-101040-dialog-alert__body,
 body.pvfd-theme-active .e-10451-dialog-alert .e-10860-dialog-alert__body,
+body.pvfd-theme-active .e-101040-dialog-alert .e-10860-dialog-alert__body,
+body.pvfd-theme-active .e-10451-dialog-alert .e-101040-dialog-alert__body,
+body.pvfd-theme-active .e-101040-dialog-alert .e-101040-dialog-alert__body,
 body.pvfd-theme-active .e-10860-dialog-alert .e-10860-dialog-alert__body,
+body.pvfd-theme-active .e-101040-dialog-alert .e-10860-dialog-alert__body,
+body.pvfd-theme-active .e-10860-dialog-alert .e-101040-dialog-alert__body,
+body.pvfd-theme-active .e-101040-dialog-alert .e-101040-dialog-alert__body,
 body.pvfd-theme-active .e-10451-dialog-alert :where(h1):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-dialog-alert :where(h1):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10860-dialog-alert :where(h1):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-dialog-alert :where(h1):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10451-dialog-alert :where(h2):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-dialog-alert :where(h2):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10860-dialog-alert :where(h2):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-dialog-alert :where(h2):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10451-dialog-alert :where(h3):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-dialog-alert :where(h3):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10860-dialog-alert :where(h3):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-dialog-alert :where(h3):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10451-dialog-alert :where(p):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-dialog-alert :where(p):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10860-dialog-alert :where(p):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-dialog-alert :where(p):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10451-dialog-alert :where(span):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-dialog-alert :where(span):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10860-dialog-alert :where(span):not([data-pvfd-nevermatch]),
+body.pvfd-theme-active .e-101040-dialog-alert :where(span):not([data-pvfd-nevermatch]),
 body.pvfd-theme-active .e-10451-dialog-alert [data-encore-id="text"],
+body.pvfd-theme-active .e-101040-dialog-alert [data-encore-id="text"],
 body.pvfd-theme-active .e-10860-dialog-alert [data-encore-id="text"],
-body.pvfd-theme-active :is(:is(.e-10451-dialog-alert, .e-10860-dialog-alert), :is(.e-10451-dialog-alert__body, .e-10860-dialog-alert__body), :is(.e-10451-dialog-alert__footer, .e-10860-dialog-alert__footer), :is(.e-10451-dialog-alert__title, .e-10860-dialog-alert__title), :is(.e-10451-dialog-alert__title--has-border, .e-10860-dialog-alert__title--has-border)) :is(h1, h2, h3, p, span, [data-encore-id="text"]) {
+body.pvfd-theme-active .e-101040-dialog-alert [data-encore-id="text"],
+body.pvfd-theme-active :is(:is(.e-10451-dialog-alert, .e-10860-dialog-alert, .e-101040-dialog-alert), :is(.e-10451-dialog-alert__body, .e-10860-dialog-alert__body, .e-101040-dialog-alert__body), :is(.e-10451-dialog-alert__footer, .e-10860-dialog-alert__footer, .e-101040-dialog-alert__footer), :is(.e-10451-dialog-alert__title, .e-10860-dialog-alert__title, .e-101040-dialog-alert__title), :is(.e-10451-dialog-alert__title--has-border, .e-10860-dialog-alert__title--has-border, .e-101040-dialog-alert__title--has-border)) :is(h1, h2, h3, p, span, [data-encore-id="text"]) {
   color: var(--pvfd-text-bright) !important;
   -webkit-text-fill-color: var(--pvfd-text-bright) !important;
 }
@@ -12236,7 +12674,9 @@ body.pvfd-theme-active.pvfd-route-lyrics:not(.pvfd-lyrics-pass-on) .Root__main-v
     0 8px 18px rgba(0, 0, 0, 0.34) !important;
 }
 body.pvfd-theme-active.pvfd-route-lyrics:not(.pvfd-lyrics-pass-on) .Root__main-view button.pvfd-lyrics-sync-button[data-encore-id="buttonPrimary"] .e-10451-button-primary__inner,
+body.pvfd-theme-active.pvfd-route-lyrics:not(.pvfd-lyrics-pass-on) .Root__main-view button.pvfd-lyrics-sync-button[data-encore-id="buttonPrimary"] .e-101040-button-primary__inner,
 body.pvfd-theme-active.pvfd-route-lyrics:not(.pvfd-lyrics-pass-on) .Root__main-view button.pvfd-lyrics-sync-button[data-encore-id="buttonPrimary"] .e-10860-button-primary__inner,
+body.pvfd-theme-active.pvfd-route-lyrics:not(.pvfd-lyrics-pass-on) .Root__main-view button.pvfd-lyrics-sync-button[data-encore-id="buttonPrimary"] .e-101040-button-primary__inner,
 body.pvfd-theme-active.pvfd-route-lyrics:not(.pvfd-lyrics-pass-on) .Root__main-view .pvfd-lyrics-sync-button div,
 body.pvfd-theme-active.pvfd-route-lyrics:not(.pvfd-lyrics-pass-on) .Root__main-view .pvfd-lyrics-sync-button span,
 body.pvfd-theme-active.pvfd-route-lyrics:not(.pvfd-lyrics-pass-on) .Root__main-view .pvfd-lyrics-sync-button svg,
@@ -12462,13 +12902,21 @@ html.pvfd-tint-bow body.pvfd-theme-active .omD8s8p6eZSUsYOOzg1S input,
 html.pvfd-tint-bow body.pvfd-theme-active :is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) .main-globalNav-searchInputText,
 html.pvfd-tint-bow body.pvfd-theme-active :is(.main-globalNav-searchInputContainer, .omD8s8p6eZSUsYOOzg1S) .CuJVJfCsjqfRa4x0iXiz,
 html.pvfd-tint-bow body.pvfd-theme-active .main-globalNav-searchInputContainer .e-10451-form-input-icon__icon svg,
+html.pvfd-tint-bow body.pvfd-theme-active .main-globalNav-searchInputContainer .e-101040-form-input-icon__icon svg,
 html.pvfd-tint-bow body.pvfd-theme-active .omD8s8p6eZSUsYOOzg1S .e-10451-form-input-icon__icon svg,
+html.pvfd-tint-bow body.pvfd-theme-active .omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon__icon svg,
 html.pvfd-tint-bow body.pvfd-theme-active .main-globalNav-searchInputContainer .e-10860-form-input-icon__icon svg,
+html.pvfd-tint-bow body.pvfd-theme-active .main-globalNav-searchInputContainer .e-101040-form-input-icon__icon svg,
 html.pvfd-tint-bow body.pvfd-theme-active .omD8s8p6eZSUsYOOzg1S .e-10860-form-input-icon__icon svg,
+html.pvfd-tint-bow body.pvfd-theme-active .omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon__icon svg,
 html.pvfd-tint-bow body.pvfd-theme-active .main-globalNav-searchInputContainer .e-10451-form-input-icon__icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .main-globalNav-searchInputContainer .e-101040-form-input-icon__icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .omD8s8p6eZSUsYOOzg1S .e-10451-form-input-icon__icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon__icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .main-globalNav-searchInputContainer .e-10860-form-input-icon__icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .main-globalNav-searchInputContainer .e-101040-form-input-icon__icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .omD8s8p6eZSUsYOOzg1S .e-10860-form-input-icon__icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .omD8s8p6eZSUsYOOzg1S .e-101040-form-input-icon__icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .main-globalNav-searchInputContainer kbd,
 html.pvfd-tint-bow body.pvfd-theme-active .omD8s8p6eZSUsYOOzg1S kbd,
 html.pvfd-tint-bow body.pvfd-theme-active .main-globalNav-searchInputSection .x-searchInput-searchInputClearButton svg,
@@ -12752,15 +13200,23 @@ html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingV
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer svg,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer svg path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer .e-10451-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer .e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer .e-10860-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer .e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer .e-10451-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer .e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer .e-10860-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerContainer .e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerTextWrapper svg,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerTextWrapper svg path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerTextWrapper .e-10451-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerTextWrapper .e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerTextWrapper .e-10860-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerTextWrapper .e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerTextWrapper .e-10451-icon path,
-html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerTextWrapper .e-10860-icon path {
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerTextWrapper .e-101040-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerTextWrapper .e-10860-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerTextWrapper .e-101040-icon path {
     --encore-icon-fill: #000000 !important;
     color: #000000 !important;
     fill: #000000 !important;
@@ -12795,15 +13251,23 @@ html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingW
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton:not([data-pvfd-nevermatch]),
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn:not([data-pvfd-nevermatch]),
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton .e-10451-button__icon-wrapper,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton .e-101040-button__icon-wrapper,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn .e-10451-button__icon-wrapper,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn .e-101040-button__icon-wrapper,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton .e-10860-button__icon-wrapper,
-html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn .e-10860-button__icon-wrapper {
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton .e-101040-button__icon-wrapper,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn .e-10860-button__icon-wrapper,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn .e-101040-button__icon-wrapper {
     overflow: visible !important;
 }
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton[aria-checked="true"] svg.e-10451-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton[aria-checked="true"] svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn[aria-checked="true"] svg.e-10451-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn[aria-checked="true"] svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton[aria-checked="true"] svg.e-10860-icon,
-html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn[aria-checked="true"] svg.e-10860-icon {
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton[aria-checked="true"] svg.e-101040-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn[aria-checked="true"] svg.e-10860-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn[aria-checked="true"] svg.e-101040-icon {
     --encore-icon-fill: #000000 !important;
     color: #000000 !important;
     fill: #000000 !important;
@@ -12813,9 +13277,13 @@ html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPY
         drop-shadow(0 0 13px rgba(255, 255, 255, 0.30)) !important;
 }
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton[aria-checked="true"] svg.e-10451-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton[aria-checked="true"] svg.e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn[aria-checked="true"] svg.e-10451-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn[aria-checked="true"] svg.e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton[aria-checked="true"] svg.e-10860-icon path,
-html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn[aria-checked="true"] svg.e-10860-icon path {
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingWidget-plusButton[aria-checked="true"] svg.e-101040-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn[aria-checked="true"] svg.e-10860-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPYFSnn[aria-checked="true"] svg.e-101040-icon path {
     --encore-icon-fill: #000000 !important;
     color: #000000 !important;
     fill: #000000 !important;
@@ -12848,23 +13316,23 @@ html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .JG8O5OlK9DMmaCPY
 /* A. Kill text-shadow throughout the button subtree. */
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar :is(
     :is(.main-nowPlayingView-headerButton, .zBSwIdB7pNBThecjoTVC),
-    :is(.main-nowPlayingView-headerButton, .zBSwIdB7pNBThecjoTVC) :is(.e-10451-button__icon-wrapper, .e-10860-button__icon-wrapper),
+    :is(.main-nowPlayingView-headerButton, .zBSwIdB7pNBThecjoTVC) :is(.e-10451-button__icon-wrapper, .e-10860-button__icon-wrapper, .e-101040-button__icon-wrapper),
     :is(.main-nowPlayingView-headerButton, .zBSwIdB7pNBThecjoTVC) svg,
     :is(.main-nowPlayingView-headerButton, .zBSwIdB7pNBThecjoTVC) svg path,
     :is(.main-nowPlayingWidget-plusButton, .JG8O5OlK9DMmaCPYFSnn),
-    :is(.main-nowPlayingWidget-plusButton, .JG8O5OlK9DMmaCPYFSnn) :is(.e-10451-button__icon-wrapper, .e-10860-button__icon-wrapper),
+    :is(.main-nowPlayingWidget-plusButton, .JG8O5OlK9DMmaCPYFSnn) :is(.e-10451-button__icon-wrapper, .e-10860-button__icon-wrapper, .e-101040-button__icon-wrapper),
     :is(.main-nowPlayingWidget-plusButton, .JG8O5OlK9DMmaCPYFSnn) svg,
     :is(.main-nowPlayingWidget-plusButton, .JG8O5OlK9DMmaCPYFSnn) svg path,
     :is(.main-nowPlayingView-headerButton, .zBSwIdB7pNBThecjoTVC),
-    :is(.main-nowPlayingView-headerButton, .zBSwIdB7pNBThecjoTVC) :is(.e-10451-button__icon-wrapper, .e-10860-button__icon-wrapper),
+    :is(.main-nowPlayingView-headerButton, .zBSwIdB7pNBThecjoTVC) :is(.e-10451-button__icon-wrapper, .e-10860-button__icon-wrapper, .e-101040-button__icon-wrapper),
     :is(.main-nowPlayingView-headerButton, .zBSwIdB7pNBThecjoTVC) svg,
     :is(.main-nowPlayingView-headerButton, .zBSwIdB7pNBThecjoTVC) svg path,
     .main-nowPlayingView-headerButtonContainer button,
-    .main-nowPlayingView-headerButtonContainer button :is(.e-10451-button__icon-wrapper, .e-10860-button__icon-wrapper),
+    .main-nowPlayingView-headerButtonContainer button :is(.e-10451-button__icon-wrapper, .e-10860-button__icon-wrapper, .e-101040-button__icon-wrapper),
     .main-nowPlayingView-headerButtonContainer button svg,
     .main-nowPlayingView-headerButtonContainer button svg path,
     .main-nowPlayingView-headerButtonWrapper button,
-    .main-nowPlayingView-headerButtonWrapper button :is(.e-10451-button__icon-wrapper, .e-10860-button__icon-wrapper),
+    .main-nowPlayingView-headerButtonWrapper button :is(.e-10451-button__icon-wrapper, .e-10860-button__icon-wrapper, .e-101040-button__icon-wrapper),
     .main-nowPlayingView-headerButtonWrapper button svg,
     .main-nowPlayingView-headerButtonWrapper button svg path
 ) {
@@ -12877,9 +13345,13 @@ html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingV
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not([data-pvfd-nevermatch]),
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not([data-pvfd-nevermatch]),
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton .e-10451-button__icon-wrapper,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton .e-101040-button__icon-wrapper,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC .e-10451-button__icon-wrapper,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC .e-101040-button__icon-wrapper,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton .e-10860-button__icon-wrapper,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton .e-101040-button__icon-wrapper,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC .e-10860-button__icon-wrapper,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC .e-101040-button__icon-wrapper,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonContainer:not([data-pvfd-nevermatch]),
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonWrapper:not([data-pvfd-nevermatch]) {
     overflow: visible !important;
@@ -12887,17 +13359,29 @@ html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingV
 /* C. Single, non-compounding radial filter on the svg only. Smaller radii
    than the plus button since these icons are 16x16 not 24x24. */
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-10451-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-10451-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-10451-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-10451-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonContainer button svg.e-10451-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonContainer button svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonWrapper button svg.e-10451-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonWrapper button svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-10860-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-10860-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-10860-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-10860-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonContainer button svg.e-10860-icon,
-html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonWrapper button svg.e-10860-icon {
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonContainer button svg.e-101040-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonWrapper button svg.e-10860-icon,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonWrapper button svg.e-101040-icon {
     --encore-icon-fill: #000000 !important;
     color: #000000 !important;
     fill: #000000 !important;
@@ -12907,17 +13391,29 @@ html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingV
         drop-shadow(0 0 8px rgba(255, 255, 255, 0.35)) !important;
 }
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-10451-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-10451-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-10451-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-10451-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonContainer button svg.e-10451-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonContainer button svg.e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonWrapper button svg.e-10451-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonWrapper button svg.e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-10860-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-10860-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-10860-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButton:not(pvfd-never) svg.e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-10860-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .zBSwIdB7pNBThecjoTVC:not(pvfd-never) svg.e-101040-icon path,
 html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonContainer button svg.e-10860-icon path,
-html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonWrapper button svg.e-10860-icon path {
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonContainer button svg.e-101040-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonWrapper button svg.e-10860-icon path,
+html.pvfd-tint-bow body.pvfd-theme-active .Root__right-sidebar .main-nowPlayingView-headerButtonWrapper button svg.e-101040-icon path {
     --encore-icon-fill: #000000 !important;
     color: #000000 !important;
     fill: #000000 !important;
@@ -12980,8 +13476,8 @@ html.pvfd-tint-bow body.pvfd-theme-active
     :is(.main-globalNav-browseButtonWrapper, .hKGrv76fVnkXp_d_8Bhs):not(#pvfd-a):not(#pvfd-b):not(#pvfd-c)
     button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f)
 ),
-html.pvfd-tint-bow body.pvfd-theme-active :is( button:is(.x-searchInput-searchInputClearButton, .gSZQDbdbff_qjezDSaC7)[data-encore-id="buttonTertiary"], :is(.main-globalNav-browseButtonWrapper, .hKGrv76fVnkXp_d_8Bhs):not(#pvfd-a):not(#pvfd-b):not(#pvfd-c) button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f) ) .e-10451-button__icon-wrapper,
-html.pvfd-tint-bow body.pvfd-theme-active :is( button:is(.x-searchInput-searchInputClearButton, .gSZQDbdbff_qjezDSaC7)[data-encore-id="buttonTertiary"], :is(.main-globalNav-browseButtonWrapper, .hKGrv76fVnkXp_d_8Bhs):not(#pvfd-a):not(#pvfd-b):not(#pvfd-c) button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f) ) .e-10860-button__icon-wrapper {
+html.pvfd-tint-bow body.pvfd-theme-active :is( button:is(.x-searchInput-searchInputClearButton, .gSZQDbdbff_qjezDSaC7)[data-encore-id="buttonTertiary"], :is(.main-globalNav-browseButtonWrapper, .hKGrv76fVnkXp_d_8Bhs):not(#pvfd-a):not(#pvfd-b):not(#pvfd-c) button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f) ) :is(.e-10451-button__icon-wrapper, .e-101040-button__icon-wrapper),
+html.pvfd-tint-bow body.pvfd-theme-active :is( button:is(.x-searchInput-searchInputClearButton, .gSZQDbdbff_qjezDSaC7)[data-encore-id="buttonTertiary"], :is(.main-globalNav-browseButtonWrapper, .hKGrv76fVnkXp_d_8Bhs):not(#pvfd-a):not(#pvfd-b):not(#pvfd-c) button[aria-label="Browse"][data-encore-id="buttonTertiary"]:not(#pvfd-d):not(#pvfd-e):not(#pvfd-f) ) :is(.e-10860-button__icon-wrapper, .e-101040-button__icon-wrapper) {
     color: var(--pvfd-search-icon-fill) !important;
     -webkit-text-fill-color: var(--pvfd-search-icon-fill) !important;
 
@@ -14720,9 +15216,21 @@ body.pvfd-logo-glow-on .pvfd-cinema-rail-key[data-pvfd-cinema-rail="pulse"] {
    box needs no knowledge of that markup at all, so nothing here breaks when
    Spotify rewrites the copy or the component.
 
+   Mounted INSIDE the main view (mountNoLyricsCover) and positioned against
+   it, so the box it fills is the main view's own by construction. v5.4.0
+   positioned a fixed box on body from a measurement of the main view, and on
+   one client that measurement did not match the screen: the panel took the
+   whole window, console included, with nothing left to click (#52).
+
    Sits UNDER the pull-out rail (z-index 28) so the display is still reachable
    from a track with no lyrics — where it shows this very same panel. */
 .pvfd-nolyrics {
+  /* The box for a cover that is still on body, which is where the v5.4.0
+     extension as first released put it, sized from these measured variables.
+     This sheet and the extension are two files at two URLs: for a few minutes
+     after a refresh a client can run that extension from cache beside this
+     sheet, and an absolute box on body would be the whole window. With these
+     it gets exactly what it had. Drop with the next versioned file name. */
   position: fixed;
   left: var(--pvfd-mv-left, 0px);
   right: var(--pvfd-fsdtab-right, 0px);
@@ -14740,6 +15248,14 @@ body.pvfd-logo-glow-on .pvfd-cinema-rail-key[data-pvfd-cinema-rail="pulse"] {
   visibility: hidden;
   transition: opacity 380ms ease-out, visibility 0s linear 380ms;
 }
+/* Mounted in the main view (mountNoLyricsCover): the main view's own box and
+   nothing else, with no measurement involved. */
+#main-view > .pvfd-nolyrics,
+.Root__main-view > .pvfd-nolyrics {
+  position: absolute;
+  inset: 0;
+  height: auto;
+}
 /* Arrives INSTANTLY (transition: none) and leaves on a fade. Deliberately
    asymmetric: the whole point is to be down before Spotify paints, so easing
    the cover in would just shorten the flash rather than remove it. Black
@@ -14752,6 +15268,9 @@ body[data-pvfd-nolyrics] .pvfd-nolyrics {
 }
 /* The display covers this anyway; do not leave it live underneath a takeover. */
 body.pvfd-cinema-active .pvfd-nolyrics { display: none !important; }
+/* Only ever added when a build leaves the main view static (see
+   mountNoLyricsCover); every build seen has it relative already. */
+.pvfd-mv-host { position: relative; }
 /* While the verdict is still out: hold black and sweep the scanline, borrowing
    the display's own curtain keyframes so entering lyrics and entering the
    display are visibly the same gesture. The scanline restarts by itself every
@@ -15407,9 +15926,13 @@ html.pvfd-tint-bow .pvfd-cinema-topstrip-logo {
 }
 /* Add-to-playlist footer Done button */
 body.pvfd-theme-active #context-menu .UmC7B1blaToOXizU button.e-10451-legacy-button-primary[type="submit"][data-encore-id="buttonPrimary"],
+body.pvfd-theme-active #context-menu .UmC7B1blaToOXizU button.e-101040-legacy-button-primary[type="submit"][data-encore-id="buttonPrimary"],
 body.pvfd-theme-active #context-menu .SKQ_ro1AL4NJXhi4LqKz button.e-10451-legacy-button-primary[type="submit"][data-encore-id="buttonPrimary"],
+body.pvfd-theme-active #context-menu .SKQ_ro1AL4NJXhi4LqKz button.e-101040-legacy-button-primary[type="submit"][data-encore-id="buttonPrimary"],
 body.pvfd-theme-active #context-menu .UmC7B1blaToOXizU button.e-10860-legacy-button-primary[type="submit"][data-encore-id="buttonPrimary"],
-body.pvfd-theme-active #context-menu .SKQ_ro1AL4NJXhi4LqKz button.e-10860-legacy-button-primary[type="submit"][data-encore-id="buttonPrimary"] {
+body.pvfd-theme-active #context-menu .UmC7B1blaToOXizU button.e-101040-legacy-button-primary[type="submit"][data-encore-id="buttonPrimary"],
+body.pvfd-theme-active #context-menu .SKQ_ro1AL4NJXhi4LqKz button.e-10860-legacy-button-primary[type="submit"][data-encore-id="buttonPrimary"],
+body.pvfd-theme-active #context-menu .SKQ_ro1AL4NJXhi4LqKz button.e-101040-legacy-button-primary[type="submit"][data-encore-id="buttonPrimary"] {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
@@ -15424,8 +15947,14 @@ body.pvfd-theme-active #context-menu .SKQ_ro1AL4NJXhi4LqKz button.e-10860-legacy
   --text-bright-accent: var(--pvfd-cyan) !important;
 }
 /* The actual visible inner pill/text */
-body.pvfd-theme-active #context-menu :is(.UmC7B1blaToOXizU, .SKQ_ro1AL4NJXhi4LqKz) button[type="submit"][data-encore-id="buttonPrimary"] .e-10451-button-primary__inner,
-body.pvfd-theme-active #context-menu :is(.UmC7B1blaToOXizU, .SKQ_ro1AL4NJXhi4LqKz) button[type="submit"][data-encore-id="buttonPrimary"] .e-10860-button-primary__inner {
+body.pvfd-theme-active #context-menu .UmC7B1blaToOXizU button[type="submit"][data-encore-id="buttonPrimary"] .e-10451-button-primary__inner,
+body.pvfd-theme-active #context-menu .SKQ_ro1AL4NJXhi4LqKz button[type="submit"][data-encore-id="buttonPrimary"] .e-10451-button-primary__inner,
+body.pvfd-theme-active #context-menu .UmC7B1blaToOXizU button[type="submit"][data-encore-id="buttonPrimary"] .e-101040-button-primary__inner,
+body.pvfd-theme-active #context-menu .SKQ_ro1AL4NJXhi4LqKz button[type="submit"][data-encore-id="buttonPrimary"] .e-101040-button-primary__inner,
+body.pvfd-theme-active #context-menu .UmC7B1blaToOXizU button[type="submit"][data-encore-id="buttonPrimary"] .e-10860-button-primary__inner,
+body.pvfd-theme-active #context-menu .SKQ_ro1AL4NJXhi4LqKz button[type="submit"][data-encore-id="buttonPrimary"] .e-10860-button-primary__inner,
+body.pvfd-theme-active #context-menu .UmC7B1blaToOXizU button[type="submit"][data-encore-id="buttonPrimary"] .e-101040-button-primary__inner,
+body.pvfd-theme-active #context-menu .SKQ_ro1AL4NJXhi4LqKz button[type="submit"][data-encore-id="buttonPrimary"] .e-101040-button-primary__inner {
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
@@ -15439,7 +15968,7 @@ body.pvfd-theme-active #context-menu :is(.UmC7B1blaToOXizU, .SKQ_ro1AL4NJXhi4LqK
 }
 /* Add-to-playlist sheet title */
 body.pvfd-theme-active #context-menu form > :is(.oO03NFXbpIyoSJKY, .yRKpY9ZGM2HiJSaUwNwS)
-span[data-encore-id="text"]:is(.e-10451-text, .e-10860-text).encore-text-marginal-bold {
+span[data-encore-id="text"]:is(.e-10451-text, .e-10860-text, .e-101040-text).encore-text-marginal-bold {
   color: var(--pvfd-cyan) !important;
   -webkit-text-fill-color: var(--pvfd-cyan) !important;
 
@@ -15758,9 +16287,13 @@ html.pvfd-tint-bow body.pvfd-theme-active.pvfd-theme-active .main-topBar-contain
    blur) so the halo reads as a clean radial bloom on the rounded play icon.
    overflow:visible lets the bloom render past the SVG's bounding box. */
 html.pvfd-tint-bow body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .main-playButton-PlayButton svg.e-10451-icon,
+html.pvfd-tint-bow body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .main-playButton-PlayButton svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .K5NmqI4oLModgvm43dgR svg.e-10451-icon,
+html.pvfd-tint-bow body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .K5NmqI4oLModgvm43dgR svg.e-101040-icon,
 html.pvfd-tint-bow body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .main-playButton-PlayButton svg.e-10860-icon,
-html.pvfd-tint-bow body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .K5NmqI4oLModgvm43dgR svg.e-10860-icon {
+html.pvfd-tint-bow body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .main-playButton-PlayButton svg.e-101040-icon,
+html.pvfd-tint-bow body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .K5NmqI4oLModgvm43dgR svg.e-10860-icon,
+html.pvfd-tint-bow body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .K5NmqI4oLModgvm43dgR svg.e-101040-icon {
   overflow: visible !important;
   filter:
     drop-shadow(0 0 3px rgba(255, 255, 255, 0.90))
@@ -15781,9 +16314,13 @@ html.pvfd-tint-wob body.pvfd-theme-active.pvfd-theme-active .main-topBar-contain
 }
 /* WOB — play button SVG dark halo. */
 html.pvfd-tint-wob body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .main-playButton-PlayButton svg.e-10451-icon,
+html.pvfd-tint-wob body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .main-playButton-PlayButton svg.e-101040-icon,
 html.pvfd-tint-wob body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .K5NmqI4oLModgvm43dgR svg.e-10451-icon,
+html.pvfd-tint-wob body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .K5NmqI4oLModgvm43dgR svg.e-101040-icon,
 html.pvfd-tint-wob body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .main-playButton-PlayButton svg.e-10860-icon,
-html.pvfd-tint-wob body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .K5NmqI4oLModgvm43dgR svg.e-10860-icon {
+html.pvfd-tint-wob body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .main-playButton-PlayButton svg.e-101040-icon,
+html.pvfd-tint-wob body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .K5NmqI4oLModgvm43dgR svg.e-10860-icon,
+html.pvfd-tint-wob body.pvfd-theme-active.pvfd-theme-active .main-topBar-container .K5NmqI4oLModgvm43dgR svg.e-101040-icon {
   overflow: visible !important;
   filter:
     drop-shadow(0 0 3px rgba(0, 0, 0, 0.90))
