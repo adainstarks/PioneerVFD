@@ -716,6 +716,9 @@
   const patchedLibraryRecentsControls = new WeakSet();
   const patchedLyricsSyncButtons = new WeakSet();
   const pvfdRouteState = { route: "other", at: -Infinity, churnUntil: 0 };
+  // The last page that was not a lyrics page: where ESC on the no-lyrics cover
+  // returns to, however lyrics was entered (the key, a link, a pushed route).
+  let pvfdLastOffLyricsPath = "";
   const pvfdMutationWork = {
     chassisRecheck: false,
     mainViewChurn: false,
@@ -1858,6 +1861,7 @@
     // Before the detector: it and everything below read the layout classes.
     stampLayoutAliases();
     const nextRoute = detectPvfdRoute();
+    if (nextRoute !== "lyrics" && nextRoute !== "external-lyrics") pvfdLastOffLyricsPath = currentSpotifyPathRaw();
     pvfdRouteState.at = ts;
     const prevRoute = pvfdRouteState.route;
     if (prevRoute !== nextRoute) {
@@ -7509,8 +7513,10 @@
     if (!rect.width) return false;
     const fromRight = Math.max(0, Math.round(window.innerWidth - rect.right));
     setStyleIfChanged(document.body, "--pvfd-fsdtab-right", fromRight + "px");
-    // The no-lyrics panel covers the same box, so it rides the one rect we
-    // already have rather than measuring again.
+    // The main view's box. The current stylesheet does not read these (the
+    // no-lyrics cover is mounted in the main view and needs no measurement);
+    // a v5.4.0 stylesheet still in a client's cache positions the cover from
+    // them, so they keep being written until the next versioned file name.
     setStyleIfChanged(document.body, "--pvfd-mv-left", Math.round(rect.left) + "px");
     setStyleIfChanged(document.body, "--pvfd-mv-top", Math.round(rect.top) + "px");
     setStyleIfChanged(document.body, "--pvfd-mv-height", Math.round(rect.height) + "px");
@@ -7620,13 +7626,14 @@
     if (document.body.classList.contains("pvfd-cinema-active")) return;
     if (pvfdRouteState.route !== "lyrics") return;
     noLyricsEmptySince = 0;
-    // The tab's edge rides the main view's rect; refresh it on the way in. The
-    // cover itself no longer depends on that measurement (mountNoLyricsCover):
-    // no main view, no cover, and never a default to the window. The panel
-    // under the curtain is hidden by default, so resolving style in this
-    // measurement before the attribute lands cannot flash it.
-    syncFsdTabEdge();
-    if (!mountNoLyricsCover()) return;
+    // No cover without a main view that is on screen (found, and with a
+    // width): there is nothing to cover otherwise. That measurement also
+    // feeds the tab's edge and the box variables a cached v5.4.0 stylesheet
+    // still reads (see syncFsdTabEdge). The cover's own box no longer comes
+    // from it: mounted in the main view, it cannot be anything else. The
+    // panel under the curtain is hidden by default, so resolving style in
+    // this measurement before the attribute lands cannot flash it.
+    if (!syncFsdTabEdge() || !mountNoLyricsCover()) return;
     document.body.setAttribute("data-pvfd-nolyrics", "wait");
   }
 
@@ -7651,8 +7658,8 @@
       if (uri !== noLyricsUri) {
         noLyricsUri = uri;
         noLyricsEmptySince = 0;
-        // Same rule as armNoLyricsCover: only inside a mounted main view.
-        if (!hasLines && !spicy && mountNoLyricsCover()) document.body.setAttribute("data-pvfd-nolyrics", "wait");
+        // Same rule as armNoLyricsCover: a main view on screen, the cover in it.
+        if (!hasLines && !spicy && syncFsdTabEdge() && mountNoLyricsCover()) document.body.setAttribute("data-pvfd-nolyrics", "wait");
       }
       if (spicy || hasLines) {
         noLyricsEmptySince = 0;
@@ -7674,12 +7681,13 @@
     }
 
     const current = document.body.getAttribute("data-pvfd-nolyrics");
-    // The host node is React's and gets replaced: a verdict only lands inside
-    // a mounted main view (see armNoLyricsCover), and a cover already up is
-    // kept in the live node, one parent check per tick. Without a host the
-    // cover comes off rather than defaulting to the window.
+    // The host node is React's and can be replaced: a cover that is up is kept
+    // in the live node, one parent check per tick. Without a host it comes off.
     if (state && !mountNoLyricsCover()) state = null;
     if (state === current) return;
+    // A verdict only lands over a main view that is on screen (see
+    // armNoLyricsCover). That is a layout read, so on a state change only.
+    if (state && !syncFsdTabEdge()) state = null;
     if (state === "on") {
       const el = getNoLyricsEl();
       const title = el.querySelector("[data-pvfd='nolyrics-title']");
@@ -7700,16 +7708,33 @@
   // of its own (a head unit's screen has nothing on it to click) and the LYRICS
   // key is the way back, but the client in #52 had the cover over the console
   // and so no key to press. Narrow on purpose: only while the cover is showing
-  // on the lyrics route; not in the display, not over a dialog or a chassis
-  // menu (those own ESC), not while the window is fullscreen (ESC is Chrome's).
+  // on the lyrics route; not in the display, not while the window is
+  // fullscreen (that ESC is Chrome's), not from a field (the search box clears
+  // on ESC), and not over an open dialog, context menu or chassis menu (those
+  // own ESC). It goes back to the last page that was not lyrics.
+  //
+  // "Open" has to mean rendered: Spotify keeps empty role=dialog shells
+  // mounted on every page and the M.C. menu always exists inside the chassis,
+  // so a bare presence test is true all the time and the key would be dead.
+  function pvfdOverlayOpen() {
+    const els = document.querySelectorAll("[role='dialog'], [role='alertdialog'], [role='menu']");
+    for (let i = 0; i < els.length; i++) {
+      if (els[i].getClientRects().length && getComputedStyle(els[i]).visibility !== "hidden") return true;
+    }
+    return false;
+  }
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || e.defaultPrevented) return;
     if (!document.body || !document.body.getAttribute("data-pvfd-nolyrics")) return;
     if (pvfdCinemaOpen || menuOpen || tintMenuOpen || document.fullscreenElement) return;
     if (pvfdRouteState.route !== "lyrics") return;
-    if (safeReturn(() => !!document.querySelector("[role='dialog'], [role='alertdialog'], [role='menu']"), false)) return;
+    const t = e.target;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ""))) return;
+    if (safeReturn(pvfdOverlayOpen, false)) return;
     e.preventDefault();
-    safe(() => pushSpotifyPath(preLyricsPath && preLyricsPath !== "/lyrics" ? preLyricsPath : "/"));
+    const back = pvfdLastOffLyricsPath ||
+      (preLyricsPath && !/\/lyrics/i.test(preLyricsPath) ? preLyricsPath : "") || "/";
+    safe(() => pushSpotifyPath(back));
     scheduleLyricsLampSync();
   });
 

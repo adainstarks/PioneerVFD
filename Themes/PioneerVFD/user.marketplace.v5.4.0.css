@@ -15225,8 +15225,17 @@ body.pvfd-logo-glow-on .pvfd-cinema-rail-key[data-pvfd-cinema-rail="pulse"] {
    Sits UNDER the pull-out rail (z-index 28) so the display is still reachable
    from a track with no lyrics — where it shows this very same panel. */
 .pvfd-nolyrics {
-  position: absolute;
-  inset: 0;
+  /* The box for a cover that is still on body, which is where the v5.4.0
+     extension as first released put it, sized from these measured variables.
+     This sheet and the extension are two files at two URLs: for a few minutes
+     after a refresh a client can run that extension from cache beside this
+     sheet, and an absolute box on body would be the whole window. With these
+     it gets exactly what it had. Drop with the next versioned file name. */
+  position: fixed;
+  left: var(--pvfd-mv-left, 0px);
+  right: var(--pvfd-fsdtab-right, 0px);
+  top: var(--pvfd-mv-top, 0px);
+  height: var(--pvfd-mv-height, 100%);
   z-index: 20;
   /* Inert while off: visibility leaves on a delayed transition, and a
      window Chromium is not painting (occluded, minimised) never runs that
@@ -15238,6 +15247,14 @@ body.pvfd-logo-glow-on .pvfd-cinema-rail-key[data-pvfd-cinema-rail="pulse"] {
   opacity: 0;
   visibility: hidden;
   transition: opacity 380ms ease-out, visibility 0s linear 380ms;
+}
+/* Mounted in the main view (mountNoLyricsCover): the main view's own box and
+   nothing else, with no measurement involved. */
+#main-view > .pvfd-nolyrics,
+.Root__main-view > .pvfd-nolyrics {
+  position: absolute;
+  inset: 0;
+  height: auto;
 }
 /* Arrives INSTANTLY (transition: none) and leaves on a fade. Deliberately
    asymmetric: the whole point is to be down before Spotify paints, so easing
